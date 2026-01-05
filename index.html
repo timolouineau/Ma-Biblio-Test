@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <title>MaBiblio</title>
+    <meta name="apple-mobile-web-app-title" content="MaBiblio">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURATION FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDo4sqS3BIW1DmNxWA1IJtlD9GRFs4rd_g",
+            authDomain: "mabiblio-dc595.firebaseapp.com",
+            projectId: "mabiblio-dc595",
+            storageBucket: "mabiblio-dc595.firebasestorage.app",
+            messagingSenderId: "683284434520",
+            appId: "1:683284434520:web:0c72c547703843781f442d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'mabiblio-dc595';
+
+        // État Global
+        window.currentUser = null;
+        window.currentView = 'home';
+        window.currentType = 'Film'; 
+        window.currentStatus = 'Vu'; 
+        window.myCollection = [];
+        window.socialFeed = [];
+        window.following = [];
+        window.followingData = [];
+        window.followersData = [];
+        window.userProfile = { name: '', avatar: '', goalLivre: 12, goalFilm: 50, goalSerie: 10, following: [] };
+        window.tempManualImage = ''; 
+        window.followFeedback = null; // CORRECTION 2: Variable pour stocker l'état du message feedback
+        let currentRating = 8;
+        window.authMode = 'login';
+
+        // Utilitaires
+        async function compressImage(base64Str, maxWidth = 400, maxHeight = 600) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = base64Str;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > height) {
+                        if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+                    } else {
+                        if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+            });
+        }
+
+        // --- LOGIQUE AUTHENTIFICATION ---
+        window.setAuthMode = (mode) => {
+            window.authMode = mode;
+            const slider = document.getElementById('auth-slider');
+            const title = document.getElementById('auth-title');
+            const btn = document.getElementById('auth-submit-btn');
+            const subtitle = document.getElementById('auth-subtitle');
+
+            if (mode === 'login') {
+                slider.style.transform = 'translateX(0)';
+                title.innerText = "MaBiblio";
+                subtitle.innerText = "Connectez-vous pour continuer";
+                btn.innerText = "Se connecter";
+                document.getElementById('tab-login').style.color = '#000';
+                document.getElementById('tab-signup').style.color = '#8E8E93';
+            } else {
+                slider.style.transform = 'translateX(100%)';
+                title.innerText = "Bienvenue";
+                subtitle.innerText = "Créez votre compte";
+                btn.innerText = "S'inscrire";
+                document.getElementById('tab-signup').style.color = '#000';
+                document.getElementById('tab-login').style.color = '#8E8E93';
+            }
+        };
+
+        window.toggleAuthPass = () => {
+            const inp = document.getElementById('auth-password');
+            const eye = document.getElementById('eye-icon');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                eye.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                inp.type = 'password';
+                eye.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        };
+
+        window.handleAuth = async () => {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-password').value;
+            const errorEl = document.getElementById('auth-error');
+            
+            if (!email || !pass) return;
+
+            try {
+                errorEl.classList.add('hidden');
+                await setPersistence(auth, browserLocalPersistence);
+                if (window.authMode === 'login') {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, pass);
+                }
+            } catch (e) {
+                let msg = e.message;
+                if (e.code === 'auth/invalid-credential') msg = "Identifiants incorrects";
+                if (e.code === 'auth/email-already-in-use') msg = "Cet email est déjà utilisé";
+                if (e.code === 'auth/weak-password') msg = "Mot de passe trop court";
+                errorEl.innerText = msg;
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            document.body.style.opacity = "1";
+            
+            if (user) {
+                window.currentUser = user;
+                document.getElementById('auth-screen').style.display = 'none';
+                document.querySelector('.app-shell').style.display = 'flex';
+                // CORRECTION 1 : Appel explicite pour afficher les pilules au chargement
+                window.renderPills();
+                loadUserData();
+                setupSocialListeners();
+            } else {
+                window.currentUser = null;
+                document.getElementById('auth-screen').style.display = 'flex';
+                document.querySelector('.app-shell').style.display = 'none';
+            }
+        });
+
+        async function loadUserData() {
+            if (!window.currentUser) return;
+            const userRoot = `artifacts/${appId}/users/${window.currentUser.uid}`;
+            
+            onSnapshot(collection(db, userRoot, 'items'), (snap) => {
+                window.myCollection = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
+                window.refreshCurrentView();
+            });
+
+            onSnapshot(doc(db, userRoot, 'profile', 'info'), (d) => {
+                if (d.exists()) {
+                    const data = d.data();
+                    window.userProfile = { ...window.userProfile, ...data };
+                    window.following = [...new Set(window.userProfile.following || [])];
+                    loadFollowingProfiles();
+                    loadFollowersProfiles(); 
+                } else {
+                    const defName = "Utilisateur_" + window.currentUser.uid.slice(-4);
+                    setDoc(doc(db, userRoot, 'profile', 'info'), { 
+                        uid: window.currentUser.uid, name: defName, avatar: '', following: [],
+                        goalLivre: 12, goalFilm: 50, goalSerie: 10 
+                    });
+                }
+                window.refreshCurrentView();
+            });
+        }
+
+        async function loadFollowingProfiles() {
+            if (!window.following.length) { window.followingData = []; window.refreshCurrentView(); return; }
+            const profiles = [];
+            for (const uid of window.following) {
+                try {
+                    const d = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
+                    if (d.exists()) profiles.push({ ...d.data(), uid: uid });
+                } catch (e) { console.error(e); }
+            }
+            window.followingData = profiles;
+            window.refreshCurrentView();
+        }
+
+        async function loadFollowersProfiles() {
+            if (!window.currentUser) return;
+            try {
+                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
+                const snap = await getDocs(q);
+                window.followersData = snap.docs.map(d => d.data());
+                window.refreshCurrentView();
+            } catch (e) { console.error("Err Followers:", e); }
+        }
+
+        function setupSocialListeners() {
+            if (!window.currentUser) return;
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), (snap) => {
+                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                window.socialFeed = all.filter(a => a.userId === window.currentUser.uid || window.following.includes(a.userId))
+                                      .sort((a,b) => b.timestamp - a.timestamp);
+                
+                if (window.updateNotifBadge) window.updateNotifBadge();
+                
+                if (window.currentView === 'friends') window.renderSocialFeed();
+            });
+        }
+        
+        // GESTION BADGE
+        window.updateNotifBadge = () => {
+            const badge = document.getElementById('notif-badge');
+            if (!badge) return;
+            
+            let badgeCount = 0;
+            const lastCheck = parseInt(localStorage.getItem('mabiblio_last_check') || '0');
+            const seenLikes = parseInt(localStorage.getItem('mabiblio_seen_likes_count') || '0');
+            
+            const myPosts = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
+            let currentTotalLikes = 0;
+
+            myPosts.forEach(p => {
+                // Commentaires : On garde la logique temporelle (timestamp > lastCheck)
+                if(p.comments) {
+                    badgeCount += p.comments.filter(c => c.userId !== window.currentUser.uid && c.timestamp > lastCheck).length;
+                }
+                
+                // Likes : On compte le TOTAL des likes reçus
+                if(p.reactions) {
+                    Object.values(p.reactions).forEach(uids => {
+                        currentTotalLikes += uids.filter(uid => uid !== window.currentUser.uid).length;
+                    });
+                }
+            });
+
+            // On ajoute au badge la différence entre les likes actuels et les likes "vus"
+            if (currentTotalLikes > seenLikes) {
+                badgeCount += (currentTotalLikes - seenLikes);
+            }
+
+            if(badgeCount > 0) {
+                badge.innerText = badgeCount > 9 ? '9+' : badgeCount;
+                badge.classList.add('active');
+            } else {
+                badge.classList.remove('active');
+            }
+        };
+
+        // --- ACTIONS GLOBALES ---
+        window.updateProfileName = async () => {
+            if (!window.currentUser) return;
+            const newName = prompt("Changer votre nom d'utilisateur :", window.userProfile.name);
+            if (newName && newName.trim() !== "") {
+                const cleanName = newName.trim();
+                window.userProfile.name = cleanName;
+                window.renderProfile(); 
+                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { name: cleanName }, { merge: true });
+            }
+        };
+
+        window.handleAvatarUpload = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const compressed = await compressImage(e.target.result, 200, 200);
+                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { avatar: compressed }, { merge: true });
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.saveItem = async (status, rating, comment, finishDate, metricValue, shouldShare) => {
+            if (!window.currentUser || !window.tempItem) return;
+            try {
+                const item = { ...window.tempItem, status, rating: rating || null, comment: comment || '', finishDate: finishDate || '', metricValue: parseInt(metricValue) || 0, lastUpdate: Date.now() };
+                const docId = item.docId || ((item.id || 'manual_' + Date.now()) + '_' + item.type);
+                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId), item);
+                if (shouldShare && status !== 'Wishlist' && status !== 'En cours') {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), {
+                        userId: window.currentUser.uid, userName: window.userProfile.name, userAvatar: window.userProfile.avatar,
+                        itemTitle: item.title, itemImg: item.img, type: item.type, rating, metricValue: item.metricValue, 
+                        comment: comment || '', timestamp: Date.now(), comments: [], reactions: {}
+                    });
+                }
+                window.closeRatingSheet(); window.closePreview(); window.closeSearchModal(); window.closeManualModal(); window.switchView('home');
+            } catch (error) { console.error("Save Error:", error); }
+        };
+
+        window.deleteItem = async () => {
+            if (!confirm("Supprimer cet élément de votre bibliothèque ?")) return;
+            
+            const docId = window.tempItem?.docId;
+            if (!docId) { alert("Erreur: Impossible de trouver l'identifiant."); return; }
+
+            try {
+                window.closePreview();
+                window.myCollection = window.myCollection.filter(i => i.docId !== docId);
+                window.renderList(); 
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId));
+            } catch (e) { 
+                console.error("Erreur suppression:", e); 
+                alert("Erreur lors de la suppression.");
+                loadUserData(); 
+            }
+        };
+
+        window.deleteActivity = async (actId) => {
+            if (!confirm("Supprimer cette publication ?")) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
+            } catch (e) { console.error(e); }
+        };
+
+        window.handleRatingDrag = (e) => {
+            const container = document.getElementById('rating-interactive');
+            const rect = container.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            let percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+            let val = Math.round(percent / 10);
+            window.updateRatingUI(val);
+        };
+
+        window.updateRatingUI = (v) => { 
+            currentRating = v; 
+            const valUi = document.getElementById('rating-val-ui');
+            const fillUi = document.getElementById('rating-fill-ui');
+            if(valUi) valUi.innerText = currentRating; 
+            if(fillUi) fillUi.style.width = (currentRating * 10) + '%'; 
+        };
+
+        window.unfollowUser = async (id) => { if (confirm("Ne plus suivre ?")) await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayRemove(id) }); };
+        window.updateGoal = async (type, val) => { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { [`goal${type}`]: parseInt(val) }); };
+        window.logout = () => signOut(auth).then(() => location.reload());
+        
+        window.refreshCurrentView = () => {
+            if (window.currentView === 'home') window.renderList();
+            if (window.currentView === 'profile') window.renderProfile();
+            if (window.currentView === 'friends') window.renderSocialFeed();
+            if (window.currentView === 'stats') window.renderStatsView();
+        };
+
+        // --- UI CORE ---
+        const TMDB_KEY = "fa1123067cae30eea6420cfaef569bc2";
+        let searchType = 'Film'; 
+        // CORRECTION 2 : Suppression de "En cours" pour les films
+        const CONFIG = {
+            'Film': { statuses: ['Vu', 'Wishlist'], action: 'Vu !', icon: 'fa-film', metric: 'min', color: '#AF52DE' },
+            'Livre': { statuses: ['Lu', 'Wishlist', 'En cours'], action: 'Terminé !', icon: 'fa-book-open', metric: 'pages', color: '#FF9500' },
+            'Série': { statuses: ['Vu', 'Wishlist', 'En cours'], action: 'Saison Finie !', icon: 'fa-tv', metric: 'saisons', color: '#34C759' }
+        };
+
+        window.switchType = (type) => {
+            window.currentType = type;
+            document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.id === 'tab-'+(type==='Série'?'Serie':type)));
+            window.currentStatus = CONFIG[type].statuses[0];
+            window.renderPills(); window.renderList();
+        };
+
+        window.renderPills = () => {
+            const container = document.getElementById('status-container');
+            if (container) container.innerHTML = CONFIG[window.currentType].statuses.map(s => `<div class="pill ${s === window.currentStatus ? 'active' : ''}" onclick="window.switchStatus('${s}')">${s}</div>`).join('');
+        };
+
+        window.switchStatus = (s) => { window.currentStatus = s; window.renderPills(); window.renderList(); };
+        window.switchView = (view) => {
+            window.currentView = view;
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
+            document.getElementById('app-header').style.display = (view === 'home' ? 'block' : 'none');
+            
+            if (view !== 'friends') {
+                localStorage.setItem('mabiblio_last_check', Date.now());
+                if (window.updateNotifBadge) window.updateNotifBadge(); 
+            }
+
+            window.refreshCurrentView();
+        };
+
+        // CORRECTION 2 : Tri par date de fin (finishDate) au lieu de date d'ajout
+        window.renderList = () => {
+            const container = document.getElementById('main-content');
+            let filtered = (window.myCollection || []).filter(i => i.type === window.currentType && i.status === window.currentStatus);
+            if (!filtered.length) { container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; return; }
+            
+            // Tri par date de fin
+            filtered.sort((a,b) => {
+                const dateA = a.finishDate || a.lastUpdate || 0;
+                const dateB = b.finishDate || b.lastUpdate || 0;
+                return dateB > dateA ? 1 : -1;
+            });
+
+            const groups = {};
+            filtered.forEach(item => { const year = (item.finishDate || 'Non daté').split('-')[0]; if (!groups[year]) groups[year] = []; groups[year].push(item); });
+            const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
+            let html = '';
+            years.forEach(year => {
+                html += `<div class="year-divider">${year}</div><div class="items-grid">`;
+                groups[year].forEach(item => { 
+                    const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
+                    html += `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex justify-between items-center mt-1"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}${CONFIG[item.type].metric[0]}</span></div></div></div>`; 
+                });
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        };
+
+        window.openSearchModal = () => document.getElementById('search-modal').classList.add('open');
+        window.closeSearchModal = () => { document.getElementById('search-modal').classList.remove('open'); document.getElementById('search-input').value = ""; document.getElementById('search-results').innerHTML = ""; };
+        window.setSearchType = (t) => { searchType = t; ['Livre', 'Film', 'Série'].forEach(x => { const b = document.getElementById('s-'+x); if (b) b.className = x === t ? "flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm" : "flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm"; }); };
+
+        window.handleSearch = async (val) => { 
+            if (val.length < 3) return; 
+            let results = []; 
+            if (searchType === 'Livre') { 
+                const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10`); 
+                const d = await r.json(); 
+                results = (d.items || []).map(b => ({ id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), desc: b.volumeInfo.description || "", type: 'Livre', releaseDate: b.volumeInfo.publishedDate, metricValue: b.volumeInfo.pageCount || 0 })); 
+            } else { 
+                const ep = searchType === 'Film' ? 'movie' : 'tv'; 
+                const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
+                const d = await r.json(); 
+                results = await Promise.all((d.results || []).map(async m => { 
+                    const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR`); 
+                    const details = await dr.json(); 
+                    return { id: m.id, title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', desc: m.overview || "", type: searchType, releaseDate: m.release_date || m.first_air_date, metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0) }; 
+                })); 
+            } 
+            document.getElementById('search-results').innerHTML = results.map(i => `<div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200"><div class="flex-1 font-black text-xs">${i.title}</div></div>`).join(''); 
+        };
+
+        window.openPreview = (item) => { 
+            window.tempItem = item; 
+            document.getElementById('preview-modal').classList.add('open'); 
+            const showDelete = item.docId ? true : false;
+            
+            // CORRECTION 2: Suppression du bouton "En cours" pour les films
+            document.getElementById('preview-content').innerHTML = `
+                <div class="px-6 pt-24 pb-20 flex flex-col items-center">
+                    <img src="${item.img || ''}" class="w-44 h-64 rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
+                    <h2 class="text-2xl font-black mb-2 text-center text-white">${item.title}</h2>
+                    <p class="text-blue-400 font-bold mb-6 text-sm uppercase">${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric}</p>
+                    <div class="w-full space-y-3 mb-8">
+                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white">${CONFIG[item.type].action}</button>
+                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white">En cours</button>` : ''}
+                        <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white">Plus tard (Wishlist)</button>
+                        ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/20 p-4 rounded-[20px] font-bold text-red-500 mt-4">Supprimer de ma collection</button>` : ''}
+                    </div>
+                    <div class="w-full text-gray-400 text-sm leading-relaxed">${item.desc || "Aucun résumé."}</div>
+                </div>`; 
+        };
+
+        window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+        window.openNotation = () => { 
+            document.getElementById('rating-sheet').classList.add('open'); 
+            document.getElementById('sheet-poster').src = window.tempItem.img; 
+            document.getElementById('sheet-title').innerText = window.tempItem.title; 
+            document.getElementById('finish-date-input').value = new Date().toISOString().split('T')[0]; 
+            document.getElementById('rating-comment').value = "";
+            window.updateRatingUI(8); 
+        };
+        window.closeRatingSheet = () => document.getElementById('rating-sheet').classList.remove('open');
+        window.confirmSave = () => window.saveItem(CONFIG[window.tempItem.type].statuses[0], currentRating, document.getElementById('rating-comment').value, document.getElementById('finish-date-input').value, window.tempItem.metricValue || 0, document.getElementById('share-toggle').checked);
+        
+        window.handleManualImageUpload = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                window.tempManualImage = await compressImage(e.target.result);
+                document.getElementById('manual-preview-container').innerHTML = `<img src="${window.tempManualImage}" class="w-full h-full object-cover rounded-xl shadow-md">`;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.openManualModal = () => { window.tempManualImage = ''; document.getElementById('manual-modal').classList.add('open'); };
+        window.closeManualModal = () => document.getElementById('manual-modal').classList.remove('open');
+        window.confirmManualAdd = () => { 
+            const title = document.getElementById('m-title').value; 
+            if (!title) return alert("Saisir un titre."); 
+            window.openPreview({ id: 'manual_'+Date.now(), title, type: document.getElementById('m-type').value, metricValue: parseInt(document.getElementById('m-metric').value) || 0, img: window.tempManualImage || 'https://via.placeholder.com/300x450?text='+title, desc: document.getElementById('m-desc').value, releaseDate: new Date().toISOString() }); 
+        };
+
+        window.addEmojiReaction = async (actId, emoji) => {
+            const actData = window.socialFeed.find(a => a.id === actId);
+            const reactions = actData.reactions || {};
+            const op = (reactions[emoji] || []).includes(window.currentUser.uid) ? arrayRemove(window.currentUser.uid) : arrayUnion(window.currentUser.uid);
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { [`reactions.${emoji}`]: op });
+        };
+
+        window.postComment = async (actId) => {
+            const input = document.getElementById(`comment-in-${actId}`);
+            if(!input.value.trim()) return;
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { 
+                comments: arrayUnion({ 
+                    userId: window.currentUser.uid, 
+                    userName: window.userProfile.name, 
+                    userAvatar: window.userProfile.avatar || '', 
+                    text: input.value.trim(), 
+                    timestamp: Date.now() 
+                }) 
+            });
+            input.value = "";
+        };
+
+        // CORRECTION 2: Logique d'ajout d'ami corrigée pour afficher le message correctement
+        window.followUser = async () => {
+            const val = document.getElementById('follow-id').value.trim();
+            if (val && val !== window.currentUser.uid) {
+                const userRef = doc(db, 'artifacts', appId, 'users', val, 'profile', 'info');
+                const userSnap = await getDoc(userRef);
+                
+                if(userSnap.exists()) {
+                    // Définit le message globalement pour survivre au re-rendu
+                    window.followFeedback = { type: 'success', msg: "✓ Ami ajouté avec succès !" };
+                    window.renderSocialFeed(); // Affichage immédiat
+
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(val) });
+                    
+                    // Nettoyage après 3 secondes
+                    setTimeout(() => {
+                        window.followFeedback = null;
+                        const el = document.getElementById('follow-success');
+                        if(el) el.classList.add('hidden');
+                    }, 3000);
+                } else {
+                    window.followFeedback = { type: 'error', msg: "✕ ID Introuvable" };
+                    window.renderSocialFeed();
+                    setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
+                }
+            }
+            document.getElementById('follow-id').value = "";
+        };
+
+        window.renderStatsView = () => {
+            const finished = window.myCollection.filter(i => (i.status === 'Lu' || i.status === 'Vu'));
+            const curYear = new Date().getFullYear().toString();
+            const yearItems = finished.filter(i => i.finishDate?.startsWith(curYear));
+            const totalPages = finished.filter(i => i.type === 'Livre').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalMinutes = finished.filter(i => i.type === 'Film').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalSeasons = finished.filter(i => i.type === 'Série').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const stats = [
+                { type: 'Film', icon: 'fa-film', color: '#AF52DE', done: yearItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
+                { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', done: yearItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${totalPages} pages` },
+                { type: 'Série', icon: 'fa-tv', color: '#34C759', done: yearItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` }
+            ];
+            document.getElementById('main-content').innerHTML = `<div class="pt-20 px-6 pb-32"><h1 class="text-4xl font-black mb-8">Stats</h1><div class="stat-card mb-8"><div class="font-black text-[10px] uppercase text-gray-400 mb-2">Activité ${curYear}</div><div class="text-2xl font-black text-blue-600">${yearItems.length} terminés</div></div>${stats.map(s => { const prog = Math.min(100, (s.done / (s.goal || 1)) * 100); return `<div class="stat-card"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div><div><div class="font-black text-sm">${s.type}s</div><div class="text-[10px] text-gray-400 font-bold uppercase">${s.done} / ${s.goal}</div></div></div><input type="number" value="${s.goal}" onchange="window.updateGoal('${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs"></div><div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div><div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase"><span>${s.sub}</span><span class="text-black font-black">${Math.round(prog)}%</span></div></div>`; }).join('')}</div>`;
+        };
+
+        window.renderProfile = () => { 
+            const following = window.followingData || [];
+            const followers = window.followersData || []; 
+            document.getElementById('main-content').innerHTML = `
+                <div class="pt-28 px-6 pb-32 text-center">
+                    <div class="avatar-container">
+                        <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
+                        <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
+                    </div>
+                    <div class="mt-6 flex items-center justify-center gap-2"><h2 class="text-3xl font-black">${window.userProfile.name}</h2><button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button></div>
+                    
+                    <div class="mt-8 text-left">
+                        <div class="flex items-center justify-between px-2 mb-4"><h3 class="font-black text-lg">Abonnements</h3><span class="text-xs font-bold text-gray-400 uppercase">${following.length} suivis</span></div>
+                        <div class="flex gap-4 overflow-x-auto pb-4 px-2 scrollbar-hide" style="scrollbar-width:none">
+                            ${following.length > 0 ? following.map(p => `<div class="flex flex-col items-center shrink-0 w-20" onclick="window.unfollowUser('${p.uid}')"><div class="w-16 h-16 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden mb-2">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-xl">${p.name[0]}</div>`}</div><span class="text-[10px] font-black text-center truncate w-full">${p.name}</span></div>`).join('') : '<div class="w-full py-4 text-center opacity-40 font-bold uppercase text-[10px]">Aucun abonnement</div>'}
+                        </div>
+                    </div>
+
+                    <div class="mt-8 text-left">
+                        <div class="flex items-center justify-between px-2 mb-4"><h3 class="font-black text-lg">Abonnés</h3><span class="text-xs font-bold text-gray-400 uppercase">${followers.length} abonnés</span></div>
+                        <div class="flex gap-4 overflow-x-auto pb-4 px-2 scrollbar-hide" style="scrollbar-width:none">
+                            ${followers.length > 0 ? followers.map(p => `<div class="flex flex-col items-center shrink-0 w-20"><div class="w-16 h-16 rounded-full bg-gray-200 border-2 border-white shadow-sm overflow-hidden mb-2">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center bg-purple-100 text-purple-600 font-black text-xl">${p.name[0]}</div>`}</div><span class="text-[10px] font-black text-center truncate w-full">${p.name}</span></div>`).join('') : '<div class="w-full py-4 text-center opacity-40 font-bold uppercase text-[10px]">Aucun abonné</div>'}
+                        </div>
+                    </div>
+
+                    <div class="mt-8 text-left">
+                        <div class="flex items-center justify-between px-2 mb-4"><h3 class="font-black text-lg">Mon Identifiant</h3></div>
+                        <div class="ios-group !mx-0">
+                            <div class="p-4 text-center">
+                                <code class="bg-gray-100 p-2 rounded block text-xs font-mono mb-2">${window.currentUser.uid}</code>
+                                <p class="opacity-40 font-bold uppercase text-[9px]">Partagez cet ID pour que vos amis vous suivent</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ios-group !mx-0 mt-8">
+                        <div class="ios-cell py-4 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('ID Copié !');"><span class="font-bold text-sm">Copier mon ID</span><i class="fa-solid fa-copy text-blue-600"></i></div>
+                        <div class="ios-cell py-4 cursor-pointer" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div>
+                    </div>
+                </div>`; 
+        };
+        
+        // CORRECTION 3: Fonction de navigation vers l'activité précise
+        window.goToActivity = (actId) => {
+            window.switchView('friends');
+            setTimeout(() => {
+                const el = document.getElementById('act-' + actId);
+                if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }, 500); 
+        };
+
+        window.renderSocialFeed = () => {
+            const focusedId = document.activeElement ? document.activeElement.id : null;
+            const focusedVal = focusedId ? document.activeElement.value : null;
+
+            const container = document.getElementById('main-content');
+            
+            let badgeCount = 0;
+            const lastCheck = parseInt(localStorage.getItem('mabiblio_last_check') || '0');
+            const myPosts = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
+            
+            // CORRECTION 2: Affichage conditionnel du message de succès basé sur l'état global
+            const feedbackActive = window.followFeedback !== null;
+            const feedbackMsg = window.followFeedback?.msg || '';
+            const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
+
+            const searchBlock = `
+                <div class="relative mb-8">
+                    <div class="flex gap-2">
+                        <input id="follow-id" placeholder="ID ami..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium">
+                        <button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black relative overflow-hidden">
+                            Suivre
+                        </button>
+                    </div>
+                    <div id="follow-success" class="${feedbackActive ? '' : 'hidden'} absolute -bottom-6 left-0 ${feedbackColor} text-[10px] font-black uppercase tracking-wider">${feedbackMsg}</div>
+                </div>
+            `;
+
+            let feedHtml = '';
+            let hasShownUpToDate = false;
+
+            window.socialFeed.forEach(act => {
+                if (!hasShownUpToDate && act.timestamp < lastCheck && lastCheck > 0) {
+                     feedHtml += `<div class="up-to-date"><div class="up-to-date-line"></div><div class="up-to-date-text">Vous êtes à jour</div><div class="up-to-date-line"></div></div>`;
+                     hasShownUpToDate = true;
+                } else if (!hasShownUpToDate && act.timestamp >= lastCheck && feedHtml === '') {
+                     feedHtml += `<div class="up-to-date"><div class="up-to-date-line"></div><div class="up-to-date-text text-blue-600">Nouveaux Posts</div><div class="up-to-date-line"></div></div>`;
+                }
+
+                // CORRECTION 3 : Ajout de l'ID unique pour le scroll
+                feedHtml += `
+                <div class="activity-card relative" id="act-${act.id}">
+                    ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                    <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
+                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden">
+                            ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-black text-sm hover:underline">${act.userName}</span>
+                            <span class="text-[9px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview({"id":"${act.type}_ext","title":"${act.itemTitle}","img":"${act.itemImg}","type":"${act.type}","desc":"Vu par ${act.userName}"})'>
+                        <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200">
+                        <div class="flex-1">
+                            <div class="font-black text-xs mb-1">${act.itemTitle}</div>
+                            <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
+                            <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 border-b pb-3 mb-4">
+                        ${['💙', '🤣', '😢', '✨'].map(emoji => `<button onclick="window.addEmojiReaction('${act.id}', '${emoji}')" class="emoji-btn ${(act.reactions?.[emoji] || []).includes(window.currentUser?.uid) ? 'active' : ''}">${emoji} <span>${(act.reactions?.[emoji] || []).length || ''}</span></button>`).join('')}
+                    </div>
+                    
+                    ${act.comments && act.comments.length > 0 ? `<div class="flex flex-col gap-3 mb-4 px-1">
+                        ${act.comments.map(c => {
+                            const likes = c.likes || [];
+                            const isLiked = likes.includes(window.currentUser.uid);
+                            return `
+                            <div class="flex gap-2 items-start">
+                                 <div class="w-6 h-6 shrink-0 rounded-full bg-gray-300 text-[10px] flex items-center justify-center font-bold text-white overflow-hidden cursor-pointer border border-white shadow-sm" onclick="window.openPublicProfile('${c.userId}')">
+                                     ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : (c.userName ? c.userName[0] : '?')}
+                                 </div>
+                                 <div class="bg-gray-100 rounded-xl rounded-tl-none p-2 flex-1 group relative">
+                                    <div class="font-bold text-[10px] cursor-pointer hover:underline" onclick="window.openPublicProfile('${c.userId}')">${c.userName}</div>
+                                    <div class="text-[11px] text-gray-700 leading-tight">${c.text}</div>
+                                    <button onclick="window.handleCommentLike('${act.id}', ${c.timestamp})" class="absolute right-2 bottom-1 text-[10px] ${isLiked ? 'text-red-500' : 'text-gray-300'}"><i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i> ${likes.length > 0 ? likes.length : ''}</button>
+                                 </div>
+                            </div>
+                        `}).join('')}
+                    </div>` : ''}
+
+                    <div class="flex gap-2">
+                        <input id="comment-in-${act.id}" placeholder="Répondre..." class="flex-1 bg-gray-100 p-2.5 rounded-xl text-[12px] outline-none">
+                        <button onclick="window.postComment('${act.id}')" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center"><i class="fa-solid fa-paper-plane text-xs"></i></button>
+                    </div>
+                </div>`
+            });
+
+            if (!hasShownUpToDate && window.socialFeed.length > 0) {
+                 feedHtml += `<div class="up-to-date"><div class="up-to-date-line"></div><div class="up-to-date-text">Vous êtes à jour</div><div class="up-to-date-line"></div></div>`;
+            }
+
+            container.innerHTML = `<div class="pt-20 px-5 pb-32"><h1 class="text-4xl font-black mb-6">Amis</h1>
+            ${searchBlock}
+            ${feedHtml}
+            </div>`;
+
+            if(focusedId) {
+                const el = document.getElementById(focusedId);
+                if(el) {
+                    el.value = focusedVal;
+                    el.focus();
+                }
+            }
+        };
+
+        window.openNotifications = async () => {
+            window.currentView = 'notifications';
+            document.getElementById('app-header').style.display = 'none'; 
+            
+            localStorage.setItem('mabiblio_last_check', Date.now());
+
+            // CORRECTION 7 : Mise à jour du total des likes VUS pour réinitialiser le badge
+            const myPosts = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
+            let currentTotalLikes = 0;
+            myPosts.forEach(p => {
+                if(p.reactions) {
+                    Object.values(p.reactions).forEach(uids => {
+                        currentTotalLikes += uids.filter(uid => uid !== window.currentUser.uid).length;
+                    });
+                }
+            });
+            localStorage.setItem('mabiblio_seen_likes_count', currentTotalLikes);
+
+            if(window.updateNotifBadge) window.updateNotifBadge();
+
+            const myActivities = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
+            let notifs = [];
+
+            const getName = (uid) => {
+                 const f = window.followingData.find(u => u.uid === uid);
+                 return f ? f.name : "Un ami";
+            }
+
+            myActivities.forEach(act => {
+                if (act.reactions) {
+                    Object.keys(act.reactions).forEach(emoji => {
+                        act.reactions[emoji].forEach(uid => {
+                            if (uid !== window.currentUser.uid) {
+                                notifs.push({ type: 'like', text: `a réagi ${emoji} à votre post`, item: act.itemTitle, time: act.timestamp, user: getName(uid), uid: uid, actId: act.id });
+                            }
+                        });
+                    });
+                }
+                if (act.comments) {
+                    act.comments.forEach(c => {
+                        if (c.userId !== window.currentUser.uid) {
+                            notifs.push({ type: 'comment', text: `a commenté : "${c.text}"`, item: act.itemTitle, time: c.timestamp, user: c.userName, uid: c.userId, actId: act.id });
+                        }
+                    });
+                }
+            });
+
+            notifs.sort((a,b) => b.time - a.time);
+
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="pt-10 px-6 pb-32">
+                    <div class="flex items-center gap-4 mb-6">
+                        <button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+                        <h1 class="text-3xl font-black">Activité</h1>
+                    </div>
+                    ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
+                    ${notifs.map(n => `
+                        <div class="notif-item cursor-pointer" onclick="window.goToActivity('${n.actId}')">
+                            <div class="notif-icon text-blue-600">${n.type === 'like' ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-solid fa-comment"></i>'}</div>
+                            <div class="flex-1">
+                                <div class="text-sm"><span class="font-black">${n.user}</span> ${n.text}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.item}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        };
+
+        console.log("MaBiblio Extensions v3.6 Chargées");
+        // CORRECTION 3 (Bug démarrage): Appel explicite des pills et de la liste au démarrage
+        if(window.currentUser) {
+            window.renderPills();
+            window.renderList();
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap');
+        :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background-color: var(--ios-bg); margin: 0; padding: 0; overflow: hidden; height: 100vh; color: #1C1C1E; -webkit-tap-highlight-color: transparent; opacity: 0; transition: opacity 0.5s ease; }
+        .app-shell { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); display: none; }
+        header { padding: 20px 20px 10px; background: var(--ios-bg); }
+        .header-title { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
+        .type-tabs { display: flex; gap: 20px; margin-top: 15px; }
+        .type-tab { font-size: 17px; font-weight: 700; color: #8E8E93; padding-bottom: 8px; border-bottom: 3px solid transparent; cursor: pointer; }
+        .type-tab.active { color: #000; border-color: #000; }
+        .status-pills { display: flex; gap: 8px; padding: 12px 0; overflow-x: auto; scrollbar-width: none; }
+        .pill { padding: 8px 16px; border-radius: 18px; font-size: 14px; font-weight: 700; background: #E5E5EA; white-space: nowrap; }
+        .pill.active { background: #000; color: white; }
+        .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 120px; }
+        .year-divider { padding: 24px 16px 8px; font-size: 20px; font-weight: 900; color: #000; background: var(--ios-bg); position: sticky; top: -1px; z-index: 10; }
+        .items-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 12px 24px; }
+        .grid-item { aspect-ratio: 2/3; background: #DDD; border-radius: 10px; overflow: hidden; position: relative; }
+        .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+        .grid-item-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(transparent, rgba(0,0,0,0.95)); color: white; display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px; }
+        .grid-rating { position: absolute; top: 4px; right: 4px; background: #FF9500; padding: 1px 5px; border-radius: 6px; font-size: 10px; font-weight: 900; color: white; z-index: 2; }
+        .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(75px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 12px; z-index: 50; }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; color: #A2A2A7; font-size: 11px; font-weight: 600; flex: 1; }
+        .nav-btn i { font-size: 24px; margin-bottom: 4px; }
+        .nav-btn.active { color: var(--ios-blue); }
+        .nav-plus { width: 52px; height: 52px; background: var(--ios-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; margin-top: -16px; box-shadow: 0 6px 16px rgba(0, 122, 255, 0.45); cursor: pointer; }
+        .modal { position: fixed; inset: 0; background: var(--ios-bg); z-index: 100; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .modal.open { transform: translateY(0); }
+        
+        #preview-modal { background: #111; color: white; z-index: 20000; }
+        
+        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 30000; opacity: 0; pointer-events: none; transition: 0.3s; }
+        
+        .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+        .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: var(--ios-bg); border-radius: 30px 30px 0 0; transform: translateY(100%); transition: 0.4s cubic-bezier(0.15, 1, 0.3, 1); height: 92vh; color: #000; }
+        .sheet-overlay.open .sheet { transform: translateY(0); }
+        .rating-box { background: white; height: 90px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; margin: 15px 0; position: relative; overflow: hidden; touch-action: none; border: 1px solid #E5E5EA; cursor: ew-resize; }
+        .rating-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--ios-blue); opacity: 0.15; pointer-events: none; width: 80%; transition: width 0.1s ease-out; }
+        .ios-group { background: white; border-radius: 14px; margin: 0 16px 20px; overflow: hidden; }
+        .ios-cell { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 0.5px solid #F2F2F7; }
+        .activity-card { background: white; border-radius: 28px; padding: 20px; margin-bottom: 20px; }
+        .emoji-btn { padding: 6px 12px; border-radius: 14px; background: #F2F2F7; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+        .emoji-btn.active { background: #E8F2FF; border-color: #007AFF; color: #007AFF; border: 1px solid; }
+        .stat-card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 16px; }
+        .avatar-container { position: relative; width: 120px; height: 120px; margin: 0 auto; }
+        .avatar-img { width: 100%; height: 100%; border-radius: 50%; background: #007AFF; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; font-weight: 900; overflow: hidden; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .avatar-edit-btn { position: absolute; bottom: 0; right: 0; background: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; }
+        .manual-image-upload { aspect-ratio: 2/3; background: #FFF; border: 2px dashed #D1D1D6; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; }
+        #auth-screen { position: fixed; inset: 0; background: var(--ios-bg); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .auth-container { width: 100%; max-width: 400px; animation: fadeIn 0.6s ease-out; }
+        .auth-card { background: white; padding: 30px; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); }
+        .tab-switcher { background-color: #E5E5EA; padding: 3px; border-radius: 12px; display: flex; margin-bottom: 30px; position: relative; }
+        .tab-switcher button { flex: 1; border: none; background: none; padding: 8px 0; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 1; transition: color 0.3s; }
+        .tab-switcher .slider { position: absolute; top: 3px; left: 3px; width: calc(50% - 3px); height: calc(100% - 6px); background: white; border-radius: 9px; box-shadow: 0 3px 8px rgba(0,0,0,0.12); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+        .ios-input { width: 100%; padding: 16px; border: 1px solid #E5E5E5; background-color: #F9F9F9; border-radius: 15px; font-size: 16px; margin-bottom: 12px; outline: none; transition: 0.2s; }
+        .ios-input:focus { background: white; border-color: var(--ios-blue); }
+        .ios-btn { width: 100%; background-color: var(--ios-blue); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-container">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-black tracking-tight" id="auth-title">MaBiblio</h1>
+                <p class="text-gray-500 mt-2 font-medium" id="auth-subtitle">Connectez-vous pour continuer</p>
+            </div>
+
+            <div class="tab-switcher">
+                <div class="slider" id="auth-slider"></div>
+                <button onclick="window.setAuthMode('login')" id="tab-login" class="text-black">Connexion</button>
+                <button onclick="window.setAuthMode('signup')" id="tab-signup" class="text-gray-500">Inscription</button>
+            </div>
+
+            <div class="auth-card">
+                <input type="email" id="auth-email" class="ios-input" placeholder="E-mail">
+                <div class="relative">
+                    <input type="password" id="auth-password" class="ios-input" placeholder="Mot de passe">
+                    <button type="button" onclick="window.toggleAuthPass()" class="absolute right-4 top-4 text-gray-400">
+                        <i class="fa-solid fa-eye" id="eye-icon"></i>
+                    </button>
+                </div>
+                <button class="ios-btn" onclick="window.handleAuth()" id="auth-submit-btn">Se connecter</button>
+                <p id="auth-error" class="text-red-500 text-sm mt-4 text-center hidden font-bold"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-shell">
+        <header id="app-header">
+            <div class="header-title">Ma Biblio</div>
+            <div class="type-tabs">
+                <div class="type-tab active" id="tab-Film" onclick="window.switchType('Film')">Films</div>
+                <div class="type-tab" id="tab-Livre" onclick="window.switchType('Livre')">Livres</div>
+                <div class="type-tab" id="tab-Serie" onclick="window.switchType('Série')">Séries</div>
+            </div>
+            <div class="status-pills" id="status-container"></div>
+        </header>
+
+        <div class="scroll-area" id="main-content"></div>
+
+        <nav class="tab-bar">
+            <div id="nav-home" class="nav-btn active" onclick="window.switchView('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></div>
+            <div id="nav-friends" class="nav-btn" onclick="window.switchView('friends')"><i class="fa-solid fa-user-group"></i><span>Amis</span></div>
+            <div class="nav-plus" onclick="window.openSearchModal()"><i class="fa-solid fa-plus"></i></div>
+            <div id="nav-stats" class="nav-btn" onclick="window.switchView('stats')"><i class="fa-solid fa-chart-simple"></i><span>Stats</span></div>
+            <div id="nav-profile" class="nav-btn" onclick="window.switchView('profile')"><i class="fa-solid fa-circle-user"></i><span>Moi</span></div>
+        </nav>
+    </div>
+
+    <div id="search-modal" class="modal flex flex-col">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajouter</h2><button onclick="window.closeSearchModal()" class="text-blue-600 font-bold">Fermer</button></div>
+        <div class="p-4 bg-white flex gap-2"><button id="s-Film" onclick="window.setSearchType('Film')" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm">Film</button><button id="s-Livre" onclick="window.setSearchType('Livre')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button><button id="s-Série" onclick="window.setSearchType('Série')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Série</button></div>
+        <div class="px-4 pb-4 bg-white flex flex-col gap-3">
+            <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" id="search-input" placeholder="Rechercher..." class="w-full p-3.5 pl-11 bg-gray-100 rounded-2xl outline-none font-medium" oninput="window.handleSearch(this.value)"></div>
+            <button onclick="window.openManualModal()" class="text-blue-600 font-bold text-sm bg-blue-50 py-3 rounded-xl">Créer manuellement</button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-4 pb-10" id="search-results"></div>
+    </div>
+
+    <div id="manual-modal" class="modal flex flex-col">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajout Manuel</h2><button onclick="window.closeManualModal()" class="text-blue-600 font-bold">Annuler</button></div>
+        <div class="p-6 overflow-y-auto flex-1">
+            <div class="flex gap-4 mb-6"><div class="w-1/3"><label class="manual-image-upload" id="manual-preview-container"><i class="fa-solid fa-plus"></i><span class="text-[10px] text-gray-400 font-black uppercase">Photo</span><input type="file" accept="image/*" class="hidden" onchange="window.handleManualImageUpload(event)"></label></div><div class="flex-1 flex flex-col gap-3"><input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm"><select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm"><option value="Film">Film</option><option value="Livre">Livre</option><option value="Série">Série</option></select></div></div>
+            <div class="ios-group !mx-0"><div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/saisons)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div></div>
+            <textarea id="m-desc" placeholder="Résumé" class="w-full bg-white p-4 rounded-xl border border-gray-100 h-24 outline-none mb-6 font-medium text-sm"></textarea>
+            <button onclick="window.confirmManualAdd()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg">Suivant</button>
+        </div>
+    </div>
+
+    <div id="preview-modal" class="modal overflow-y-auto">
+        <button onclick="window.closePreview()" class="fixed top-14 left-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full text-white z-50 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+        <div id="preview-content"></div>
+    </div>
+
+    <div id="rating-sheet" class="sheet-overlay">
+        <div class="sheet flex flex-col">
+            <div class="flex justify-between items-center px-6 py-5 border-b bg-white"><button onclick="window.closeRatingSheet()" class="text-blue-600 font-medium">Annuler</button><span class="font-black text-lg">Publier</span><button onclick="window.confirmSave()" class="bg-blue-600 text-white px-5 py-2 rounded-full font-bold">Valider</button></div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <div class="flex gap-4 mb-4"><img id="sheet-poster" class="w-20 h-28 rounded-xl object-cover shadow-lg bg-gray-200"><div class="flex-1 pt-1"><h3 id="sheet-title" class="font-black text-lg"></h3><p class="text-gray-400 text-[10px] font-bold uppercase">Ma Note (Glissez pour changer)</p></div></div>
+                
+                <div class="rating-box" id="rating-interactive" 
+                     onmousedown="window.handleRatingDrag(event)" 
+                     onmousemove="event.buttons === 1 && window.handleRatingDrag(event)" 
+                     ontouchstart="window.handleRatingDrag(event)" 
+                     ontouchmove="window.handleRatingDrag(event)">
+                    <div class="rating-fill" id="rating-fill-ui"></div>
+                    <div class="flex items-center gap-2" style="position:relative; z-index:10"><span class="text-orange-500"><i class="fa-solid fa-star"></i></span><span class="rating-label" id="rating-val-ui">8</span><span class="text-gray-300 text-2xl">/ 10</span></div>
+                </div>
+
+                <div class="ios-group !mx-0"><div class="ios-cell"><span class="font-bold">Date de fin</span><input type="date" id="finish-date-input" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div></div>
+                <div class="flex items-center justify-between p-4 bg-white rounded-xl mb-4"><div class="flex items-center gap-3"><i class="fa-solid fa-earth-europe text-blue-500"></i><span class="font-bold">Partager</span></div><input type="checkbox" id="share-toggle" checked class="w-6 h-6"></div>
+                <textarea id="rating-comment" class="w-full bg-white border border-gray-200 rounded-2xl p-4 h-32 outline-none text-base font-medium" placeholder="Qu'en avez-vous pensé ?"></textarea>
+            </div>
+        </div>
+    </div>
+
+<style>
+    .filter-dropdown { background: #E5E5EA; border: none; padding: 6px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #000; outline: none; }
+    .notif-btn { position: relative; font-size: 20px; color: #000; padding: 5px; cursor: pointer; }
+    
+    .notif-badge { 
+        position: absolute; top: -5px; right: -5px; 
+        width: 16px; height: 16px; 
+        background: red; color: white;
+        border-radius: 50%; border: 2px solid white; 
+        font-size: 9px; font-weight: 900;
+        display: none; align-items: center; justify-content: center;
+    }
+    .notif-badge.active { display: flex; }
+
+    .grid-date-overlay { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 2px; }
+
+    #public-profile-modal { background: var(--ios-bg); z-index: 9999; }
+    
+    .back-btn-float { position: absolute; top: 50px; left: 20px; background: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; cursor: pointer; }
+
+    .stats-toggle { background: #E5E5EA; border-radius: 10px; padding: 2px; display: inline-flex; margin-bottom: 20px; }
+    .stats-toggle button { padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; border: none; background: transparent; color: #8E8E93; }
+    .stats-toggle button.active { background: white; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+    .notif-item { background: white; padding: 16px; border-radius: 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center; }
+    .notif-icon { width: 40px; height: 40px; border-radius: 50%; background: #E5E5EA; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+    .up-to-date { text-align: center; padding: 20px; margin: 20px 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8E8E93; }
+    .up-to-date-line { height: 1px; background: #E5E5EA; flex: 1; }
+    .up-to-date-text { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .following-dropdown { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: white; border-radius: 16px; margin-top: 10px; }
+    .following-dropdown.open { max-height: 300px; padding: 10px 0; overflow-y: auto; }
+    .follow-toggle-btn { background: white; padding: 15px; border-radius: 16px; width: 100%; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; }
+</style>
+
+<div id="public-profile-modal" class="modal overflow-y-auto">
+    <div onclick="window.closePublicProfile()" class="back-btn-float"><i class="fa-solid fa-arrow-left"></i></div>
+    <div id="public-profile-content"></div>
+</div>
+
+<script type="module">
+    import { getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, doc, getDoc, collectionGroup, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDo4sqS3BIW1DmNxWA1IJtlD9GRFs4rd_g",
+        authDomain: "mabiblio-dc595.firebaseapp.com",
+        projectId: "mabiblio-dc595",
+        storageBucket: "mabiblio-dc595.firebasestorage.app",
+        messagingSenderId: "683284434520",
+        appId: "1:683284434520:web:0c72c547703843781f442d"
+    };
+
+    const app = getApp(); 
+    const db = getFirestore(app);
+    const appId = 'mabiblio-dc595';
+
+    window.extState = {
+        sort: 'date',
+        statsMode: 'year',
+        notifications: [],
+        currentPublicUser: null
+    };
+
+    const headerTitle = document.querySelector('.header-title');
+    const headerTabs = document.querySelector('.type-tabs');
+    
+    const titleRow = document.createElement('div');
+    titleRow.style.display = 'flex';
+    titleRow.style.justifyContent = 'space-between';
+    titleRow.style.alignItems = 'center';
+    titleRow.style.width = '100%';
+
+    headerTitle.parentNode.insertBefore(titleRow, headerTitle);
+    titleRow.appendChild(headerTitle);
+
+    const notifBtn = document.createElement('div');
+    notifBtn.className = 'notif-btn';
+    notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
+    notifBtn.onclick = () => window.openNotifications();
+    titleRow.appendChild(notifBtn);
+
+    const tabsContainer = document.createElement('div');
+    tabsContainer.style.display = 'flex';
+    tabsContainer.style.justifyContent = 'space-between';
+    tabsContainer.style.alignItems = 'center';
+    tabsContainer.style.marginTop = '15px';
+    
+    headerTabs.parentNode.insertBefore(tabsContainer, headerTabs);
+    tabsContainer.appendChild(headerTabs); 
+    headerTabs.style.marginTop = '0'; 
+
+    const filterContainer = document.createElement('div');
+    filterContainer.innerHTML = `
+        <select class="filter-dropdown" onchange="window.setSort(this.value)">
+            <option value="date">Date</option>
+            <option value="rating">Note</option>
+            <option value="name">Nom</option>
+        </select>
+    `;
+    tabsContainer.appendChild(filterContainer); 
+
+    const originalRenderList = window.renderList;
+    
+    window.setSort = (val) => {
+        window.extState.sort = val;
+        window.renderList();
+    };
+
+    window.renderList = () => {
+        if (!window.myCollection) return;
+        
+        let filtered = window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
+        
+        if (window.extState.sort === 'rating') {
+            filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        } else if (window.extState.sort === 'name') {
+            filtered.sort((a, b) => a.title.localeCompare(b.title));
+        } else {
+            // CORRECTION 2 : Priorité absolue au finishDate pour le tri
+            filtered.sort((a, b) => {
+                const dateA = a.finishDate || a.lastUpdate || 0;
+                const dateB = b.finishDate || b.lastUpdate || 0;
+                return dateB > dateA ? 1 : -1;
+            });
+        }
+
+        const container = document.getElementById('main-content');
+        if (!filtered.length) { 
+            container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; 
+            return; 
+        }
+
+        let html = '';
+        if (window.extState.sort !== 'date') {
+            html += `<div class="items-grid mt-4">`;
+            filtered.forEach(item => html += window.generateGridItemHTML(item));
+            html += `</div>`;
+        } else {
+            const groups = {};
+            filtered.forEach(item => { 
+                const year = (item.finishDate || 'Non daté').split('-')[0]; 
+                if (!groups[year]) groups[year] = []; 
+                groups[year].push(item); 
+            });
+            const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
+            years.forEach(year => {
+                html += `<div class="year-divider">${year}</div><div class="items-grid">`;
+                groups[year].forEach(item => html += window.generateGridItemHTML(item));
+                html += `</div>`;
+            });
+        }
+        container.innerHTML = html;
+    };
+
+    window.generateGridItemHTML = (item) => {
+        const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
+        let dateDisplay = '';
+        if (item.finishDate) {
+            const d = new Date(item.finishDate);
+            dateDisplay = `<div class="grid-date-overlay"><i class="fa-regular fa-calendar-check mr-1"></i>${d.getDate()}/${d.getMonth()+1}</div>`;
+        }
+
+        return `<div class="grid-item" onclick='window.openPreview(${itemData})'>
+            <img src="${item.img || ''}">
+            ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
+            <div class="grid-item-overlay">
+                <div class="flex justify-between items-start">
+                    <div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div>
+                </div>
+                <div class="flex flex-col mt-1">
+                    ${dateDisplay}
+                    <div class="flex justify-between items-center">
+                        <span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span>
+                        <span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    };
+
+    window.renderProfile = () => {
+        const following = window.followingData || [];
+        const container = document.getElementById('main-content');
+        
+        container.innerHTML = `
+            <div class="pt-28 px-6 pb-32 text-center">
+                <div class="avatar-container">
+                    <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
+                    <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
+                </div>
+                <div class="mt-6 flex items-center justify-center gap-2"><h2 class="text-3xl font-black">${window.userProfile.name}</h2><button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button></div>
+                
+                <div class="mt-6 text-center">
+                     <div class="inline-block bg-gray-100 px-3 py-1 rounded-lg text-xs font-mono text-gray-500 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('Copié')">ID: ${window.currentUser.uid} <i class="fa-regular fa-copy ml-1"></i></div>
+                </div>
+
+                <div class="mt-8 text-left">
+                    <button class="follow-toggle-btn shadow-sm" onclick="document.getElementById('following-list').classList.toggle('open')">
+                        <span>Mes Abonnements (${following.length})</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="following-list" class="following-dropdown">
+                        ${following.length > 0 ? following.map(p => `
+                            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                                <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
+                                    <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center font-bold text-xs">${p.name[0]}</div>`}</div>
+                                    <span class="font-bold text-sm">${p.name}</span>
+                                </div>
+                                <button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-xs font-bold">Retirer</button>
+                            </div>
+                        `).join('') : '<div class="p-4 text-center text-sm text-gray-400">Aucun abonnement</div>'}
+                    </div>
+                </div>
+
+                <div class="ios-group !mx-0 mt-8">
+                    <div class="ios-cell py-4 cursor-pointer" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div>
+                </div>
+            </div>`;
+    };
+
+    window.openPublicProfile = async (uid) => {
+        if (!uid || uid === 'undefined') { console.error("ID utilisateur manquant"); return; }
+        if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
+        
+        document.getElementById('public-profile-modal').classList.add('open');
+        const container = document.getElementById('public-profile-content');
+        container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
+
+        try {
+            const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
+            if (!profSnap.exists()) throw new Error("User not found");
+            const prof = profSnap.data();
+            const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
+            const items = itemsSnap.docs.map(d => d.data());
+
+            const isFollowing = (window.following || []).includes(uid);
+
+            let html = `
+                <div class="pt-24 px-6 pb-32">
+                    <div class="text-center mb-8 relative">
+                        <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
+                        
+                        <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
+                             ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : prof.name[0]}
+                        </div>
+                        <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
+                        <button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-200 text-black' : 'bg-blue-600 text-white'} px-6 py-2 rounded-full font-bold mt-3 text-sm transition-colors">
+                            ${isFollowing ? 'Abonné' : 'S\'abonner'}
+                        </button>
+                        <p class="text-gray-400 font-bold text-xs uppercase mt-4">${items.filter(i=> i.status === 'Vu' || i.status === 'Lu').length} éléments terminés</p>
+                    </div>
+            `;
+
+            // CORRECTION 1 : Affichage UNIQUEMENT des éléments terminés (Vu/Lu)
+            const categories = ['Film', 'Série', 'Livre'];
+            categories.forEach(cat => {
+                // Filtre Strict: Type ET Status (Vu ou Lu) uniquement.
+                const catItems = items.filter(i => i.type === cat && (i.status === 'Vu' || i.status === 'Lu'));
+                
+                if(catItems.length > 0) {
+                     // Tri par date de fin
+                     catItems.sort((a,b) => (b.finishDate || 0) > (a.finishDate || 0) ? 1 : -1);
+                     
+                     html += `<div class="year-divider">${cat}s</div><div class="items-grid">`;
+                     catItems.forEach(item => {
+                         const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
+                         html += `
+                            <div class="grid-item" onclick='window.openPreview(${itemData})'>
+                                <img src="${item.img || ''}">
+                                ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
+                                <div class="grid-item-overlay">
+                                    <div class="text-[8px] font-black truncate text-white uppercase">${item.title}</div>
+                                    <div class="text-[7px] text-gray-300 mt-1">${item.finishDate || 'Non daté'}</div>
+                                </div>
+                            </div>
+                         `;
+                     });
+                     html += `</div>`;
+                }
+            });
+            
+            html += `</div>`;
+            container.innerHTML = html;
+
+        } catch (e) {
+            container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement profil ou Permission refusée</div>`;
+            console.error(e);
+        }
+    };
+    
+    window.toggleFollowFromProfile = async (uid) => {
+        if(!window.currentUser) return;
+        const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+        
+        const isFollowing = window.following.includes(uid);
+        
+        try {
+            if (isFollowing) {
+                if(confirm("Ne plus suivre ?")) {
+                    await updateDoc(ref, { following: arrayRemove(uid) });
+                    window.openPublicProfile(uid); 
+                }
+            } else {
+                await updateDoc(ref, { following: arrayUnion(uid) });
+                // CORRECTION 4 : Notification visuelle via Toast au lieu d'alert()
+                const toast = document.getElementById('profile-toast');
+                if(toast) {
+                    toast.innerText = "Abonné avec succès !";
+                    toast.style.opacity = "1";
+                    setTimeout(() => {
+                        window.openPublicProfile(uid); 
+                    }, 1000);
+                } else {
+                    window.openPublicProfile(uid);
+                }
+            }
+        } catch (e) {
+            console.error("Erreur follow:", e);
+            alert("Erreur lors de l'action");
+        }
+    };
+
+    window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
+
+    window.toggleStatsMode = (mode) => {
+        window.extState.statsMode = mode;
+        window.renderStatsView();
+    };
+
+    window.renderStatsView = () => {
+        const isYear = window.extState.statsMode === 'year';
+        const finished = window.myCollection.filter(i => (i.status === 'Lu' || i.status === 'Vu'));
+        let filteredItems = finished;
+        const curYear = new Date().getFullYear().toString();
+        if (isYear) { filteredItems = finished.filter(i => i.finishDate?.startsWith(curYear)); }
+
+        const totalPages = filteredItems.filter(i => i.type === 'Livre').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+        const totalMinutes = filteredItems.filter(i => i.type === 'Film').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+        const totalSeasons = filteredItems.filter(i => i.type === 'Série').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+        
+        const stats = [
+            { type: 'Film', icon: 'fa-film', color: '#AF52DE', done: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
+            { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', done: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${totalPages} pages` },
+            { type: 'Série', icon: 'fa-tv', color: '#34C759', done: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` }
+        ];
+
+        document.getElementById('main-content').innerHTML = `
+            <div class="pt-20 px-6 pb-32">
+                <h1 class="text-4xl font-black mb-4">Stats</h1>
+                <div class="text-center mb-6">
+                    <div class="stats-toggle"><button onclick="window.toggleStatsMode('year')" class="${isYear?'active':''}">Cette Année</button><button onclick="window.toggleStatsMode('all')" class="${!isYear?'active':''}">Depuis toujours</button></div>
+                </div>
+                <div class="stat-card mb-8"><div class="font-black text-[10px] uppercase text-gray-400 mb-2">Total ${isYear ? curYear : 'Global'}</div><div class="text-2xl font-black text-blue-600">${filteredItems.length} terminés</div></div>
+                ${stats.map(s => { const showGoal = isYear; const prog = Math.min(100, (s.done / (s.goal || 1)) * 100); return `<div class="stat-card"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div><div><div class="font-black text-sm">${s.type}s</div><div class="text-[10px] text-gray-400 font-bold uppercase">${s.done} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div></div></div>${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs">` : ''}</div>${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}<div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase"><span>${s.sub}</span>${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}</div></div>`; }).join('')}</div>`;
+    };
+
+    window.handleCommentLike = async (actId, commentTimestamp) => {
+        const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+        try {
+            const snap = await getDoc(actRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                const comments = data.comments || [];
+                const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp);
+                
+                if (cIndex > -1) {
+                    const comment = comments[cIndex];
+                    let likes = comment.likes || [];
+                    const uid = window.currentUser.uid;
+                    
+                    if (likes.includes(uid)) {
+                        likes = likes.filter(id => id !== uid);
+                    } else {
+                        likes.push(uid);
+                    }
+                    
+                    comment.likes = likes;
+                    comments[cIndex] = comment;
+                    
+                    await updateDoc(actRef, { comments: comments });
+                }
+            }
+        } catch (e) {
+            console.error("Erreur like commentaire", e);
+        }
+    };
+
+    console.log("MaBiblio Extensions v3.6 Chargées");
+    // CORRECTION 3 (Bug démarrage): Appel explicite des pills et de la liste au démarrage
+    if(window.currentUser) {
+        window.renderPills();
+        window.renderList();
+    }
+</script>
+</body>
+</html>
