@@ -416,19 +416,29 @@
         }
         
         // -----------------------------------------------------------
-        // E. ACTIONS UTILISATEUR (SAUVEGARDE, SUPPRESSION, ETC.)
+        // E. ACTIONS UTILISATEUR
         // -----------------------------------------------------------
         window.updateProfileName = async () => {
             if (!window.currentUser) return;
-            const newName = prompt("Changer votre nom d'utilisateur :", window.userProfile.name);
+            const newName = prompt("Changer votre nom d'utilisateur (Lettres et chiffres uniquement) :", window.userProfile.name);
+            
             if (newName && newName.trim() !== "") {
-                const cleanName = newName.trim();
+                // Ce code nettoie le nom : garde seulement les lettres, chiffres, tirets et espaces
+                const cleanName = newName.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_]/g, "").trim();
+                
+                if (cleanName.length < 3) {
+                    alert("Le nom doit contenir au moins 3 caractères valides (sans émojis).");
+                    return;
+                }
+
                 window.userProfile.name = cleanName;
                 window.renderProfile(); 
+                
+                // On sauvegarde le nom propre
                 await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { name: cleanName }, { merge: true });
             }
         };
-
+        
         window.handleAvatarUpload = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -619,7 +629,7 @@
         };
 
         // -----------------------------------------------------------
-        // H. SOCIAL & FEED FUNCTIONS (MODIFIÉ : AJOUT PAR NOM)
+        // H. SOCIAL & FEED FUNCTIONS (VERSION FINALE : RECHERCHE PAR NOM)
         // -----------------------------------------------------------
         window.addEmojiReaction = async (actId, emoji) => {
             const actData = window.socialFeed.find(a => a.id === actId);
@@ -643,26 +653,30 @@
             input.value = "";
         };
 
-        // --- MODIFICATION ICI : Recherche par NOM au lieu de ID ---
         window.followUser = async () => {
-            const val = document.getElementById('follow-id').value.trim(); // Ici 'val' est le Pseudo
+            let val = document.getElementById('follow-id').value;
             
+            // 1. Nettoyage : On enlève les émojis et caractères spéciaux de la recherche pour éviter les bugs
+            if (val) {
+                val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_]/g, "").trim();
+            }
+
             if (val && val !== window.userProfile.name) {
                 try {
-                    // On cherche dans tous les profils celui qui a ce nom exact
+                    // 2. Recherche : On cherche l'utilisateur qui porte exactement ce nom
+                    // Note : Si ça ne marche pas, regarde la CONSOLE (F12) pour le lien d'index Firebase
                     const q = query(collectionGroup(db, 'profile'), where('name', '==', val));
                     const querySnapshot = await getDocs(q);
 
                     if (!querySnapshot.empty) {
-                        // On prend le premier utilisateur trouvé avec ce nom
+                        // On prend le premier profil trouvé
                         const targetUserDoc = querySnapshot.docs[0].data();
                         const targetUid = targetUserDoc.uid;
 
-                        // Vérification si on ne se suit pas déjà soi-même ou si l'UID est valide
                         if (targetUid && targetUid !== window.currentUser.uid) {
                             window.followFeedback = { type: 'success', msg: `✓ ${val} ajouté !` };
                             
-                            // Mise à jour de la liste d'amis
+                            // 3. Action : Ajout de l'ID trouvé dans ta liste d'amis
                             await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(targetUid) });
                             
                             window.renderSocialFeed();
@@ -672,19 +686,23 @@
                                 if(el) el.classList.add('hidden');
                             }, 3000);
                         } else {
-                            // Cas rare : c'est notre propre pseudo
                             window.followFeedback = { type: 'error', msg: "✕ C'est vous !" };
                             window.renderSocialFeed();
                         }
                     } else {
-                        // Aucun utilisateur trouvé avec ce nom
                         window.followFeedback = { type: 'error', msg: "✕ Pseudo introuvable" };
                         window.renderSocialFeed();
                         setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
                     }
                 } catch (e) {
-                    console.error("Erreur recherche ami:", e);
-                    window.followFeedback = { type: 'error', msg: "✕ Erreur technique" };
+                    console.error("ERREUR AJOUT AMI :", e);
+                    // Gestion spécifique pour l'erreur d'index manquant
+                    if (e.message && e.message.includes("indexes")) {
+                        alert("⚠️ ATTENTION : Pour que la recherche par nom fonctionne, ouvrez la console (F12) et cliquez sur le lien fourni par Firebase pour créer l'index.");
+                        window.followFeedback = { type: 'error', msg: "✕ Index Manquant (Voir Console)" };
+                    } else {
+                        window.followFeedback = { type: 'error', msg: "✕ Erreur technique" };
+                    }
                     window.renderSocialFeed();
                 }
             }
@@ -746,7 +764,7 @@
             const feedbackMsg = window.followFeedback?.msg || '';
             const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
 
-            // --- MODIFICATION ICI : Placeholder changé pour "Pseudo ami..." ---
+            // Mise à jour de l'interface : Placeholder "Pseudo ami..."
             const searchBlock = `
                 <div class="relative mb-8">
                     <div class="flex gap-2">
