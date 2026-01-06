@@ -453,16 +453,17 @@
         // E. ACTIONS UTILISATEUR & NOTIFICATIONS
         // -----------------------------------------------------------
         
-        // Nouvelle fonction centralisée pour envoyer une notif
-        window.sendNotification = async (targetUid, type, message, itemId) => {
+        // Nouvelle fonction : Envoie une notif avec l'ID du post (actId) pour la redirection
+        window.sendNotification = async (targetUid, type, message, itemTitle, actId) => {
             if (targetUid === window.currentUser.uid) return;
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'), {
-                    type: type, // 'like', 'comment', 'mention'
+                    type: type, 
                     text: message,
                     user: window.userProfile.name,
                     uid: window.currentUser.uid,
-                    item: itemId, // Titre de l'item ou ID activité
+                    itemTitle: itemTitle,
+                    actId: actId, // On sauvegarde l'ID pour pouvoir rediriger dessus
                     time: Date.now(),
                     read: false
                 });
@@ -481,8 +482,8 @@
                  await updateDoc(actRef, { likes: arrayRemove(window.currentUser.uid) });
              } else {
                  await updateDoc(actRef, { likes: arrayUnion(window.currentUser.uid) });
-                 // Envoi Notification
-                 window.sendNotification(actData.userId, 'like', 'a aimé votre publication', actData.itemTitle);
+                 // Envoi de la notif avec l'ID de l'activité pour la redirection
+                 window.sendNotification(actData.userId, 'like', 'a aimé votre publication', actData.itemTitle, actData.id);
              }
         };
 
@@ -695,16 +696,9 @@
         };
 
         // -----------------------------------------------------------
-        // H. SOCIAL & FEED FUNCTIONS (VERSION FINALE : RECHERCHE PAR NOM)
+        // H. SOCIAL & FEED FUNCTIONS
         // -----------------------------------------------------------
-        window.addEmojiReaction = async (actId, emoji) => {
-            const actData = window.socialFeed.find(a => a.id === actId);
-            const reactions = actData.reactions || {};
-            const op = (reactions[emoji] || []).includes(window.currentUser.uid) ? arrayRemove(window.currentUser.uid) : arrayUnion(window.currentUser.uid);
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { [`reactions.${emoji}`]: op });
-        };
         
-        // --- NOUVELLE GESTION DES COMMENTAIRES (MODALE) ---
         window.openCommentModal = (actId) => {
             window.currentCommentActId = actId;
             const actData = window.socialFeed.find(a => a.id === actId);
@@ -716,9 +710,7 @@
             let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Soyez le premier à commenter</div>' : '';
             
             comments.forEach(c => {
-                 // Formatage des mentions dans l'affichage
                  const textWithMentions = c.text.replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
-                 
                  html += `
                     <div class="flex gap-3 mb-4">
                         <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0">
@@ -798,18 +790,16 @@
                 }) 
             });
 
-            // Gestion des notifications (Auteur du post + Mentions)
-            // 1. Notif à l'auteur du post
-            window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle);
+            // Envoi des notifications avec l'ID du post
+            window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actData.id);
             
-            // 2. Détection des mentions @Name
             const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
             if (mentions) {
                 mentions.forEach(m => {
                     const name = m.substring(1);
                     const user = window.followingData.find(u => u.name === name);
                     if (user) {
-                        window.sendNotification(user.uid, 'mention', 'vous a mentionné dans un commentaire', actData.itemTitle);
+                        window.sendNotification(user.uid, 'mention', 'vous a mentionné', actData.itemTitle, actData.id);
                     }
                 });
             }
@@ -852,7 +842,6 @@
         window.updateNotifBadge = () => {
             const badge = document.getElementById('notif-badge');
             if (!badge) return;
-            // On compte les notifs non lues dans l'état étendu
             const count = window.extState.notifications.filter(n => !n.read).length;
 
             if(count > 0) {
@@ -864,14 +853,22 @@
         };
 
         window.goToActivity = (actId) => {
+            if(!actId) return;
             window.switchView('friends');
+            
+            // Délai pour laisser le feed charger avant de scroller
             setTimeout(() => {
                 const el = document.getElementById('act-' + actId);
-                if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
-            }, 500); 
+                if(el) { 
+                    el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    // Animation visuelle pour repérer le post
+                    el.style.transition = "transform 0.3s";
+                    el.style.transform = "scale(0.96)";
+                    setTimeout(() => el.style.transform = "scale(1)", 300);
+                }
+            }, 600); 
         };
 
-        // --- NOUVEAU RENDU DU FEED (STRUCTURE RESEAU SOCIAL) ---
         window.renderSocialFeed = () => {
             const focusedId = document.activeElement ? document.activeElement.id : null;
             const focusedVal = focusedId ? document.activeElement.value : null;
@@ -897,13 +894,7 @@
                 const likes = act.likes || [];
                 const isLiked = likes.includes(window.currentUser.uid);
                 const commentsCount = (act.comments || []).length;
-                
-                // Texte des likes
-                let likesText = '';
-                if (likes.length > 0) {
-                    if (likes.length === 1) likesText = `Aimé par 1 personne`;
-                    else likesText = `Aimé par ${likes.length} personnes`;
-                }
+                let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : '';
 
                 feedHtml += `
                 <div class="activity-card relative" id="act-${act.id}">
@@ -935,10 +926,6 @@
                         <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400">
                             <i class="fa-regular fa-comment"></i>
                         </button>
-                        <div class="flex-1"></div>
-                        <div class="flex gap-1 opacity-50 scale-75 origin-right">
-                             ${['🤣', '😢', '✨'].map(emoji => `<button onclick="window.addEmojiReaction('${act.id}', '${emoji}')" class="emoji-btn ${(act.reactions?.[emoji] || []).includes(window.currentUser?.uid) ? 'active' : ''}">${emoji}</button>`).join('')}
-                        </div>
                     </div>
 
                     <div class="px-2 mb-2">
@@ -956,23 +943,22 @@
             if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); } }
         };
 
-        // --- NOUVELLE VUE NOTIFICATIONS (BASEE SUR FIRESTORE) ---
         window.openNotifications = async () => {
             window.currentView = 'notifications';
             document.getElementById('app-header').style.display = 'none'; 
             
-            // Marquer comme lues dans Firebase
-            const unread = window.extState.notifications.filter(n => !n.read);
-            unread.forEach(async (n) => {
-                 // Note: En prod, on stockerait l'ID du doc notif pour update. Ici simplifié.
-                 // Le badge sera reset au prochain chargement/snapshot
-            });
-            // Pour l'UX immédiate, on reset le badge
-            document.getElementById('notif-badge').classList.remove('active');
+            // Remise à zéro immédiate du badge visuel
+            const badge = document.getElementById('notif-badge');
+            if(badge) {
+                badge.innerText = '0';
+                badge.classList.remove('active');
+            }
+            
+            // On marque localement comme lu pour éviter que le badge revienne au prochain chargement
+            window.extState.notifications.forEach(n => n.read = true);
 
             const container = document.getElementById('main-content');
-            
-            const notifs = window.extState.notifications; // Déjà trié dans le snapshot
+            const notifs = window.extState.notifications; 
 
             container.innerHTML = `
                 <div class="pt-10 px-6 pb-32">
@@ -982,13 +968,13 @@
                     </div>
                     ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
                     ${notifs.map(n => `
-                        <div class="notif-item cursor-pointer">
+                        <div class="notif-item cursor-pointer" onclick="window.goToActivity('${n.actId}')">
                             <div class="notif-icon ${n.type === 'like' ? 'text-red-500' : 'text-blue-600'}">
                                 ${n.type === 'like' ? '<i class="fa-solid fa-heart"></i>' : (n.type === 'mention' ? '<i class="fa-solid fa-at"></i>' : '<i class="fa-solid fa-comment"></i>')}
                             </div>
                             <div class="flex-1">
                                 <div class="text-sm"><span class="font-black">${n.user}</span> ${n.text}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.item} • ${new Date(n.time).toLocaleDateString()}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.itemTitle || 'un post'} • ${new Date(n.time).toLocaleDateString()}</div>
                             </div>
                         </div>
                     `).join('')}
