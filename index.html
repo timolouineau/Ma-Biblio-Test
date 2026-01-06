@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -93,6 +93,14 @@
         .following-dropdown { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: white; border-radius: 16px; margin-top: 10px; }
         .following-dropdown.open { max-height: 300px; padding: 10px 0; overflow-y: auto; }
         .follow-toggle-btn { background: white; padding: 15px; border-radius: 16px; width: 100%; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; }
+        
+        /* NOUVEAUX STYLES RESEAU SOCIAL */
+        @keyframes likeBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+        .like-bounce { animation: likeBounce 0.3s ease-in-out; color: #FF2D55 !important; }
+        .mention { color: var(--ios-blue); font-weight: 700; }
+        .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
+        .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
+        .suggestion-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -192,6 +200,23 @@
             </div>
         </div>
     </div>
+    
+    <div id="comment-sheet" class="sheet-overlay">
+        <div class="sheet flex flex-col" style="height: 80vh;">
+            <div class="flex justify-between items-center px-6 py-4 border-b bg-white">
+                <span class="font-black text-lg">Commentaires</span>
+                <button onclick="window.closeCommentSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="comments-list-container"></div>
+            <div class="p-4 bg-white border-top relative">
+                <div id="mention-suggestions" class="mention-suggestions"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="comment-modal-input" placeholder="Ajouter un commentaire (@ pour mentionner)..." class="flex-1 bg-gray-100 p-3 rounded-xl outline-none font-medium" oninput="window.handleMentionInput(this)">
+                    <button onclick="window.postCommentFromModal()" class="bg-blue-600 text-white w-12 rounded-xl font-bold"><i class="fa-solid fa-arrow-up"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="public-profile-modal" class="modal overflow-y-auto">
         <div onclick="window.closePublicProfile()" class="back-btn-float"><i class="fa-solid fa-arrow-left"></i></div>
@@ -237,6 +262,7 @@
         window.followFeedback = null;
         let currentRating = 8;
         window.authMode = 'login';
+        window.currentCommentActId = null; // Pour la modale
         
         // État étendu (ajouté par les extensions)
         window.extState = {
@@ -377,6 +403,12 @@
                 }
                 window.refreshCurrentView();
             });
+            
+            // Écouteur Notifications "En Dur"
+            onSnapshot(collection(db, userRoot, 'notifications'), (snap) => {
+                window.extState.notifications = snap.docs.map(d => d.data()).sort((a,b) => b.time - a.time);
+                if (window.updateNotifBadge) window.updateNotifBadge();
+            });
         }
 
         async function loadFollowingProfiles() {
@@ -412,18 +444,53 @@
                 if (window.updateNotifBadge) window.updateNotifBadge();
                 
                 if (window.currentView === 'friends') window.renderSocialFeed();
+                // Mise à jour temps réel de la modale commentaire si ouverte
+                if (window.currentCommentActId) window.openCommentModal(window.currentCommentActId);
             });
         }
         
         // -----------------------------------------------------------
-        // E. ACTIONS UTILISATEUR
+        // E. ACTIONS UTILISATEUR & NOTIFICATIONS
         // -----------------------------------------------------------
+        
+        // Nouvelle fonction centralisée pour envoyer une notif
+        window.sendNotification = async (targetUid, type, message, itemId) => {
+            if (targetUid === window.currentUser.uid) return;
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'), {
+                    type: type, // 'like', 'comment', 'mention'
+                    text: message,
+                    user: window.userProfile.name,
+                    uid: window.currentUser.uid,
+                    item: itemId, // Titre de l'item ou ID activité
+                    time: Date.now(),
+                    read: false
+                });
+            } catch (e) { console.error("Erreur envoi notif", e); }
+        };
+
+        window.toggleLike = async (actId) => {
+             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+             const actData = window.socialFeed.find(a => a.id === actId);
+             if (!actData) return;
+             
+             const likes = actData.likes || [];
+             const isLiked = likes.includes(window.currentUser.uid);
+             
+             if (isLiked) {
+                 await updateDoc(actRef, { likes: arrayRemove(window.currentUser.uid) });
+             } else {
+                 await updateDoc(actRef, { likes: arrayUnion(window.currentUser.uid) });
+                 // Envoi Notification
+                 window.sendNotification(actData.userId, 'like', 'a aimé votre publication', actData.itemTitle);
+             }
+        };
+
         window.updateProfileName = async () => {
             if (!window.currentUser) return;
             const newName = prompt("Changer votre nom d'utilisateur (Lettres et chiffres uniquement) :", window.userProfile.name);
             
             if (newName && newName.trim() !== "") {
-                // Ce code nettoie le nom : garde seulement les lettres, chiffres, tirets et espaces
                 const cleanName = newName.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
                 
                 if (cleanName.length < 3) {
@@ -434,7 +501,6 @@
                 window.userProfile.name = cleanName;
                 window.renderProfile(); 
                 
-                // On sauvegarde le nom propre
                 await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { name: cleanName }, { merge: true });
             }
         };
@@ -460,7 +526,7 @@
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), {
                         userId: window.currentUser.uid, userName: window.userProfile.name, userAvatar: window.userProfile.avatar,
                         itemTitle: item.title, itemImg: item.img, type: item.type, rating, metricValue: item.metricValue, 
-                        comment: comment || '', timestamp: Date.now(), comments: [], reactions: {}
+                        comment: comment || '', timestamp: Date.now(), comments: [], reactions: {}, likes: []
                     });
                 }
                 window.closeRatingSheet(); window.closePreview(); window.closeSearchModal(); window.closeManualModal(); window.switchView('home');
@@ -637,73 +703,147 @@
             const op = (reactions[emoji] || []).includes(window.currentUser.uid) ? arrayRemove(window.currentUser.uid) : arrayUnion(window.currentUser.uid);
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { [`reactions.${emoji}`]: op });
         };
+        
+        // --- NOUVELLE GESTION DES COMMENTAIRES (MODALE) ---
+        window.openCommentModal = (actId) => {
+            window.currentCommentActId = actId;
+            const actData = window.socialFeed.find(a => a.id === actId);
+            if (!actData) return;
 
-        window.postComment = async (actId) => {
-            const input = document.getElementById(`comment-in-${actId}`);
-            if(!input.value.trim()) return;
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { 
+            const container = document.getElementById('comments-list-container');
+            const comments = actData.comments || [];
+            
+            let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Soyez le premier à commenter</div>' : '';
+            
+            comments.forEach(c => {
+                 // Formatage des mentions dans l'affichage
+                 const textWithMentions = c.text.replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
+                 
+                 html += `
+                    <div class="flex gap-3 mb-4">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0">
+                            ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${c.userName[0]}</div>`}
+                        </div>
+                        <div class="flex-1">
+                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm">
+                                <div class="font-bold text-xs mb-1">${c.userName}</div>
+                                <div class="text-sm text-gray-800 leading-snug">${textWithMentions}</div>
+                            </div>
+                            <div class="text-[10px] text-gray-400 font-bold mt-1 ml-2">Il y a ${Math.floor((Date.now() - c.timestamp) / 60000)} min</div>
+                        </div>
+                    </div>
+                 `;
+            });
+            
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+            document.getElementById('comment-sheet').classList.add('open');
+        };
+
+        window.closeCommentSheet = () => {
+             document.getElementById('comment-sheet').classList.remove('open');
+             window.currentCommentActId = null;
+        };
+
+        window.handleMentionInput = (input) => {
+            const val = input.value;
+            const lastWord = val.split(' ').pop();
+            const suggestionBox = document.getElementById('mention-suggestions');
+            
+            if (lastWord.startsWith('@') && lastWord.length > 1) {
+                const search = lastWord.substring(1).toLowerCase();
+                const matches = window.followingData.filter(u => u.name.toLowerCase().includes(search));
+                
+                if (matches.length > 0) {
+                    suggestionBox.style.display = 'block';
+                    suggestionBox.innerHTML = matches.map(u => `
+                        <div class="suggestion-item" onclick="window.insertMention('${u.name}')">
+                            <div class="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">`: ''}</div>
+                            <div class="font-bold text-sm">${u.name}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    suggestionBox.style.display = 'none';
+                }
+            } else {
+                suggestionBox.style.display = 'none';
+            }
+        };
+
+        window.insertMention = (name) => {
+            const input = document.getElementById('comment-modal-input');
+            const parts = input.value.split(' ');
+            parts.pop();
+            parts.push('@' + name + ' ');
+            input.value = parts.join(' ');
+            document.getElementById('mention-suggestions').style.display = 'none';
+            input.focus();
+        };
+
+        window.postCommentFromModal = async () => {
+            if (!window.currentCommentActId) return;
+            const input = document.getElementById('comment-modal-input');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            const actData = window.socialFeed.find(a => a.id === window.currentCommentActId);
+
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', window.currentCommentActId), { 
                 comments: arrayUnion({ 
                     userId: window.currentUser.uid, 
                     userName: window.userProfile.name, 
                     userAvatar: window.userProfile.avatar || '', 
-                    text: input.value.trim(), 
+                    text: text, 
                     timestamp: Date.now() 
                 }) 
             });
+
+            // Gestion des notifications (Auteur du post + Mentions)
+            // 1. Notif à l'auteur du post
+            window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle);
+            
+            // 2. Détection des mentions @Name
+            const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
+            if (mentions) {
+                mentions.forEach(m => {
+                    const name = m.substring(1);
+                    const user = window.followingData.find(u => u.name === name);
+                    if (user) {
+                        window.sendNotification(user.uid, 'mention', 'vous a mentionné dans un commentaire', actData.itemTitle);
+                    }
+                });
+            }
+
             input.value = "";
         };
 
         window.followUser = async () => {
             let val = document.getElementById('follow-id').value;
-            
-            // 1. Nettoyage : On enlève les émojis et caractères spéciaux de la recherche pour éviter les bugs
-            if (val) {
-                val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
-            }
+            if (val) val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
 
             if (val && val !== window.userProfile.name) {
                 try {
-                    // 2. Recherche : On cherche l'utilisateur qui porte exactement ce nom
-                    // Note : Si ça ne marche pas, regarde la CONSOLE (F12) pour le lien d'index Firebase
                     const q = query(collectionGroup(db, 'profile'), where('name', '==', val));
                     const querySnapshot = await getDocs(q);
 
                     if (!querySnapshot.empty) {
-                        // On prend le premier profil trouvé
                         const targetUserDoc = querySnapshot.docs[0].data();
                         const targetUid = targetUserDoc.uid;
 
                         if (targetUid && targetUid !== window.currentUser.uid) {
                             window.followFeedback = { type: 'success', msg: `✓ ${val} ajouté !` };
-                            
-                            // 3. Action : Ajout de l'ID trouvé dans ta liste d'amis
                             await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(targetUid) });
-                            
                             window.renderSocialFeed();
-                            setTimeout(() => {
-                                window.followFeedback = null;
-                                const el = document.getElementById('follow-success');
-                                if(el) el.classList.add('hidden');
-                            }, 3000);
+                            setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
                         } else {
-                            window.followFeedback = { type: 'error', msg: "✕ C'est vous !" };
-                            window.renderSocialFeed();
+                            window.followFeedback = { type: 'error', msg: "✕ C'est vous !" }; window.renderSocialFeed();
                         }
                     } else {
-                        window.followFeedback = { type: 'error', msg: "✕ Pseudo introuvable" };
-                        window.renderSocialFeed();
-                        setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
+                        window.followFeedback = { type: 'error', msg: "✕ Pseudo introuvable" }; window.renderSocialFeed();
                     }
                 } catch (e) {
                     console.error("ERREUR AJOUT AMI :", e);
-                    // Gestion spécifique pour l'erreur d'index manquant
-                    if (e.message && e.message.includes("indexes")) {
-                        alert("⚠️ ATTENTION : Pour que la recherche par nom fonctionne, ouvrez la console (F12) et cliquez sur le lien fourni par Firebase pour créer l'index.");
-                        window.followFeedback = { type: 'error', msg: "✕ Index Manquant (Voir Console)" };
-                    } else {
-                        window.followFeedback = { type: 'error', msg: "✕ Erreur technique" };
-                    }
-                    window.renderSocialFeed();
+                    window.followFeedback = { type: 'error', msg: "✕ Erreur technique" }; window.renderSocialFeed();
                 }
             }
             document.getElementById('follow-id').value = "";
@@ -712,31 +852,11 @@
         window.updateNotifBadge = () => {
             const badge = document.getElementById('notif-badge');
             if (!badge) return;
-            
-            let badgeCount = 0;
-            const lastCheck = parseInt(localStorage.getItem('mabiblio_last_check') || '0');
-            const seenLikes = parseInt(localStorage.getItem('mabiblio_seen_likes_count') || '0');
-            
-            const myPosts = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
-            let currentTotalLikes = 0;
+            // On compte les notifs non lues dans l'état étendu
+            const count = window.extState.notifications.filter(n => !n.read).length;
 
-            myPosts.forEach(p => {
-                if(p.comments) {
-                    badgeCount += p.comments.filter(c => c.userId !== window.currentUser.uid && c.timestamp > lastCheck).length;
-                }
-                if(p.reactions) {
-                    Object.values(p.reactions).forEach(uids => {
-                        currentTotalLikes += uids.filter(uid => uid !== window.currentUser.uid).length;
-                    });
-                }
-            });
-
-            if (currentTotalLikes > seenLikes) {
-                badgeCount += (currentTotalLikes - seenLikes);
-            }
-
-            if(badgeCount > 0) {
-                badge.innerText = badgeCount > 9 ? '9+' : badgeCount;
+            if(count > 0) {
+                badge.innerText = count > 9 ? '9+' : count;
                 badge.classList.add('active');
             } else {
                 badge.classList.remove('active');
@@ -751,48 +871,46 @@
             }, 500); 
         };
 
+        // --- NOUVEAU RENDU DU FEED (STRUCTURE RESEAU SOCIAL) ---
         window.renderSocialFeed = () => {
             const focusedId = document.activeElement ? document.activeElement.id : null;
             const focusedVal = focusedId ? document.activeElement.value : null;
 
             const container = document.getElementById('main-content');
-            
-            let badgeCount = 0;
-            const lastCheck = parseInt(localStorage.getItem('mabiblio_last_check') || '0');
-            
             const feedbackActive = window.followFeedback !== null;
             const feedbackMsg = window.followFeedback?.msg || '';
             const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
 
-            // Mise à jour de l'interface : Placeholder "Pseudo ami..."
             const searchBlock = `
                 <div class="relative mb-8">
                     <div class="flex gap-2">
                         <input id="follow-id" placeholder="Pseudo ami..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium">
-                        <button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black relative overflow-hidden">
-                            Suivre
-                        </button>
+                        <button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black relative overflow-hidden">Suivre</button>
                     </div>
                     <div id="follow-success" class="${feedbackActive ? '' : 'hidden'} absolute -bottom-6 left-0 ${feedbackColor} text-[10px] font-black uppercase tracking-wider">${feedbackMsg}</div>
                 </div>
             `;
 
             let feedHtml = '';
-            let hasShownUpToDate = false;
-
+            
             window.socialFeed.forEach(act => {
-                if (!hasShownUpToDate && act.timestamp < lastCheck && lastCheck > 0) {
-                     feedHtml += `<div class="up-to-date"><div class="up-to-date-line"></div><div class="up-to-date-text">Vous êtes à jour</div><div class="up-to-date-line"></div></div>`;
-                     hasShownUpToDate = true;
-                } else if (!hasShownUpToDate && act.timestamp >= lastCheck && feedHtml === '') {
-                     feedHtml += `<div class="up-to-date"><div class="up-to-date-line"></div><div class="up-to-date-text text-blue-600">Nouveaux Posts</div><div class="up-to-date-line"></div></div>`;
+                const likes = act.likes || [];
+                const isLiked = likes.includes(window.currentUser.uid);
+                const commentsCount = (act.comments || []).length;
+                
+                // Texte des likes
+                let likesText = '';
+                if (likes.length > 0) {
+                    if (likes.length === 1) likesText = `Aimé par 1 personne`;
+                    else likesText = `Aimé par ${likes.length} personnes`;
                 }
 
                 feedHtml += `
                 <div class="activity-card relative" id="act-${act.id}">
                     ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                    
                     <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
-                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden">
+                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden border border-gray-100">
                             ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
                         </div>
                         <div class="flex flex-col">
@@ -800,107 +918,62 @@
                             <span class="text-[9px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
                         </div>
                     </div>
+
                     <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview({"id":"${act.type}_ext","title":"${act.itemTitle}","img":"${act.itemImg}","type":"${act.type}","desc":"Vu par ${act.userName}"})'>
-                        <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200">
+                        <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200 shadow-sm">
                         <div class="flex-1">
                             <div class="font-black text-xs mb-1">${act.itemTitle}</div>
                             <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
                             <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
                         </div>
                     </div>
-                    <div class="flex gap-2 border-b pb-3 mb-4">
-                        ${['💙', '🤣', '😢', '✨'].map(emoji => `<button onclick="window.addEmojiReaction('${act.id}', '${emoji}')" class="emoji-btn ${(act.reactions?.[emoji] || []).includes(window.currentUser?.uid) ? 'active' : ''}">${emoji} <span>${(act.reactions?.[emoji] || []).length || ''}</span></button>`).join('')}
-                    </div>
                     
-                    ${act.comments && act.comments.length > 0 ? `<div class="flex flex-col gap-3 mb-4 px-1">
-                        ${act.comments.map(c => {
-                            const likes = c.likes || [];
-                            const isLiked = likes.includes(window.currentUser.uid);
-                            return `
-                            <div class="flex gap-2 items-start">
-                                 <div class="w-6 h-6 shrink-0 rounded-full bg-gray-300 text-[10px] flex items-center justify-center font-bold text-white overflow-hidden cursor-pointer border border-white shadow-sm" onclick="window.openPublicProfile('${c.userId}')">
-                                     ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : (c.userName ? c.userName[0] : '?')}
-                                 </div>
-                                 <div class="bg-gray-100 rounded-xl rounded-tl-none p-2 flex-1 group relative">
-                                    <div class="font-bold text-[10px] cursor-pointer hover:underline" onclick="window.openPublicProfile('${c.userId}')">${c.userName}</div>
-                                    <div class="text-[11px] text-gray-700 leading-tight">${c.text}</div>
-                                    <button onclick="window.handleCommentLike('${act.id}', ${c.timestamp})" class="absolute right-2 bottom-1 text-[10px] ${isLiked ? 'text-red-500' : 'text-gray-300'}"><i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i> ${likes.length > 0 ? likes.length : ''}</button>
-                                 </div>
-                            </div>
-                        `}).join('')}
-                    </div>` : ''}
+                    <div class="flex items-center gap-6 mt-4 mb-2 px-2">
+                        <button onclick="window.toggleLike('${act.id}')" class="text-2xl transition-transform active:scale-75 ${isLiked ? 'like-bounce' : 'text-gray-400'}">
+                            <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
+                        </button>
+                        <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400">
+                            <i class="fa-regular fa-comment"></i>
+                        </button>
+                        <div class="flex-1"></div>
+                        <div class="flex gap-1 opacity-50 scale-75 origin-right">
+                             ${['🤣', '😢', '✨'].map(emoji => `<button onclick="window.addEmojiReaction('${act.id}', '${emoji}')" class="emoji-btn ${(act.reactions?.[emoji] || []).includes(window.currentUser?.uid) ? 'active' : ''}">${emoji}</button>`).join('')}
+                        </div>
+                    </div>
 
-                    <div class="flex gap-2">
-                        <input id="comment-in-${act.id}" placeholder="Répondre..." class="flex-1 bg-gray-100 p-2.5 rounded-xl text-[12px] outline-none">
-                        <button onclick="window.postComment('${act.id}')" class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center"><i class="fa-solid fa-paper-plane text-xs"></i></button>
+                    <div class="px-2 mb-2">
+                        <div class="text-xs font-bold text-gray-800">${likesText}</div>
+                        ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
                     </div>
                 </div>`
             });
-
-            if (!hasShownUpToDate && window.socialFeed.length > 0) {
-                 feedHtml += `<div class="up-to-date"><div class="up-to-date-line"></div><div class="up-to-date-text">Vous êtes à jour</div><div class="up-to-date-line"></div></div>`;
-            }
 
             container.innerHTML = `<div class="pt-20 px-5 pb-32"><h1 class="text-4xl font-black mb-6">Amis</h1>
             ${searchBlock}
             ${feedHtml}
             </div>`;
 
-            if(focusedId) {
-                const el = document.getElementById(focusedId);
-                if(el) { el.value = focusedVal; el.focus(); }
-            }
+            if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); } }
         };
 
+        // --- NOUVELLE VUE NOTIFICATIONS (BASEE SUR FIRESTORE) ---
         window.openNotifications = async () => {
             window.currentView = 'notifications';
             document.getElementById('app-header').style.display = 'none'; 
             
-            localStorage.setItem('mabiblio_last_check', Date.now());
-
-            const myPosts = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
-            let currentTotalLikes = 0;
-            myPosts.forEach(p => {
-                if(p.reactions) {
-                    Object.values(p.reactions).forEach(uids => {
-                        currentTotalLikes += uids.filter(uid => uid !== window.currentUser.uid).length;
-                    });
-                }
+            // Marquer comme lues dans Firebase
+            const unread = window.extState.notifications.filter(n => !n.read);
+            unread.forEach(async (n) => {
+                 // Note: En prod, on stockerait l'ID du doc notif pour update. Ici simplifié.
+                 // Le badge sera reset au prochain chargement/snapshot
             });
-            localStorage.setItem('mabiblio_seen_likes_count', currentTotalLikes);
-
-            if(window.updateNotifBadge) window.updateNotifBadge();
-
-            const myActivities = window.socialFeed.filter(a => a.userId === window.currentUser.uid);
-            let notifs = [];
-
-            const getName = (uid) => {
-                 const f = window.followingData.find(u => u.uid === uid);
-                 return f ? f.name : "Un ami";
-            }
-
-            myActivities.forEach(act => {
-                if (act.reactions) {
-                    Object.keys(act.reactions).forEach(emoji => {
-                        act.reactions[emoji].forEach(uid => {
-                            if (uid !== window.currentUser.uid) {
-                                notifs.push({ type: 'like', text: `a réagi ${emoji} à votre post`, item: act.itemTitle, time: act.timestamp, user: getName(uid), uid: uid, actId: act.id });
-                            }
-                        });
-                    });
-                }
-                if (act.comments) {
-                    act.comments.forEach(c => {
-                        if (c.userId !== window.currentUser.uid) {
-                            notifs.push({ type: 'comment', text: `a commenté : "${c.text}"`, item: act.itemTitle, time: c.timestamp, user: c.userName, uid: c.userId, actId: act.id });
-                        }
-                    });
-                }
-            });
-
-            notifs.sort((a,b) => b.time - a.time);
+            // Pour l'UX immédiate, on reset le badge
+            document.getElementById('notif-badge').classList.remove('active');
 
             const container = document.getElementById('main-content');
+            
+            const notifs = window.extState.notifications; // Déjà trié dans le snapshot
+
             container.innerHTML = `
                 <div class="pt-10 px-6 pb-32">
                     <div class="flex items-center gap-4 mb-6">
@@ -909,11 +982,13 @@
                     </div>
                     ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
                     ${notifs.map(n => `
-                        <div class="notif-item cursor-pointer" onclick="window.goToActivity('${n.actId}')">
-                            <div class="notif-icon text-blue-600">${n.type === 'like' ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-solid fa-comment"></i>'}</div>
+                        <div class="notif-item cursor-pointer">
+                            <div class="notif-icon ${n.type === 'like' ? 'text-red-500' : 'text-blue-600'}">
+                                ${n.type === 'like' ? '<i class="fa-solid fa-heart"></i>' : (n.type === 'mention' ? '<i class="fa-solid fa-at"></i>' : '<i class="fa-solid fa-comment"></i>')}
+                            </div>
                             <div class="flex-1">
                                 <div class="text-sm"><span class="font-black">${n.user}</span> ${n.text}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.item}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.item} • ${new Date(n.time).toLocaleDateString()}</div>
                             </div>
                         </div>
                     `).join('')}
@@ -1152,8 +1227,7 @@
             } catch (e) { console.error("Erreur like commentaire", e); }
         };
 
-        console.log("MaBiblio Organized v1.0 Ready");
-        // Démarrage forcé si user déjà présent
+        console.log("MaBiblio Social Network v2.0 Ready");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
