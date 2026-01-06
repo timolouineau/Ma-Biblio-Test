@@ -453,7 +453,6 @@
         // E. ACTIONS UTILISATEUR & NOTIFICATIONS
         // -----------------------------------------------------------
         
-        // Nouvelle fonction : Envoie une notif avec l'ID du post (actId) pour la redirection
         window.sendNotification = async (targetUid, type, message, itemTitle, actId) => {
             if (targetUid === window.currentUser.uid) return;
             try {
@@ -463,9 +462,9 @@
                     user: window.userProfile.name,
                     uid: window.currentUser.uid,
                     itemTitle: itemTitle,
-                    actId: actId, // On sauvegarde l'ID pour pouvoir rediriger dessus
+                    actId: actId,
                     time: Date.now(),
-                    read: false
+                    read: false // Important pour le badge
                 });
             } catch (e) { console.error("Erreur envoi notif", e); }
         };
@@ -482,26 +481,18 @@
                  await updateDoc(actRef, { likes: arrayRemove(window.currentUser.uid) });
              } else {
                  await updateDoc(actRef, { likes: arrayUnion(window.currentUser.uid) });
-                 // Envoi de la notif avec l'ID de l'activité pour la redirection
                  window.sendNotification(actData.userId, 'like', 'a aimé votre publication', actData.itemTitle, actData.id);
              }
         };
 
         window.updateProfileName = async () => {
             if (!window.currentUser) return;
-            const newName = prompt("Changer votre nom d'utilisateur (Lettres et chiffres uniquement) :", window.userProfile.name);
-            
+            const newName = prompt("Changer votre pseudo :", window.userProfile.name);
             if (newName && newName.trim() !== "") {
                 const cleanName = newName.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
-                
-                if (cleanName.length < 3) {
-                    alert("Le nom doit contenir au moins 3 caractères valides (sans émojis).");
-                    return;
-                }
-
+                if (cleanName.length < 3) return alert("3 caractères minimum (sans émojis).");
                 window.userProfile.name = cleanName;
                 window.renderProfile(); 
-                
                 await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { name: cleanName }, { merge: true });
             }
         };
@@ -527,7 +518,7 @@
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), {
                         userId: window.currentUser.uid, userName: window.userProfile.name, userAvatar: window.userProfile.avatar,
                         itemTitle: item.title, itemImg: item.img, type: item.type, rating, metricValue: item.metricValue, 
-                        comment: comment || '', timestamp: Date.now(), comments: [], reactions: {}, likes: []
+                        comment: comment || '', timestamp: Date.now(), comments: [], likes: []
                     });
                 }
                 window.closeRatingSheet(); window.closePreview(); window.closeSearchModal(); window.closeManualModal(); window.switchView('home');
@@ -535,22 +526,19 @@
         };
 
         window.deleteItem = async () => {
-            if (!confirm("Supprimer cet élément de votre bibliothèque ?")) return;
+            if (!confirm("Supprimer cet élément ?")) return;
             const docId = window.tempItem?.docId;
-            if (!docId) { alert("Erreur: Impossible de trouver l'identifiant."); return; }
+            if (!docId) return;
             try {
                 window.closePreview();
                 window.myCollection = window.myCollection.filter(i => i.docId !== docId);
                 window.renderList(); 
                 await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId));
-            } catch (e) { console.error("Erreur suppression:", e); alert("Erreur lors de la suppression."); loadUserData(); }
+            } catch (e) { console.error(e); }
         };
 
         window.deleteActivity = async (actId) => {
-            if (!confirm("Supprimer cette publication ?")) return;
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
-            } catch (e) { console.error(e); }
+            if (confirm("Supprimer cette publication ?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
         };
 
         window.handleRatingDrag = (e) => {
@@ -558,20 +546,17 @@
             const rect = container.getBoundingClientRect();
             const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
             let percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-            let val = Math.round(percent / 10);
-            window.updateRatingUI(val);
+            window.updateRatingUI(Math.round(percent / 10));
         };
 
         window.updateRatingUI = (v) => { 
             currentRating = v; 
-            const valUi = document.getElementById('rating-val-ui');
-            const fillUi = document.getElementById('rating-fill-ui');
+            const valUi = document.getElementById('rating-val-ui'), fillUi = document.getElementById('rating-fill-ui');
             if(valUi) valUi.innerText = currentRating; 
             if(fillUi) fillUi.style.width = (currentRating * 10) + '%'; 
         };
 
         window.unfollowUser = async (id) => { if (confirm("Ne plus suivre ?")) await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayRemove(id) }); };
-        window.updateGoal = async (type, val) => { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { [`goal${type}`]: parseInt(val) }); };
         window.logout = () => signOut(auth).then(() => location.reload());
 
         // -----------------------------------------------------------
