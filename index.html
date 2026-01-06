@@ -619,7 +619,7 @@
         };
 
         // -----------------------------------------------------------
-        // H. SOCIAL & FEED FUNCTIONS
+        // H. SOCIAL & FEED FUNCTIONS (MODIFIÉ : AJOUT PAR NOM)
         // -----------------------------------------------------------
         window.addEmojiReaction = async (actId, emoji) => {
             const actData = window.socialFeed.find(a => a.id === actId);
@@ -643,25 +643,49 @@
             input.value = "";
         };
 
+        // --- MODIFICATION ICI : Recherche par NOM au lieu de ID ---
         window.followUser = async () => {
-            const val = document.getElementById('follow-id').value.trim();
-            if (val && val !== window.currentUser.uid) {
-                const userRef = doc(db, 'artifacts', appId, 'users', val, 'profile', 'info');
-                const userSnap = await getDoc(userRef);
-                
-                if(userSnap.exists()) {
-                    window.followFeedback = { type: 'success', msg: "✓ Ami ajouté avec succès !" };
-                    window.renderSocialFeed(); 
-                    await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(val) });
-                    setTimeout(() => {
-                        window.followFeedback = null;
-                        const el = document.getElementById('follow-success');
-                        if(el) el.classList.add('hidden');
-                    }, 3000);
-                } else {
-                    window.followFeedback = { type: 'error', msg: "✕ ID Introuvable" };
+            const val = document.getElementById('follow-id').value.trim(); // Ici 'val' est le Pseudo
+            
+            if (val && val !== window.userProfile.name) {
+                try {
+                    // On cherche dans tous les profils celui qui a ce nom exact
+                    const q = query(collectionGroup(db, 'profile'), where('name', '==', val));
+                    const querySnapshot = await getDocs(q);
+
+                    if (!querySnapshot.empty) {
+                        // On prend le premier utilisateur trouvé avec ce nom
+                        const targetUserDoc = querySnapshot.docs[0].data();
+                        const targetUid = targetUserDoc.uid;
+
+                        // Vérification si on ne se suit pas déjà soi-même ou si l'UID est valide
+                        if (targetUid && targetUid !== window.currentUser.uid) {
+                            window.followFeedback = { type: 'success', msg: `✓ ${val} ajouté !` };
+                            
+                            // Mise à jour de la liste d'amis
+                            await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(targetUid) });
+                            
+                            window.renderSocialFeed();
+                            setTimeout(() => {
+                                window.followFeedback = null;
+                                const el = document.getElementById('follow-success');
+                                if(el) el.classList.add('hidden');
+                            }, 3000);
+                        } else {
+                            // Cas rare : c'est notre propre pseudo
+                            window.followFeedback = { type: 'error', msg: "✕ C'est vous !" };
+                            window.renderSocialFeed();
+                        }
+                    } else {
+                        // Aucun utilisateur trouvé avec ce nom
+                        window.followFeedback = { type: 'error', msg: "✕ Pseudo introuvable" };
+                        window.renderSocialFeed();
+                        setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
+                    }
+                } catch (e) {
+                    console.error("Erreur recherche ami:", e);
+                    window.followFeedback = { type: 'error', msg: "✕ Erreur technique" };
                     window.renderSocialFeed();
-                    setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
                 }
             }
             document.getElementById('follow-id').value = "";
@@ -722,10 +746,11 @@
             const feedbackMsg = window.followFeedback?.msg || '';
             const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
 
+            // --- MODIFICATION ICI : Placeholder changé pour "Pseudo ami..." ---
             const searchBlock = `
                 <div class="relative mb-8">
                     <div class="flex gap-2">
-                        <input id="follow-id" placeholder="ID ami..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium">
+                        <input id="follow-id" placeholder="Pseudo ami..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium">
                         <button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black relative overflow-hidden">
                             Suivre
                         </button>
