@@ -424,7 +424,7 @@
             
             if (newName && newName.trim() !== "") {
                 // Ce code nettoie le nom : garde seulement les lettres, chiffres, tirets et espaces
-                const cleanName = newName.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_]/g, "").trim();
+                const cleanName = newName.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
                 
                 if (cleanName.length < 3) {
                     alert("Le nom doit contenir au moins 3 caractères valides (sans émojis).");
@@ -658,7 +658,7 @@
             
             // 1. Nettoyage : On enlève les émojis et caractères spéciaux de la recherche pour éviter les bugs
             if (val) {
-                val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_]/g, "").trim();
+                val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
             }
 
             if (val && val !== window.userProfile.name) {
