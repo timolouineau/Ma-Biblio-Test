@@ -680,7 +680,7 @@
             window.openPreview({ id: 'manual_'+Date.now(), title, type: document.getElementById('m-type').value, metricValue: parseInt(document.getElementById('m-metric').value) || 0, img: window.tempManualImage || 'https://via.placeholder.com/300x450?text='+title, desc: document.getElementById('m-desc').value, releaseDate: new Date().toISOString() }); 
         };
 
-        // -----------------------------------------------------------
+    // -----------------------------------------------------------
         // H. SOCIAL & FEED FUNCTIONS
         // -----------------------------------------------------------
         
@@ -692,21 +692,35 @@
             const container = document.getElementById('comments-list-container');
             const comments = actData.comments || [];
             
-            let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Soyez le premier à commenter</div>' : '';
+            let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Aucun commentaire</div>' : '';
             
             comments.forEach(c => {
+                 const isMyComment = c.userId === window.currentUser.uid;
+                 const commentLikes = c.likes || [];
+                 const isLiked = commentLikes.includes(window.currentUser.uid);
                  const textWithMentions = c.text.replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
+                 
                  html += `
-                    <div class="flex gap-3 mb-4">
+                    <div class="flex gap-3 mb-4 group">
                         <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0">
-                            ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${c.userName[0]}</div>`}
+                            ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-[10px]">${c.userName[0]}</div>`}
                         </div>
                         <div class="flex-1">
-                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm">
-                                <div class="font-bold text-xs mb-1">${c.userName}</div>
+                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm relative">
+                                <div class="font-bold text-[11px] mb-1 flex justify-between">
+                                    ${c.userName}
+                                    ${isMyComment ? `<button onclick="window.deleteComment('${actId}', ${c.timestamp})" class="text-gray-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+                                </div>
                                 <div class="text-sm text-gray-800 leading-snug">${textWithMentions}</div>
+                                
+                                <button onclick="window.toggleCommentLike('${actId}', ${c.timestamp})" class="absolute -right-2 -bottom-2 w-6 h-6 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center text-[10px] ${isLiked ? 'text-red-500' : 'text-gray-300'}">
+                                    <i class="fa-solid fa-heart"></i>
+                                </button>
                             </div>
-                            <div class="text-[10px] text-gray-400 font-bold mt-1 ml-2">Il y a ${Math.floor((Date.now() - c.timestamp) / 60000)} min</div>
+                            <div class="flex gap-3 items-center mt-1 ml-2">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">${Math.floor((Date.now() - c.timestamp) / 60000)} min</span>
+                                ${commentLikes.length > 0 ? `<span class="text-[9px] text-gray-600 font-black">${commentLikes.length} Like${commentLikes.length > 1 ? 's' : ''}</span>` : ''}
+                            </div>
                         </div>
                     </div>
                  `;
@@ -717,118 +731,60 @@
             document.getElementById('comment-sheet').classList.add('open');
         };
 
-        window.closeCommentSheet = () => {
-             document.getElementById('comment-sheet').classList.remove('open');
-             window.currentCommentActId = null;
-        };
+        window.toggleCommentLike = async (actId, timestamp) => {
+            const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+            const actData = window.socialFeed.find(a => a.id === actId);
+            const comments = [...(actData.comments || [])];
+            const idx = comments.findIndex(c => c.timestamp === timestamp);
+            if (idx === -1) return;
 
-        window.handleMentionInput = (input) => {
-            const val = input.value;
-            const lastWord = val.split(' ').pop();
-            const suggestionBox = document.getElementById('mention-suggestions');
-            
-            if (lastWord.startsWith('@') && lastWord.length > 1) {
-                const search = lastWord.substring(1).toLowerCase();
-                const matches = window.followingData.filter(u => u.name.toLowerCase().includes(search));
-                
-                if (matches.length > 0) {
-                    suggestionBox.style.display = 'block';
-                    suggestionBox.innerHTML = matches.map(u => `
-                        <div class="suggestion-item" onclick="window.insertMention('${u.name}')">
-                            <div class="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">`: ''}</div>
-                            <div class="font-bold text-sm">${u.name}</div>
-                        </div>
-                    `).join('');
-                } else {
-                    suggestionBox.style.display = 'none';
-                }
+            let likes = comments[idx].likes || [];
+            if (likes.includes(window.currentUser.uid)) {
+                likes = likes.filter(id => id !== window.currentUser.uid);
             } else {
-                suggestionBox.style.display = 'none';
+                likes.push(window.currentUser.uid);
+                window.sendNotification(comments[idx].userId, 'like', 'a aimé votre commentaire', actData.itemTitle, actId);
             }
+            comments[idx].likes = likes;
+            await updateDoc(actRef, { comments: comments });
         };
 
-        window.insertMention = (name) => {
-            const input = document.getElementById('comment-modal-input');
-            const parts = input.value.split(' ');
-            parts.pop();
-            parts.push('@' + name + ' ');
-            input.value = parts.join(' ');
-            document.getElementById('mention-suggestions').style.display = 'none';
-            input.focus();
+        window.deleteComment = async (actId, timestamp) => {
+            if (!confirm("Supprimer votre commentaire ?")) return;
+            const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+            const actData = window.socialFeed.find(a => a.id === actId);
+            const filtered = (actData.comments || []).filter(c => c.timestamp !== timestamp);
+            await updateDoc(actRef, { comments: filtered });
         };
 
         window.postCommentFromModal = async () => {
-            if (!window.currentCommentActId) return;
             const input = document.getElementById('comment-modal-input');
             const text = input.value.trim();
-            if(!text) return;
+            if(!text || !window.currentCommentActId) return;
             
             const actData = window.socialFeed.find(a => a.id === window.currentCommentActId);
+            const newComment = { 
+                userId: window.currentUser.uid, 
+                userName: window.userProfile.name, 
+                userAvatar: window.userProfile.avatar || '', 
+                text: text, 
+                timestamp: Date.now(),
+                likes: []
+            };
 
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', window.currentCommentActId), { 
-                comments: arrayUnion({ 
-                    userId: window.currentUser.uid, 
-                    userName: window.userProfile.name, 
-                    userAvatar: window.userProfile.avatar || '', 
-                    text: text, 
-                    timestamp: Date.now() 
-                }) 
+                comments: arrayUnion(newComment) 
             });
 
-            // Envoi des notifications avec l'ID du post
             window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actData.id);
-            
-            const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
-            if (mentions) {
-                mentions.forEach(m => {
-                    const name = m.substring(1);
-                    const user = window.followingData.find(u => u.name === name);
-                    if (user) {
-                        window.sendNotification(user.uid, 'mention', 'vous a mentionné', actData.itemTitle, actData.id);
-                    }
-                });
-            }
-
             input.value = "";
-        };
-
-        window.followUser = async () => {
-            let val = document.getElementById('follow-id').value;
-            if (val) val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
-
-            if (val && val !== window.userProfile.name) {
-                try {
-                    const q = query(collectionGroup(db, 'profile'), where('name', '==', val));
-                    const querySnapshot = await getDocs(q);
-
-                    if (!querySnapshot.empty) {
-                        const targetUserDoc = querySnapshot.docs[0].data();
-                        const targetUid = targetUserDoc.uid;
-
-                        if (targetUid && targetUid !== window.currentUser.uid) {
-                            window.followFeedback = { type: 'success', msg: `✓ ${val} ajouté !` };
-                            await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(targetUid) });
-                            window.renderSocialFeed();
-                            setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
-                        } else {
-                            window.followFeedback = { type: 'error', msg: "✕ C'est vous !" }; window.renderSocialFeed();
-                        }
-                    } else {
-                        window.followFeedback = { type: 'error', msg: "✕ Pseudo introuvable" }; window.renderSocialFeed();
-                    }
-                } catch (e) {
-                    console.error("ERREUR AJOUT AMI :", e);
-                    window.followFeedback = { type: 'error', msg: "✕ Erreur technique" }; window.renderSocialFeed();
-                }
-            }
-            document.getElementById('follow-id').value = "";
         };
 
         window.updateNotifBadge = () => {
             const badge = document.getElementById('notif-badge');
             if (!badge) return;
+            // On compte uniquement les notifs qui n'ont pas encore été lues
             const count = window.extState.notifications.filter(n => !n.read).length;
-
             if(count > 0) {
                 badge.innerText = count > 9 ? '9+' : count;
                 badge.classList.add('active');
@@ -837,113 +793,21 @@
             }
         };
 
-        window.goToActivity = (actId) => {
-            if(!actId) return;
-            window.switchView('friends');
-            
-            // Délai pour laisser le feed charger avant de scroller
-            setTimeout(() => {
-                const el = document.getElementById('act-' + actId);
-                if(el) { 
-                    el.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    // Animation visuelle pour repérer le post
-                    el.style.transition = "transform 0.3s";
-                    el.style.transform = "scale(0.96)";
-                    setTimeout(() => el.style.transform = "scale(1)", 300);
-                }
-            }, 600); 
-        };
-
-        window.renderSocialFeed = () => {
-            const focusedId = document.activeElement ? document.activeElement.id : null;
-            const focusedVal = focusedId ? document.activeElement.value : null;
-
-            const container = document.getElementById('main-content');
-            const feedbackActive = window.followFeedback !== null;
-            const feedbackMsg = window.followFeedback?.msg || '';
-            const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
-
-            const searchBlock = `
-                <div class="relative mb-8">
-                    <div class="flex gap-2">
-                        <input id="follow-id" placeholder="Pseudo ami..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium">
-                        <button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black relative overflow-hidden">Suivre</button>
-                    </div>
-                    <div id="follow-success" class="${feedbackActive ? '' : 'hidden'} absolute -bottom-6 left-0 ${feedbackColor} text-[10px] font-black uppercase tracking-wider">${feedbackMsg}</div>
-                </div>
-            `;
-
-            let feedHtml = '';
-            
-            window.socialFeed.forEach(act => {
-                const likes = act.likes || [];
-                const isLiked = likes.includes(window.currentUser.uid);
-                const commentsCount = (act.comments || []).length;
-                let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : '';
-
-                feedHtml += `
-                <div class="activity-card relative" id="act-${act.id}">
-                    ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>` : ''}
-                    
-                    <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
-                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden border border-gray-100">
-                            ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="font-black text-sm hover:underline">${act.userName}</span>
-                            <span class="text-[9px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview({"id":"${act.type}_ext","title":"${act.itemTitle}","img":"${act.itemImg}","type":"${act.type}","desc":"Vu par ${act.userName}"})'>
-                        <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200 shadow-sm">
-                        <div class="flex-1">
-                            <div class="font-black text-xs mb-1">${act.itemTitle}</div>
-                            <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
-                            <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-6 mt-4 mb-2 px-2">
-                        <button onclick="window.toggleLike('${act.id}')" class="text-2xl transition-transform active:scale-75 ${isLiked ? 'like-bounce' : 'text-gray-400'}">
-                            <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
-                        </button>
-                        <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400">
-                            <i class="fa-regular fa-comment"></i>
-                        </button>
-                    </div>
-
-                    <div class="px-2 mb-2">
-                        <div class="text-xs font-bold text-gray-800">${likesText}</div>
-                        ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
-                    </div>
-                </div>`
-            });
-
-            container.innerHTML = `<div class="pt-20 px-5 pb-32"><h1 class="text-4xl font-black mb-6">Amis</h1>
-            ${searchBlock}
-            ${feedHtml}
-            </div>`;
-
-            if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); } }
-        };
-
         window.openNotifications = async () => {
             window.currentView = 'notifications';
             document.getElementById('app-header').style.display = 'none'; 
             
-            // Remise à zéro immédiate du badge visuel
+            // 1. On cache le badge visuellement
             const badge = document.getElementById('notif-badge');
-            if(badge) {
-                badge.innerText = '0';
-                badge.classList.remove('active');
-            }
+            if(badge) badge.classList.remove('active');
             
-            // On marque localement comme lu pour éviter que le badge revienne au prochain chargement
-            window.extState.notifications.forEach(n => n.read = true);
+            // 2. On marque TOUTES les notifs comme lues en base de données pour l'utilisateur
+            const notifCol = collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications');
+            const unreadSnap = await getDocs(query(notifCol, where('read', '==', false)));
+            unreadSnap.forEach(d => updateDoc(d.ref, { read: true }));
 
             const container = document.getElementById('main-content');
-            const notifs = window.extState.notifications; 
+            const notifs = [...window.extState.notifications].sort((a,b) => b.time - a.time); 
 
             container.innerHTML = `
                 <div class="pt-10 px-6 pb-32">
@@ -951,20 +815,71 @@
                         <button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
                         <h1 class="text-3xl font-black">Activité</h1>
                     </div>
-                    ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
+                    ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Aucune activité</div>' : ''}
                     ${notifs.map(n => `
                         <div class="notif-item cursor-pointer" onclick="window.goToActivity('${n.actId}')">
                             <div class="notif-icon ${n.type === 'like' ? 'text-red-500' : 'text-blue-600'}">
-                                ${n.type === 'like' ? '<i class="fa-solid fa-heart"></i>' : (n.type === 'mention' ? '<i class="fa-solid fa-at"></i>' : '<i class="fa-solid fa-comment"></i>')}
+                                <i class="fa-solid ${n.type === 'like' ? 'fa-heart' : 'fa-comment'}"></i>
                             </div>
                             <div class="flex-1">
                                 <div class="text-sm"><span class="font-black">${n.user}</span> ${n.text}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.itemTitle || 'un post'} • ${new Date(n.time).toLocaleDateString()}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">${n.itemTitle || ''} • ${new Date(n.time).toLocaleDateString()}</div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
             `;
+        };
+
+        window.renderSocialFeed = () => {
+            const container = document.getElementById('main-content');
+            let feedHtml = '';
+            
+            window.socialFeed.forEach(act => {
+                const isLiked = (act.likes || []).includes(window.currentUser.uid);
+                const commentsCount = (act.comments || []).length;
+
+                feedHtml += `
+                <div class="activity-card" id="act-${act.id}">
+                    <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
+                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden border">
+                            ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : act.userName[0]}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-black text-sm">${act.userName}</span>
+                            <span class="text-[9px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview({"id":"${act.type}_ext","title":"${act.itemTitle}","img":"${act.itemImg}","type":"${act.type}"})'>
+                        <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover shadow-sm">
+                        <div class="flex-1 pt-1">
+                            <div class="font-black text-xs">${act.itemTitle}</div>
+                            <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
+                            <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 mt-4 px-2">
+                        <button onclick="window.toggleLike('${act.id}')" class="text-2xl ${isLiked ? 'text-red-500' : 'text-gray-400'}"><i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i></button>
+                        <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400"><i class="fa-regular fa-comment"></i></button>
+                    </div>
+                    <div class="px-2 mt-2">
+                        <div class="text-[11px] font-bold text-gray-800">${(act.likes || []).length} J'aime</div>
+                        ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = `<div class="pt-20 px-5 pb-32"><h1 class="text-4xl font-black mb-6">Amis</h1>
+            <div class="flex gap-2 mb-8"><input id="follow-id" placeholder="Pseudo..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium"><button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black">Suivre</button></div>
+            ${feedHtml}</div>`;
+        };
+
+        window.goToActivity = (actId) => {
+            window.switchView('friends');
+            setTimeout(() => {
+                const el = document.getElementById('act-' + actId);
+                if(el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }, 500);
         };
 
         // -----------------------------------------------------------
