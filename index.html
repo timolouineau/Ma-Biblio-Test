@@ -204,7 +204,13 @@
                         <span class="font-bold">Non daté</span>
                         <input type="checkbox" id="no-date-toggle" class="w-6 h-6 rounded-md accent-blue-600" onchange="window.toggleDateInput(this)">
                     </div>
+                    <div class="ios-cell border-t border-gray-100">
+                        <span class="font-bold">Vu sur / Lu sur</span>
+                        <select id="platform-select" class="bg-transparent text-blue-600 font-bold outline-none text-right dir-rtl appearance-none pr-2">
+                            </select>
+                    </div>
                 </div>
+
                 <div class="flex items-center justify-between p-4 bg-white rounded-xl mb-4"><div class="flex items-center gap-3"><i class="fa-solid fa-earth-europe text-blue-500"></i><span class="font-bold">Partager</span></div><input type="checkbox" id="share-toggle" checked class="w-6 h-6"></div>
                 <textarea id="rating-comment" class="w-full bg-white border border-gray-200 rounded-2xl p-4 h-32 outline-none text-base font-medium" placeholder="Qu'en avez-vous pensé ?"></textarea>
             </div>
@@ -526,7 +532,8 @@
             reader.readAsDataURL(file);
         };
 
-        window.saveItem = async (status, rating, comment, finishDate, metricValue, shouldShare) => {
+        // MODIFICATION : Ajout de l'argument 'platform' à la fin
+        window.saveItem = async (status, rating, comment, finishDate, metricValue, shouldShare, platform) => {
             if (!window.currentUser || !window.tempItem) return;
             try {
                 const finalDate = finishDate || ''; 
@@ -537,7 +544,8 @@
                     rating: rating || null, 
                     comment: comment || '', 
                     finishDate: finalDate, 
-                    metricValue: parseInt(metricValue) || 0, 
+                    metricValue: parseInt(metricValue) || 0,
+                    platform: platform || '', // Enregistrement dans l'objet item
                     lastUpdate: Date.now() 
                 };
 
@@ -545,17 +553,17 @@
                 await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId), item);
                 
                 if (shouldShare && status !== 'Wishlist' && status !== 'En cours') {
-                    // MODIFICATION : On enregistre aussi le résumé (itemDesc) dans l'activité publique
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), {
                         userId: window.currentUser.uid, 
                         userName: window.userProfile.name, 
                         userAvatar: window.userProfile.avatar,
                         itemTitle: item.title, 
                         itemImg: item.img, 
-                        itemDesc: item.desc || '', // <--- AJOUT ICI
+                        itemDesc: item.desc || '',
                         type: item.type, 
                         rating, 
                         metricValue: item.metricValue, 
+                        platform: platform || '', // Enregistrement dans l'activité publique
                         comment: comment || '', 
                         timestamp: Date.now(), 
                         comments: [], 
@@ -660,7 +668,7 @@
             window.refreshCurrentView();
         };
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // G. GESTION DES MODALES (RECHERCHE, MANUAL, PREVIEW)
         // -----------------------------------------------------------
         window.openSearchModal = () => document.getElementById('search-modal').classList.add('open');
@@ -692,62 +700,104 @@
             document.getElementById('preview-modal').classList.add('open'); 
             const showDelete = item.docId ? true : false;
             
+            const isEdited = item.rating || item.status === 'Vu' || item.status === 'Lu';
+            const actionText = isEdited ? "Modifier ma note" : CONFIG[item.type].action;
+
+            let commentHtml = '';
+            if (item.comment && item.comment.trim() !== '') {
+                commentHtml = `
+                    <div class="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl mb-8 text-left border border-white/5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-quote-left text-blue-500"></i>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mon Avis</span>
+                        </div>
+                        <p class="text-white font-medium text-sm italic leading-relaxed">"${item.comment}"</p>
+                    </div>`;
+            }
+
+            const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${item.platform}</span>` : '';
+
             document.getElementById('preview-content').innerHTML = `
                 <div class="px-6 pt-24 pb-20 flex flex-col items-center">
                     <img src="${item.img || ''}" class="w-44 h-64 rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
                     <h2 class="text-2xl font-black mb-2 text-center text-white">${item.title}</h2>
-                    <p class="text-blue-400 font-bold mb-6 text-sm uppercase">${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric}</p>
+                    <p class="text-blue-400 font-bold mb-6 text-sm uppercase">
+                        ${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric} ${platformBadge}
+                    </p>
+                    
                     <div class="w-full space-y-3 mb-8">
-                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white">${CONFIG[item.type].action}</button>
-                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white">En cours</button>` : ''}
-                        <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white">Plus tard (Wishlist)</button>
-                        ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/20 p-4 rounded-[20px] font-bold text-red-500 mt-4">Supprimer de ma collection</button>` : ''}
+                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20">${actionText}</button>
+                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}
+                        <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>
+                        ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}
                     </div>
-                    <div class="w-full text-gray-400 text-sm leading-relaxed">${item.desc || "Aucun résumé."}</div>
+
+                    ${commentHtml}
+
+                    <div class="w-full text-gray-400 text-sm leading-relaxed text-justify">${item.desc || "Aucun résumé."}</div>
                 </div>`; 
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
         
-        // MODIFICATION START : Ajout de la logique de reset pour le toggle "Non daté"
         window.openNotation = () => { 
             document.getElementById('rating-sheet').classList.add('open'); 
             document.getElementById('sheet-poster').src = window.tempItem.img; 
             document.getElementById('sheet-title').innerText = window.tempItem.title; 
             
-            // Réinitialisation des champs date et toggle
+            // --- MODIFICATION : Listes nettoyées (sans émojis) ---
+            const platformSelect = document.getElementById('platform-select');
+            let options = [];
+            
+            if (window.tempItem.type === 'Livre') {
+                options = ['Physique', 'Liseuse', 'Audio', 'Tablette', 'Autre'];
+            } else {
+                // Films & Séries
+                options = ['Netflix', 'Prime Video', 'Disney+', 'Canal+', 'Apple TV+', 'Cinéma', 'Physique (DVD/BR)', 'Streaming', 'TV', 'Autre'];
+            }
+            
+            platformSelect.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
+            if(window.tempItem.platform) platformSelect.value = window.tempItem.platform;
+            // -----------------------------------------------------
+
             const dateInput = document.getElementById('finish-date-input');
             const noDateToggle = document.getElementById('no-date-toggle');
+            const shareToggle = document.getElementById('share-toggle');
             
-            if (noDateToggle) noDateToggle.checked = false;
-            if (dateInput) {
-                dateInput.value = new Date().toISOString().split('T')[0];
-                dateInput.disabled = false;
-                dateInput.style.opacity = '1';
+            if (window.tempItem.finishDate === "") {
+                if(noDateToggle) noDateToggle.checked = true;
+                if(dateInput) { dateInput.value = ""; dateInput.disabled = true; dateInput.style.opacity = '0.3'; }
+            } else if (window.tempItem.finishDate) {
+                if(noDateToggle) noDateToggle.checked = false;
+                if(dateInput) { dateInput.value = window.tempItem.finishDate; dateInput.disabled = false; dateInput.style.opacity = '1'; }
+            } else {
+                if(noDateToggle) noDateToggle.checked = false;
+                if(dateInput) { dateInput.value = new Date().toISOString().split('T')[0]; dateInput.disabled = false; dateInput.style.opacity = '1'; }
             }
 
-            document.getElementById('rating-comment').value = "";
-            window.updateRatingUI(8); 
+            const initialRating = window.tempItem.rating || 8;
+            window.updateRatingUI(initialRating);
+            document.getElementById('rating-comment').value = window.tempItem.comment || "";
+            if(shareToggle) shareToggle.checked = !window.tempItem.docId; 
         };
-        // MODIFICATION END
 
         window.closeRatingSheet = () => document.getElementById('rating-sheet').classList.remove('open');
         
-        // MODIFICATION START : Prise en compte de la case cochée pour l'envoi
         window.confirmSave = () => {
             const isNoDate = document.getElementById('no-date-toggle').checked;
             const dateValue = isNoDate ? "" : document.getElementById('finish-date-input').value;
+            const platformValue = document.getElementById('platform-select').value;
 
             window.saveItem(
                 CONFIG[window.tempItem.type].statuses[0], 
                 currentRating, 
                 document.getElementById('rating-comment').value, 
-                dateValue, // On envoie soit la date, soit vide
+                dateValue, 
                 window.tempItem.metricValue || 0, 
-                document.getElementById('share-toggle').checked
+                document.getElementById('share-toggle').checked,
+                platformValue 
             );
         };
-        // MODIFICATION END
         
         window.handleManualImageUpload = (event) => {
             const file = event.target.files[0];
@@ -768,7 +818,7 @@
             window.openPreview({ id: 'manual_'+Date.now(), title, type: document.getElementById('m-type').value, metricValue: parseInt(document.getElementById('m-metric').value) || 0, img: window.tempManualImage || 'https://via.placeholder.com/300x450?text='+title, desc: document.getElementById('m-desc').value, releaseDate: new Date().toISOString() }); 
         };
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // H. SOCIAL & FEED FUNCTIONS
         // -----------------------------------------------------------
         
@@ -1002,18 +1052,20 @@
                     facesHtml += '</div>';
                 }
 
-                // MODIFICATION : Construction de l'objet Preview complet avec Résumé et Métrique
                 const previewData = {
                     id: act.id + '_public',
                     title: act.itemTitle,
                     img: act.itemImg,
                     type: act.type,
-                    metricValue: act.metricValue || 0, // Transmission de la métrique
-                    desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`, // Fallback si pas de résumé
+                    metricValue: act.metricValue || 0,
+                    desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`,
+                    platform: act.platform, // Transmission de la plateforme au preview
                     releaseDate: null 
                 };
-                // Sécurisation des guillemets pour l'attribut HTML
                 const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
+
+                // AJOUT : Affichage de la plateforme dans la carte sociale
+                const platformBadge = act.platform ? `<span class="ml-2 opacity-50 font-normal text-[10px]">• ${act.platform}</span>` : '';
 
                 feedHtml += `
                 <div class="activity-card relative" id="act-${act.id}">
@@ -1025,7 +1077,10 @@
                         </div>
                         <div class="flex flex-col">
                             <span class="font-black text-sm hover:underline">${act.userName}</span>
-                            <span class="text-[9px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
+                            <div class="text-[9px] text-gray-400 font-bold uppercase flex items-center">
+                                ${new Date(act.timestamp).toLocaleDateString()}
+                                ${platformBadge}
+                            </div>
                         </div>
                     </div>
 
