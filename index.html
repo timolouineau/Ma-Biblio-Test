@@ -205,9 +205,8 @@
                         <input type="checkbox" id="no-date-toggle" class="w-6 h-6 rounded-md accent-blue-600" onchange="window.toggleDateInput(this)">
                     </div>
                     <div class="ios-cell border-t border-gray-100">
-                        <span class="font-bold">Vu sur / Lu sur</span>
-                        <select id="platform-select" class="bg-transparent text-blue-600 font-bold outline-none text-right dir-rtl appearance-none pr-2">
-                            </select>
+                        <span class="font-bold" id="platform-label">Vu sur</span>
+                        <select id="platform-select" class="flex-1 bg-transparent text-blue-600 font-bold outline-none text-right appearance-none pl-4"></select>
                     </div>
                 </div>
 
@@ -237,6 +236,35 @@
     <div id="public-profile-modal" class="modal overflow-y-auto">
         <div onclick="window.closePublicProfile()" class="back-btn-float"><i class="fa-solid fa-arrow-left"></i></div>
         <div id="public-profile-content"></div>
+    </div>
+
+    <div id="feedback-modal" class="modal flex flex-col">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
+            <h2 class="text-xl font-black">Contact & Feedback</h2>
+            <button onclick="window.closeFeedbackModal()" class="text-blue-600 font-bold">Annuler</button>
+        </div>
+        <div class="p-6 flex-1 bg-gray-50">
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">Une idée ? Un bug ? Une suggestion ? Envoyez-moi un message directement ici.</p>
+            
+            <div class="bg-white rounded-2xl p-4 shadow-sm mb-4">
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Objet</label>
+                    <select id="fb-object" class="w-full bg-gray-50 p-3 rounded-xl font-bold outline-none border border-transparent focus:border-blue-500 text-sm">
+                        <option value="Suggestion">💡 Suggestion d'amélioration</option>
+                        <option value="Bug">🪲 Signaler un Bug</option>
+                        <option value="Avis">⭐️ Avis sur l'app</option>
+                        <option value="Autre">✉️ Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Message</label>
+                    <textarea id="fb-message" class="w-full bg-gray-50 p-3 rounded-xl font-medium outline-none border border-transparent focus:border-blue-500 h-32 text-sm" placeholder="Décrivez votre idée..."></textarea>
+                </div>
+            </div>
+
+            <button onclick="window.sendFeedback()" id="fb-send-btn" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-200">Envoyer</button>
+            <div id="fb-status" class="text-center mt-4 text-sm font-bold text-gray-400 hidden">Envoi en cours...</div>
+        </div>
     </div>
 
     <script type="module">
@@ -669,7 +697,7 @@
         };
 
        // -----------------------------------------------------------
-        // G. GESTION DES MODALES (RECHERCHE, MANUAL, PREVIEW)
+        // G. GESTION DES MODALES (RECHERCHE, MANUAL, PREVIEW, FEEDBACK)
         // -----------------------------------------------------------
         window.openSearchModal = () => document.getElementById('search-modal').classList.add('open');
         window.closeSearchModal = () => { document.getElementById('search-modal').classList.remove('open'); document.getElementById('search-input').value = ""; document.getElementById('search-results').innerHTML = ""; };
@@ -678,21 +706,58 @@
         window.handleSearch = async (val) => { 
             if (val.length < 3) return; 
             let results = []; 
+            
             if (searchType === 'Livre') { 
                 const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10`); 
                 const d = await r.json(); 
-                results = (d.items || []).map(b => ({ id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), desc: b.volumeInfo.description || "", type: 'Livre', releaseDate: b.volumeInfo.publishedDate, metricValue: b.volumeInfo.pageCount || 0 })); 
+                results = (d.items || []).map(b => ({ 
+                    id: b.id, 
+                    title: b.volumeInfo.title, 
+                    img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
+                    desc: b.volumeInfo.description || "", 
+                    type: 'Livre', 
+                    releaseDate: b.volumeInfo.publishedDate, 
+                    metricValue: b.volumeInfo.pageCount || 0,
+                    author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
+                })); 
             } else { 
                 const ep = searchType === 'Film' ? 'movie' : 'tv'; 
                 const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
                 const d = await r.json(); 
+                
                 results = await Promise.all((d.results || []).map(async m => { 
-                    const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR`); 
+                    const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
                     const details = await dr.json(); 
-                    return { id: m.id, title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', desc: m.overview || "", type: searchType, releaseDate: m.release_date || m.first_air_date, metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0) }; 
+                    
+                    let author = "";
+                    let cast = "";
+
+                    if (details.credits) {
+                        if (details.credits.cast && details.credits.cast.length > 0) {
+                            cast = details.credits.cast.slice(0, 4).map(c => c.name).join(', ');
+                        }
+                        if (searchType === 'Film' && details.credits.crew) {
+                            const director = details.credits.crew.find(x => x.job === 'Director');
+                            if(director) author = director.name;
+                        } else if (searchType === 'Série' && details.created_by && details.created_by.length > 0) {
+                            author = details.created_by.map(c => c.name).join(', ');
+                        }
+                    }
+
+                    return { 
+                        id: m.id, 
+                        title: m.title || m.name, 
+                        img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
+                        desc: m.overview || "", 
+                        type: searchType, 
+                        releaseDate: m.release_date || m.first_air_date, 
+                        metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0),
+                        author: author,
+                        cast: cast
+                    }; 
                 })); 
             } 
-            document.getElementById('search-results').innerHTML = results.map(i => `<div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200"><div class="flex-1 font-black text-xs">${i.title}</div></div>`).join(''); 
+            document.getElementById('search-results').innerHTML = results.map(i => `<div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200"><div class="flex-1 font-black text-xs">${i.title}<div class="text-[10px] text-gray-400 font-normal mt-0.5">${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''}</div></div></div>`).join(''); 
         };
 
         window.openPreview = (item) => { 
@@ -716,6 +781,42 @@
             }
 
             const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${item.platform}</span>` : '';
+            
+            // --- Construction du Bloc Info "Propre" ---
+            const year = item.releaseDate ? item.releaseDate.split('-')[0] : 'Inconnue';
+            let metaInfos = '';
+
+            // On affiche ce bloc seulement si on a des infos intéressantes (Auteur ou Casting)
+            if (item.author || item.cast) {
+                metaInfos = `
+                <div class="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10 flex flex-col gap-3 text-left">
+                    <div class="flex justify-between items-start gap-4">
+                        <div class="flex-1">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">
+                                <i class="fa-solid ${item.type === 'Livre' ? 'fa-pen-nib' : 'fa-video'} mr-1"></i> ${item.type === 'Livre' ? 'Auteur' : 'De'}
+                            </div>
+                            <div class="text-sm font-bold text-white leading-tight">${item.author || 'Inconnu'}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">
+                                <i class="fa-solid fa-calendar-day mr-1"></i> Année
+                            </div>
+                            <div class="text-sm font-bold text-white">${year}</div>
+                        </div>
+                    </div>
+                    ${item.cast ? `
+                    <div class="pt-3 border-t border-white/10">
+                        <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">
+                            <i class="fa-solid fa-users mr-1"></i> Avec
+                        </div>
+                        <div class="text-xs text-gray-300 leading-snug">${item.cast}</div>
+                    </div>` : ''}
+                </div>`;
+            } else {
+                // Fallback minimal si pas de données riches (pour garder l'ancien style)
+                metaInfos = `<div class="mb-6 text-gray-400 font-bold text-xs uppercase">Sortie en ${year}</div>`;
+            }
+            // -------------------------------------------
 
             document.getElementById('preview-content').innerHTML = `
                 <div class="px-6 pt-24 pb-20 flex flex-col items-center">
@@ -725,6 +826,8 @@
                         ${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric} ${platformBadge}
                     </p>
                     
+                    ${metaInfos}
+
                     <div class="w-full space-y-3 mb-8">
                         <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20">${actionText}</button>
                         ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}
@@ -745,20 +848,20 @@
             document.getElementById('sheet-poster').src = window.tempItem.img; 
             document.getElementById('sheet-title').innerText = window.tempItem.title; 
             
-            // --- MODIFICATION : Listes nettoyées (sans émojis) ---
+            const platformLabel = document.getElementById('platform-label');
             const platformSelect = document.getElementById('platform-select');
             let options = [];
             
             if (window.tempItem.type === 'Livre') {
+                if(platformLabel) platformLabel.innerText = "Lu sur";
                 options = ['Physique', 'Liseuse', 'Audio', 'Tablette', 'Autre'];
             } else {
-                // Films & Séries
+                if(platformLabel) platformLabel.innerText = "Vu sur";
                 options = ['Netflix', 'Prime Video', 'Disney+', 'Canal+', 'Apple TV+', 'Cinéma', 'Physique (DVD/BR)', 'Streaming', 'TV', 'Autre'];
             }
             
             platformSelect.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
             if(window.tempItem.platform) platformSelect.value = window.tempItem.platform;
-            // -----------------------------------------------------
 
             const dateInput = document.getElementById('finish-date-input');
             const noDateToggle = document.getElementById('no-date-toggle');
@@ -816,6 +919,67 @@
             const title = document.getElementById('m-title').value; 
             if (!title) return alert("Saisir un titre."); 
             window.openPreview({ id: 'manual_'+Date.now(), title, type: document.getElementById('m-type').value, metricValue: parseInt(document.getElementById('m-metric').value) || 0, img: window.tempManualImage || 'https://via.placeholder.com/300x450?text='+title, desc: document.getElementById('m-desc').value, releaseDate: new Date().toISOString() }); 
+        };
+
+        window.openFeedbackModal = () => {
+            document.getElementById('feedback-modal').classList.add('open');
+            document.getElementById('fb-message').value = "";
+            document.getElementById('fb-status').classList.add('hidden');
+        };
+
+        window.closeFeedbackModal = () => {
+            document.getElementById('feedback-modal').classList.remove('open');
+        };
+
+        window.sendFeedback = async () => {
+            const object = document.getElementById('fb-object').value;
+            const message = document.getElementById('fb-message').value;
+            const statusDiv = document.getElementById('fb-status');
+            const btn = document.getElementById('fb-send-btn');
+
+            if (!message || message.trim() === "") {
+                alert("Merci d'écrire un message avant d'envoyer.");
+                return;
+            }
+
+            statusDiv.innerText = "Envoi en cours...";
+            statusDiv.classList.remove('hidden');
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+
+            try {
+                const response = await fetch("https://formsubmit.co/ajax/timo.appstudio@gmail.com", {
+                    method: "POST",
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        _subject: `MaBiblio: ${object} de ${window.userProfile.name}`,
+                        Objet: object,
+                        Utilisateur: window.userProfile.name + " (UID: " + window.currentUser.uid + ")",
+                        Message: message
+                    })
+                });
+
+                if (response.ok) {
+                    statusDiv.innerText = "Message envoyé avec succès ! Merci.";
+                    statusDiv.classList.add('text-green-500');
+                    setTimeout(() => {
+                        window.closeFeedbackModal();
+                        btn.disabled = false;
+                        btn.style.opacity = "1";
+                    }, 2000);
+                } else {
+                    throw new Error("Erreur serveur");
+                }
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerText = "Erreur lors de l'envoi. Réessayez.";
+                statusDiv.classList.add('text-red-500');
+                btn.disabled = false;
+                btn.style.opacity = "1";
+            }
         };
 
        // -----------------------------------------------------------
@@ -1329,6 +1493,13 @@
                     </div>
 
                     <div class="ios-group !mx-0 mt-8">
+                        <div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()">
+                            <span class="font-bold text-sm">Nous contacter / Feedback</span>
+                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                        </div>
+                    </div>
+
+                    <div class="ios-group !mx-0 mt-4">
                         <div class="ios-cell py-4 cursor-pointer" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div>
                     </div>
                 </div>`;
