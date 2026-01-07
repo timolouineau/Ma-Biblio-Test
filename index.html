@@ -102,76 +102,6 @@
         .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
         .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
         .suggestion-item:last-child { border-bottom: none; }
-        /* --- EXTENSIONS MABIBILIO V2 --- */
-
-/* 1. Badges Plateformes */
-.platform-badge {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 9px;
-    font-weight: 800;
-    color: white;
-    text-transform: uppercase;
-    z-index: 2;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-}
-.plat-netflix { background: #E50914; }
-.plat-prime { background: #00A8E1; }
-.plat-disney { background: #113CCF; }
-.plat-apple { background: #000000; }
-.plat-physique { background: #34C759; } /* Vert pour 'je l'ai' */
-
-/* 2. Pile de Likes (Avatars) */
-.likes-stack {
-    display: flex;
-    align-items: center;
-    margin-right: 8px;
-}
-.likes-stack img {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid white;
-    margin-left: -8px; /* Chevauchement */
-    object-fit: cover;
-}
-.likes-stack img:first-child { margin-left: 0; }
-
-/* 3. Bouton Non Daté & Toggle */
-.date-row { display: flex; align-items: center; gap: 10px; }
-.toggle-undated {
-    background: #E5E5EA;
-    padding: 8px 12px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #8E8E93;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-}
-.toggle-undated.active {
-    background: #007AFF;
-    color: white;
-}
-
-/* 4. Section Abonnés */
-.followers-section {
-    padding: 20px;
-    background: white;
-    margin-top: 10px;
-}
-.follower-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 0.5px solid #F2F2F7;
-}
     </style>
 </head>
 <body>
@@ -265,7 +195,16 @@
                     <div class="flex items-center gap-2" style="position:relative; z-index:10"><span class="text-orange-500"><i class="fa-solid fa-star"></i></span><span class="rating-label" id="rating-val-ui">8</span><span class="text-gray-300 text-2xl">/ 10</span></div>
                 </div>
 
-                <div class="ios-group !mx-0"><div class="ios-cell"><span class="font-bold">Date de fin</span><input type="date" id="finish-date-input" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div></div>
+                <div class="ios-group !mx-0">
+                    <div class="ios-cell">
+                        <span class="font-bold">Date de fin</span>
+                        <input type="date" id="finish-date-input" class="bg-transparent text-blue-600 font-bold outline-none text-right">
+                    </div>
+                    <div class="ios-cell border-t border-gray-100">
+                        <span class="font-bold">Non daté</span>
+                        <input type="checkbox" id="no-date-toggle" class="w-6 h-6 rounded-md accent-blue-600" onchange="window.toggleDateInput(this)">
+                    </div>
+                </div>
                 <div class="flex items-center justify-between p-4 bg-white rounded-xl mb-4"><div class="flex items-center gap-3"><i class="fa-solid fa-earth-europe text-blue-500"></i><span class="font-bold">Partager</span></div><input type="checkbox" id="share-toggle" checked class="w-6 h-6"></div>
                 <textarea id="rating-comment" class="w-full bg-white border border-gray-200 rounded-2xl p-4 h-32 outline-none text-base font-medium" placeholder="Qu'en avez-vous pensé ?"></textarea>
             </div>
@@ -590,14 +529,38 @@
         window.saveItem = async (status, rating, comment, finishDate, metricValue, shouldShare) => {
             if (!window.currentUser || !window.tempItem) return;
             try {
-                const item = { ...window.tempItem, status, rating: rating || null, comment: comment || '', finishDate: finishDate || '', metricValue: parseInt(metricValue) || 0, lastUpdate: Date.now() };
+                const finalDate = finishDate || ''; 
+
+                const item = { 
+                    ...window.tempItem, 
+                    status, 
+                    rating: rating || null, 
+                    comment: comment || '', 
+                    finishDate: finalDate, 
+                    metricValue: parseInt(metricValue) || 0, 
+                    lastUpdate: Date.now() 
+                };
+
                 const docId = item.docId || ((item.id || 'manual_' + Date.now()) + '_' + item.type);
                 await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId), item);
+                
                 if (shouldShare && status !== 'Wishlist' && status !== 'En cours') {
+                    // MODIFICATION : On enregistre aussi le résumé (itemDesc) dans l'activité publique
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), {
-                        userId: window.currentUser.uid, userName: window.userProfile.name, userAvatar: window.userProfile.avatar,
-                        itemTitle: item.title, itemImg: item.img, type: item.type, rating, metricValue: item.metricValue, 
-                        comment: comment || '', timestamp: Date.now(), comments: [], reactions: {}, likes: []
+                        userId: window.currentUser.uid, 
+                        userName: window.userProfile.name, 
+                        userAvatar: window.userProfile.avatar,
+                        itemTitle: item.title, 
+                        itemImg: item.img, 
+                        itemDesc: item.desc || '', // <--- AJOUT ICI
+                        type: item.type, 
+                        rating, 
+                        metricValue: item.metricValue, 
+                        comment: comment || '', 
+                        timestamp: Date.now(), 
+                        comments: [], 
+                        reactions: {}, 
+                        likes: []
                     });
                 }
                 window.closeRatingSheet(); window.closePreview(); window.closeSearchModal(); window.closeManualModal(); window.switchView('home');
@@ -638,6 +601,16 @@
             const fillUi = document.getElementById('rating-fill-ui');
             if(valUi) valUi.innerText = currentRating; 
             if(fillUi) fillUi.style.width = (currentRating * 10) + '%'; 
+        };
+
+        window.toggleDateInput = (checkbox) => {
+            const dateInput = document.getElementById('finish-date-input');
+            if(!dateInput) return;
+            if (checkbox.checked) {
+                dateInput.value = ''; dateInput.disabled = true; dateInput.style.opacity = '0.3';
+            } else {
+                dateInput.disabled = false; dateInput.style.opacity = '1'; dateInput.valueAsDate = new Date();
+            }
         };
 
         window.unfollowUser = async (id) => { if (confirm("Ne plus suivre ?")) await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayRemove(id) }); };
@@ -735,16 +708,46 @@
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+        
+        // MODIFICATION START : Ajout de la logique de reset pour le toggle "Non daté"
         window.openNotation = () => { 
             document.getElementById('rating-sheet').classList.add('open'); 
             document.getElementById('sheet-poster').src = window.tempItem.img; 
             document.getElementById('sheet-title').innerText = window.tempItem.title; 
-            document.getElementById('finish-date-input').value = new Date().toISOString().split('T')[0]; 
+            
+            // Réinitialisation des champs date et toggle
+            const dateInput = document.getElementById('finish-date-input');
+            const noDateToggle = document.getElementById('no-date-toggle');
+            
+            if (noDateToggle) noDateToggle.checked = false;
+            if (dateInput) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+                dateInput.disabled = false;
+                dateInput.style.opacity = '1';
+            }
+
             document.getElementById('rating-comment').value = "";
             window.updateRatingUI(8); 
         };
+        // MODIFICATION END
+
         window.closeRatingSheet = () => document.getElementById('rating-sheet').classList.remove('open');
-        window.confirmSave = () => window.saveItem(CONFIG[window.tempItem.type].statuses[0], currentRating, document.getElementById('rating-comment').value, document.getElementById('finish-date-input').value, window.tempItem.metricValue || 0, document.getElementById('share-toggle').checked);
+        
+        // MODIFICATION START : Prise en compte de la case cochée pour l'envoi
+        window.confirmSave = () => {
+            const isNoDate = document.getElementById('no-date-toggle').checked;
+            const dateValue = isNoDate ? "" : document.getElementById('finish-date-input').value;
+
+            window.saveItem(
+                CONFIG[window.tempItem.type].statuses[0], 
+                currentRating, 
+                document.getElementById('rating-comment').value, 
+                dateValue, // On envoie soit la date, soit vide
+                window.tempItem.metricValue || 0, 
+                document.getElementById('share-toggle').checked
+            );
+        };
+        // MODIFICATION END
         
         window.handleManualImageUpload = (event) => {
             const file = event.target.files[0];
@@ -787,12 +790,12 @@
                  
                  html += `
                     <div class="flex gap-3 mb-4">
-                        <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0 cursor-pointer" onclick="window.goToProfileFromComment('${c.userId}')">
                             ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${c.userName[0]}</div>`}
                         </div>
                         <div class="flex-1">
                             <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm relative group">
-                                <div class="font-bold text-xs mb-1">${c.userName}</div>
+                                <div class="font-bold text-xs mb-1 cursor-pointer hover:underline" onclick="window.goToProfileFromComment('${c.userId}')">${c.userName}</div>
                                 <div class="text-sm text-gray-800 leading-snug">${textWithMentions}</div>
                                 
                                 <div class="flex items-center justify-end gap-3 mt-2 border-t pt-2 border-gray-100">
@@ -810,12 +813,16 @@
             });
             
             container.innerHTML = html;
-            // Scroll en bas seulement à l'ouverture initiale
             if(!container.getAttribute('data-loaded')) {
                 container.scrollTop = container.scrollHeight;
                 container.setAttribute('data-loaded', 'true');
             }
             document.getElementById('comment-sheet').classList.add('open');
+        };
+
+        window.goToProfileFromComment = (uid) => {
+            window.closeCommentSheet();
+            setTimeout(() => { window.openPublicProfile(uid); }, 100);
         };
 
         window.closeCommentSheet = () => {
@@ -874,11 +881,10 @@
                     userAvatar: window.userProfile.avatar || '', 
                     text: text, 
                     timestamp: Date.now(),
-                    likes: [] // Initialisation likes
+                    likes: [] 
                 }) 
             });
 
-            // Envoi des notifications
             window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actData.id);
             
             const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
@@ -979,7 +985,35 @@
                 const likes = act.likes || [];
                 const isLiked = likes.includes(window.currentUser.uid);
                 const commentsCount = (act.comments || []).length;
-                let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : '';
+                let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : 'Soyez le premier à aimer';
+
+                let facesHtml = '';
+                if(likes.length > 0) {
+                    const firstLikers = likes.slice(0, 3);
+                    facesHtml = '<div class="flex -space-x-2 mr-2">';
+                    firstLikers.forEach(uid => {
+                        let avatarUrl = '';
+                        if(uid === window.currentUser.uid) { avatarUrl = window.userProfile.avatar; } 
+                        else { const friend = window.followingData.find(u => u.uid === uid || u.id === uid); if(friend) avatarUrl = friend.avatar; }
+                        
+                        if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover">`; } 
+                        else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-200 flex items-center justify-center text-[8px] text-gray-500"><i class="fa-solid fa-user"></i></div>`; }
+                    });
+                    facesHtml += '</div>';
+                }
+
+                // MODIFICATION : Construction de l'objet Preview complet avec Résumé et Métrique
+                const previewData = {
+                    id: act.id + '_public',
+                    title: act.itemTitle,
+                    img: act.itemImg,
+                    type: act.type,
+                    metricValue: act.metricValue || 0, // Transmission de la métrique
+                    desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`, // Fallback si pas de résumé
+                    releaseDate: null 
+                };
+                // Sécurisation des guillemets pour l'attribut HTML
+                const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
 
                 feedHtml += `
                 <div class="activity-card relative" id="act-${act.id}">
@@ -995,7 +1029,7 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview({"id":"${act.type}_ext","title":"${act.itemTitle}","img":"${act.itemImg}","type":"${act.type}","desc":"Vu par ${act.userName}"})'>
+                    <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview(${previewJson})'>
                         <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200 shadow-sm">
                         <div class="flex-1">
                             <div class="font-black text-xs mb-1">${act.itemTitle}</div>
@@ -1013,8 +1047,12 @@
                         </button>
                     </div>
 
-                    <div class="px-2 mb-2">
+                    <div class="flex items-center px-2 mb-2 min-h-[20px]">
+                        ${facesHtml}
                         <div class="text-xs font-bold text-gray-800">${likesText}</div>
+                    </div>
+                    
+                    <div class="px-2">
                         ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
                     </div>
                 </div>`
@@ -1075,8 +1113,6 @@
             `;
         };
         
-        // --- NOUVELLES FONCTIONS LOGIQUES COMMENTAIRES ---
-
         window.toggleCommentLike = async (actId, commentTimestamp) => {
             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
             try {
