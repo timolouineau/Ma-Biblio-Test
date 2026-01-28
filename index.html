@@ -268,13 +268,17 @@
     </div>
 
     <script type="module">
-        // -----------------------------------------------------------
+        
+       // -----------------------------------------------------------
         // A. IMPORTATIONS & CONFIGURATION FIREBASE
         // -----------------------------------------------------------
+
+        /* --- A.1 IMPORTS DES MODULES --- */
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        /* --- A.2 CONFIGURATION DU PROJET --- */
         const firebaseConfig = {
             apiKey: "AIzaSyDo4sqS3BIW1DmNxWA1IJtlD9GRFs4rd_g",
             authDomain: "mabiblio-dc595.firebaseapp.com",
@@ -284,41 +288,50 @@
             appId: "1:683284434520:web:0c72c547703843781f442d"
         };
 
+        /* --- A.3 INITIALISATION DES SERVICES --- */
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'mabiblio-dc595';
+        const appId = 'mabiblio-dc595'; 
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // B. ETAT GLOBAL DE L'APPLICATION
         // -----------------------------------------------------------
+
+        /* --- B.1 VARIABLES DE SESSION & NAVIGATION --- */
         window.currentUser = null;
         window.currentView = 'home';
         window.currentType = 'Film'; 
         window.currentStatus = 'Vu'; 
+        window.authMode = 'login';
+
+        /* --- B.2 DONNÉES & COLLECTIONS --- */
         window.myCollection = [];
         window.socialFeed = [];
         window.following = [];
         window.followingData = [];
         window.followersData = [];
         window.userProfile = { name: '', avatar: '', goalLivre: 12, goalFilm: 50, goalSerie: 10, following: [] };
+
+        /* --- B.3 ÉTAT DE L'INTERFACE (UI) --- */
         window.tempManualImage = ''; 
         window.followFeedback = null;
-        let currentRating = 8;
-        window.authMode = 'login';
-        window.currentCommentActId = null; // Pour la modale
-        
-        // État étendu (ajouté par les extensions)
+        window.currentCommentActId = null; // Pour la modale commentaires
+        let currentRating = 8; // Variable locale pour le slider
+
+        /* --- B.4 ÉTAT ÉTENDU (EXTENSIONS) --- */
         window.extState = {
             sort: 'date',
             statsMode: 'year',
             notifications: [],
             currentPublicUser: null
-        };
+        }; 
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // C. UTILITAIRES & AUTHENTIFICATION
         // -----------------------------------------------------------
+
+        /* --- C.1 TRAITEMENT D'IMAGES (UTILITAIRES) --- */
         async function compressImage(base64Str, maxWidth = 400, maxHeight = 600) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -341,6 +354,7 @@
             });
         }
 
+        /* --- C.2 GESTION DE L'INTERFACE D'AUTHENTIFICATION --- */
         window.setAuthMode = (mode) => {
             window.authMode = mode;
             const slider = document.getElementById('auth-slider');
@@ -377,6 +391,7 @@
             }
         };
 
+        /* --- C.3 LOGIQUE DE CONNEXION / INSCRIPTION --- */
         window.handleAuth = async () => {
             const email = document.getElementById('auth-email').value;
             const pass = document.getElementById('auth-password').value;
@@ -402,6 +417,7 @@
             }
         };
 
+        /* --- C.4 OBSERVATEUR D'ÉTAT (SESSION) --- */
         onAuthStateChanged(auth, (user) => {
             document.body.style.opacity = "1";
             
@@ -419,26 +435,33 @@
             }
         });
 
-        // -----------------------------------------------------------
-        // D. CHARGEMENT DES DONNÉES (DATA LAYER)
-        // -----------------------------------------------------------
+        /* ==================================================================
+           D : CHARGEMENT DES DONNÉES (DATA LAYER)
+           Écouteurs temps réel pour les collections, profils et le feed
+           ================================================================== */
+
+        /* --- 3.3.1 CHARGEMENT DONNÉES UTILISATEUR & NOTIFICATIONS --- */
         async function loadUserData() {
             if (!window.currentUser) return;
             const userRoot = `artifacts/${appId}/users/${window.currentUser.uid}`;
             
+            // 1. Ma Collection (Films, Livres, Séries)
             onSnapshot(collection(db, userRoot, 'items'), (snap) => {
                 window.myCollection = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
                 window.refreshCurrentView();
             });
 
+            // 2. Mon Profil & Objectifs
             onSnapshot(doc(db, userRoot, 'profile', 'info'), (d) => {
                 if (d.exists()) {
                     const data = d.data();
                     window.userProfile = { ...window.userProfile, ...data };
                     window.following = [...new Set(window.userProfile.following || [])];
+                    // Une fois mon profil chargé, je charge ceux de mes amis
                     loadFollowingProfiles();
                     loadFollowersProfiles(); 
                 } else {
+                    // Création du profil par défaut si inexistant
                     const defName = "Utilisateur_" + window.currentUser.uid.slice(-4);
                     setDoc(doc(db, userRoot, 'profile', 'info'), { 
                         uid: window.currentUser.uid, name: defName, avatar: '', following: [],
@@ -448,14 +471,14 @@
                 window.refreshCurrentView();
             });
             
-            // Écouteur Notifications "En Dur"
+            // 3. Mes Notifications
             onSnapshot(collection(db, userRoot, 'notifications'), (snap) => {
-                // On récupère l'ID du document pour pouvoir le modifier plus tard
                 window.extState.notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.time - a.time);
                 if (window.updateNotifBadge) window.updateNotifBadge();
             });
         }
 
+        /* --- 3.3.2 CHARGEMENT DU GRAPHE SOCIAL (ABONNEMENTS/ABONNÉS) --- */
         async function loadFollowingProfiles() {
             if (!window.following.length) { window.followingData = []; window.refreshCurrentView(); return; }
             const profiles = [];
@@ -472,6 +495,7 @@
         async function loadFollowersProfiles() {
             if (!window.currentUser) return;
             try {
+                // Requête : Qui a mon ID dans sa liste "following" ?
                 const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
                 const snap = await getDocs(q);
                 window.followersData = snap.docs.map(d => d.data());
@@ -479,25 +503,31 @@
             } catch (e) { console.error("Err Followers:", e); }
         }
 
+        /* --- 3.3.3 ÉCOUTEUR DU FIL D'ACTUALITÉ (FEED) --- */
         function setupSocialListeners() {
             if (!window.currentUser) return;
+            // On écoute TOUTE l'activité publique
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), (snap) => {
                 const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                // On filtre pour ne garder que MOI et MES AMIS
                 window.socialFeed = all.filter(a => a.userId === window.currentUser.uid || window.following.includes(a.userId))
                                       .sort((a,b) => b.timestamp - a.timestamp);
                 
                 if (window.updateNotifBadge) window.updateNotifBadge();
                 
                 if (window.currentView === 'friends') window.renderSocialFeed();
-                // Mise à jour temps réel de la modale commentaire si ouverte
+                
+                // Mise à jour temps réel de la modale commentaire si elle est ouverte
                 if (window.currentCommentActId) window.openCommentModal(window.currentCommentActId);
             });
         }
         
-        // -----------------------------------------------------------
-        // E. ACTIONS UTILISATEUR & NOTIFICATIONS
+       // -----------------------------------------------------------
+        // E. ACTIONS UTILISATEUR
         // -----------------------------------------------------------
         
+        /* --- E.1 NOTIFICATIONS & INTERACTIONS SOCIALES --- */
         window.sendNotification = async (targetUid, type, message, itemTitle, actId) => {
             if (targetUid === window.currentUser.uid) return;
             try {
@@ -530,6 +560,7 @@
              }
         };
 
+        /* --- E.2 GESTION DU PROFIL (NOM & AVATAR) --- */
         window.updateProfileName = async () => {
             if (!window.currentUser) return;
             const newName = prompt("Changer votre nom d'utilisateur (Lettres et chiffres uniquement) :", window.userProfile.name);
@@ -560,7 +591,7 @@
             reader.readAsDataURL(file);
         };
 
-        // MODIFICATION : Ajout de l'argument 'platform' à la fin
+        /* --- E.3 GESTION DE LA COLLECTION (SAUVEGARDE & SUPPRESSION) --- */
         window.saveItem = async (status, rating, comment, finishDate, metricValue, shouldShare, platform) => {
             if (!window.currentUser || !window.tempItem) return;
             try {
@@ -573,7 +604,7 @@
                     comment: comment || '', 
                     finishDate: finalDate, 
                     metricValue: parseInt(metricValue) || 0,
-                    platform: platform || '', // Enregistrement dans l'objet item
+                    platform: platform || '', 
                     lastUpdate: Date.now() 
                 };
 
@@ -591,7 +622,7 @@
                         type: item.type, 
                         rating, 
                         metricValue: item.metricValue, 
-                        platform: platform || '', // Enregistrement dans l'activité publique
+                        platform: platform || '', 
                         comment: comment || '', 
                         timestamp: Date.now(), 
                         comments: [], 
@@ -622,6 +653,7 @@
             } catch (e) { console.error(e); }
         };
 
+        /* --- E.4 INTERACTIONS UI (NOTATION & DATES) --- */
         window.handleRatingDrag = (e) => {
             const container = document.getElementById('rating-interactive');
             const rect = container.getBoundingClientRect();
@@ -649,6 +681,7 @@
             }
         };
 
+        /* --- E.5 DIVERS & DÉCONNEXION --- */
         window.unfollowUser = async (id) => { if (confirm("Ne plus suivre ?")) await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayRemove(id) }); };
         window.updateGoal = async (type, val) => { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { [`goal${type}`]: parseInt(val) }); };
         window.logout = () => signOut(auth).then(() => location.reload());
@@ -656,6 +689,8 @@
         // -----------------------------------------------------------
         // F. NAVIGATION & INTERFACE (UI)
         // -----------------------------------------------------------
+
+        /* --- F.1 RAFRAÎCHISSEMENT & CONFIGURATION --- */
         window.refreshCurrentView = () => {
             if (window.currentView === 'home') window.renderList();
             if (window.currentView === 'profile') window.renderProfile();
@@ -671,6 +706,7 @@
             'Série': { statuses: ['Vu', 'Wishlist', 'En cours'], action: 'Saison Finie !', icon: 'fa-tv', metric: 'saisons', color: '#34C759' }
         };
 
+        /* --- F.2 GESTION DES CATÉGORIES (TYPES) --- */
         window.switchType = (type) => {
             window.currentType = type;
             document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.id === 'tab-'+(type==='Série'?'Serie':type)));
@@ -678,12 +714,15 @@
             window.renderPills(); window.renderList();
         };
 
+        /* --- F.3 GESTION DES FILTRES (STATUTS) --- */
         window.renderPills = () => {
             const container = document.getElementById('status-container');
             if (container) container.innerHTML = CONFIG[window.currentType].statuses.map(s => `<div class="pill ${s === window.currentStatus ? 'active' : ''}" onclick="window.switchStatus('${s}')">${s}</div>`).join('');
         };
 
         window.switchStatus = (s) => { window.currentStatus = s; window.renderPills(); window.renderList(); };
+
+        /* --- F.4 NAVIGATION PRINCIPALE (VUES) --- */
         window.switchView = (view) => {
             window.currentView = view;
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
@@ -699,6 +738,8 @@
        // -----------------------------------------------------------
         // G. GESTION DES MODALES (RECHERCHE, MANUAL, PREVIEW, FEEDBACK)
         // -----------------------------------------------------------
+
+        /* --- G.1 MOTEUR DE RECHERCHE (API) --- */
         window.openSearchModal = () => document.getElementById('search-modal').classList.add('open');
         window.closeSearchModal = () => { document.getElementById('search-modal').classList.remove('open'); document.getElementById('search-input').value = ""; document.getElementById('search-results').innerHTML = ""; };
         window.setSearchType = (t) => { searchType = t; ['Livre', 'Film', 'Série'].forEach(x => { const b = document.getElementById('s-'+x); if (b) b.className = x === t ? "flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm" : "flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm"; }); };
@@ -760,6 +801,7 @@
             document.getElementById('search-results').innerHTML = results.map(i => `<div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200"><div class="flex-1 font-black text-xs">${i.title}<div class="text-[10px] text-gray-400 font-normal mt-0.5">${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''}</div></div></div>`).join(''); 
         };
 
+        /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS) --- */
         window.openPreview = (item) => { 
             window.tempItem = item; 
             document.getElementById('preview-modal').classList.add('open'); 
@@ -843,6 +885,7 @@
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
         
+        /* --- G.3 SYSTÈME DE NOTATION (SHEET) --- */
         window.openNotation = () => { 
             document.getElementById('rating-sheet').classList.add('open'); 
             document.getElementById('sheet-poster').src = window.tempItem.img; 
@@ -902,6 +945,7 @@
             );
         };
         
+        /* --- G.4 AJOUT MANUEL & FEEDBACK --- */
         window.handleManualImageUpload = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -982,10 +1026,12 @@
             }
         };
 
-       // -----------------------------------------------------------
-        // H. SOCIAL & FEED FUNCTIONS
-        // -----------------------------------------------------------
-        
+/* ==================================================================
+           H.1 : SOCIAL - COMMENTAIRES & INTERACTIONS
+           Gestion des modales commentaires, mentions et abonnements
+           ================================================================== */
+
+        /* --- 1. GESTION DE LA MODALE COMMENTAIRES --- */
         window.openCommentModal = (actId) => {
             window.currentCommentActId = actId;
             const actData = window.socialFeed.find(a => a.id === actId);
@@ -997,6 +1043,7 @@
             let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Soyez le premier à commenter</div>' : '';
             
             comments.forEach(c => {
+                 // Transformation des mentions @Pseudo en liens cliquables
                  const textWithMentions = c.text.replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
                  const isMyComment = c.userId === window.currentUser.uid;
                  const likes = c.likes || [];
@@ -1027,6 +1074,7 @@
             });
             
             container.innerHTML = html;
+            // Scroll en bas uniquement à l'ouverture initiale
             if(!container.getAttribute('data-loaded')) {
                 container.scrollTop = container.scrollHeight;
                 container.setAttribute('data-loaded', 'true');
@@ -1045,6 +1093,7 @@
              window.currentCommentActId = null;
         };
 
+        /* --- 2. GESTION DES MENTIONS (@Pseudo) --- */
         window.handleMentionInput = (input) => {
             const val = input.value;
             const lastWord = val.split(' ').pop();
@@ -1052,6 +1101,7 @@
             
             if (lastWord.startsWith('@') && lastWord.length > 1) {
                 const search = lastWord.substring(1).toLowerCase();
+                // Recherche dans la liste des abonnements
                 const matches = window.followingData.filter(u => u.name.toLowerCase().includes(search));
                 
                 if (matches.length > 0) {
@@ -1080,6 +1130,7 @@
             input.focus();
         };
 
+        /* --- 3. ENVOI DE COMMENTAIRE & NOTIFICATIONS --- */
         window.postCommentFromModal = async () => {
             if (!window.currentCommentActId) return;
             const input = document.getElementById('comment-modal-input');
@@ -1088,6 +1139,7 @@
             
             const actData = window.socialFeed.find(a => a.id === window.currentCommentActId);
 
+            // Mise à jour Firestore (Ajout du commentaire)
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', window.currentCommentActId), { 
                 comments: arrayUnion({ 
                     userId: window.currentUser.uid, 
@@ -1099,8 +1151,10 @@
                 }) 
             });
 
+            // Notification pour l'auteur du post
             window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actData.id);
             
+            // Notification pour les personnes mentionnées
             const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
             if (mentions) {
                 mentions.forEach(m => {
@@ -1115,6 +1169,7 @@
             input.value = "";
         };
 
+        /* --- 4. GESTION ABONNEMENTS & NAVIGATION SOCIALE --- */
         window.followUser = async () => {
             let val = document.getElementById('follow-id').value;
             if (val) val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
@@ -1174,7 +1229,14 @@
             }, 600); 
         };
 
+        /* ==================================================================
+           H.2 : SOCIAL - FEED & NOTIFICATIONS
+           Affichage du fil d'actualité et Centre de notifications
+           ================================================================== */
+
+        /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
         window.renderSocialFeed = () => {
+            // Sauvegarde du focus pour ne pas perdre la saisie dans le champ recherche
             const focusedId = document.activeElement ? document.activeElement.id : null;
             const focusedVal = focusedId ? document.activeElement.value : null;
 
@@ -1183,6 +1245,7 @@
             const feedbackMsg = window.followFeedback?.msg || '';
             const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
 
+            // Bloc de recherche d'amis
             const searchBlock = `
                 <div class="relative mb-8">
                     <div class="flex gap-2">
@@ -1195,12 +1258,14 @@
 
             let feedHtml = '';
             
+            // Boucle sur chaque activité
             window.socialFeed.forEach(act => {
                 const likes = act.likes || [];
                 const isLiked = likes.includes(window.currentUser.uid);
                 const commentsCount = (act.comments || []).length;
                 let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : 'Soyez le premier à aimer';
 
+                // Génération des petites têtes de likes
                 let facesHtml = '';
                 if(likes.length > 0) {
                     const firstLikers = likes.slice(0, 3);
@@ -1216,6 +1281,7 @@
                     facesHtml += '</div>';
                 }
 
+                // Données pour l'aperçu cliquable
                 const previewData = {
                     id: act.id + '_public',
                     title: act.itemTitle,
@@ -1223,12 +1289,10 @@
                     type: act.type,
                     metricValue: act.metricValue || 0,
                     desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`,
-                    platform: act.platform, // Transmission de la plateforme au preview
+                    platform: act.platform, 
                     releaseDate: null 
                 };
                 const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
-
-                // AJOUT : Affichage de la plateforme dans la carte sociale
                 const platformBadge = act.platform ? `<span class="ml-2 opacity-50 font-normal text-[10px]">• ${act.platform}</span>` : '';
 
                 feedHtml += `
@@ -1282,21 +1346,23 @@
             ${feedHtml}
             </div>`;
 
+            // Restauration du focus
             if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); } }
         };
 
+        /* --- 2. CENTRE DE NOTIFICATIONS --- */
         window.openNotifications = async () => {
             window.currentView = 'notifications';
             document.getElementById('app-header').style.display = 'none'; 
             
-            // 1. Reset visuel immédiat
+            // A. Reset visuel immédiat (Badge)
             const badge = document.getElementById('notif-badge');
             if(badge) {
                 badge.innerText = '0';
                 badge.classList.remove('active');
             }
 
-            // 2. Reset Base de Données (Persistant)
+            // B. Reset Base de Données (Marquer comme lu)
             const unreadNotifs = window.extState.notifications.filter(n => !n.read && n.id);
             if(unreadNotifs.length > 0) {
                 const batch = writeBatch(db);
@@ -1332,6 +1398,7 @@
             `;
         };
         
+        /* --- 3. GESTION DES LIKES DE COMMENTAIRES --- */
         window.toggleCommentLike = async (actId, commentTimestamp) => {
             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
             try {
@@ -1358,7 +1425,7 @@
                         comments[cIndex] = comment;
                         await updateDoc(actRef, { comments: comments });
 
-                        // Envoi notif si c'est un like et que ce n'est pas mon propre com
+                        // Notification si c'est un nouveau like et pas mon propre commentaire
                         if (isNewLike && comment.userId !== window.currentUser.uid) {
                             window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId);
                         }
@@ -1383,6 +1450,8 @@
         // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
+        
+        /* --- I.1 INJECTION UI DYNAMIQUE (HEADER & NOTIFS) --- */
         // Injection UI dynamique pour Header et Tabs
         const headerTitle = document.querySelector('.header-title');
         const headerTabs = document.querySelector('.type-tabs');
@@ -1398,6 +1467,7 @@
         notifBtn.onclick = () => window.openNotifications();
         titleRow.appendChild(notifBtn);
 
+        /* --- I.2 SYSTÈME DE TRI & FILTRES --- */
         const tabsContainer = document.createElement('div');
         tabsContainer.style.display = 'flex'; tabsContainer.style.justifyContent = 'space-between'; tabsContainer.style.alignItems = 'center'; tabsContainer.style.marginTop = '15px';
         headerTabs.parentNode.insertBefore(tabsContainer, headerTabs);
@@ -1413,13 +1483,18 @@
         // -----------------------------------------------------------
         // J. FONCTIONS DE RENDU PRINCIPALES (OVERRIDDEN)
         // -----------------------------------------------------------
+
+        /* --- J.1 RENDU DE LA LISTE PRINCIPALE (GRILLE) --- */
         window.renderList = () => {
             if (!window.myCollection) return;
+            // Filtrage par type (Film/Livre...) et statut (Vu/Wishlist...)
             let filtered = window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
             
+            // Logique de Tri
             if (window.extState.sort === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
             else if (window.extState.sort === 'name') { filtered.sort((a, b) => a.title.localeCompare(b.title)); } 
             else {
+                // Tri par date par défaut
                 filtered.sort((a, b) => {
                     const dateA = a.finishDate || a.lastUpdate || 0;
                     const dateB = b.finishDate || b.lastUpdate || 0;
@@ -1431,6 +1506,7 @@
             if (!filtered.length) { container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; return; }
 
             let html = '';
+            // Affichage : Soit grille simple, soit groupé par année (si tri par date)
             if (window.extState.sort !== 'date') {
                 html += `<div class="items-grid mt-4">`;
                 filtered.forEach(item => html += window.generateGridItemHTML(item));
@@ -1458,6 +1534,7 @@
             return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
         };
 
+        /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
         window.renderProfile = () => {
             const following = window.followingData || [];
             const container = document.getElementById('main-content');
@@ -1505,6 +1582,7 @@
                 </div>`;
         };
 
+        /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
         window.openPublicProfile = async (uid) => {
             if (!uid || uid === 'undefined') { console.error("ID utilisateur manquant"); return; }
             if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
@@ -1567,6 +1645,8 @@
         };
 
         window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
+        
+        /* --- J.4 RENDU DES STATISTIQUES --- */
         window.toggleStatsMode = (mode) => { window.extState.statsMode = mode; window.renderStatsView(); };
 
         window.renderStatsView = () => {
@@ -1596,6 +1676,7 @@
                     ${stats.map(s => { const showGoal = isYear; const prog = Math.min(100, (s.done / (s.goal || 1)) * 100); return `<div class="stat-card"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div><div><div class="font-black text-sm">${s.type}s</div><div class="text-[10px] text-gray-400 font-bold uppercase">${s.done} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div></div></div>${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs">` : ''}</div>${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}<div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase"><span>${s.sub}</span>${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}</div></div>`; }).join('')}</div>`;
         };
 
+        /* --- J.5 INITIALISATION FINALE --- */
         window.handleCommentLike = async (actId, commentTimestamp) => {
             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
             try {
@@ -1619,6 +1700,7 @@
         };
 
         console.log("MaBiblio Social Network v2.0 Ready");
+        // Si l'utilisateur est déjà chargé (cas du reload), on lance le rendu
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
