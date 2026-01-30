@@ -1320,7 +1320,7 @@
                         <input 
                             id="user-search-input" 
                             type="text" 
-                            placeholder="Chercher un ami (ex: Timo...)" 
+                            placeholder="Chercher un ami" 
                             class="flex-1 bg-transparent p-2 outline-none font-medium text-sm text-gray-800"
                             oninput="window.handleUserSearch(this.value)"
                         >
@@ -1453,10 +1453,12 @@
             }
 
             // B. Reset Base de Données (Marquer comme lu)
+            // On prend toutes les notifs non lues qui ont un ID valide
             const unreadNotifs = window.extState.notifications.filter(n => !n.read && n.id);
             if(unreadNotifs.length > 0) {
                 const batch = writeBatch(db);
                 unreadNotifs.forEach(n => {
+                    // Attention au chemin : users -> uid -> notifications -> id
                     const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id);
                     batch.update(ref, { read: true });
                 });
@@ -1464,7 +1466,8 @@
             }
 
             const container = document.getElementById('main-content');
-            const notifs = window.extState.notifications; 
+            // On trie pour avoir les plus récentes en haut
+            const notifs = (window.extState.notifications || []).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
 
             container.innerHTML = `
                 <div class="pt-10 px-6 pb-32">
@@ -1472,18 +1475,64 @@
                         <button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
                         <h1 class="text-3xl font-black">Activité</h1>
                     </div>
+                    
                     ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
-                    ${notifs.map(n => `
-                        <div class="notif-item cursor-pointer" onclick="window.goToActivity('${n.actId}')">
-                            <div class="notif-icon ${n.type === 'like' || n.type === 'like_comment' ? 'text-red-500' : 'text-blue-600'}">
-                                ${n.type.includes('like') ? '<i class="fa-solid fa-heart"></i>' : (n.type === 'mention' ? '<i class="fa-solid fa-at"></i>' : '<i class="fa-solid fa-comment"></i>')}
+                    
+                    ${notifs.map(n => {
+                        // LOGIQUE D'AFFICHAGE SELON LE TYPE
+                        const isFollow = n.type === 'follow';
+                        
+                        // 1. L'action au clic : Profil (si abonnement) OU Activité (si like/com)
+                        // Note: pour le follow, l'ID de l'envoyeur est stocké dans 'fromUid'
+                        const action = isFollow 
+                            ? `window.openPublicProfile('${n.fromUid}')` 
+                            : `window.goToActivity('${n.actId}')`;
+
+                        // 2. L'icône et la couleur
+                        let icon = '';
+                        let color = '';
+                        
+                        if (isFollow) {
+                            icon = '<i class="fa-solid fa-user-plus"></i>';
+                            color = 'text-green-500'; // Vert pour les abonnements
+                        } else if (n.type && n.type.includes('like')) {
+                            icon = '<i class="fa-solid fa-heart"></i>';
+                            color = 'text-red-500';
+                        } else if (n.type === 'mention') {
+                            icon = '<i class="fa-solid fa-at"></i>';
+                            color = 'text-purple-500';
+                        } else {
+                            icon = '<i class="fa-solid fa-comment"></i>';
+                            color = 'text-blue-600';
+                        }
+
+                        // 3. Le texte
+                        // Pour un follow, le message est déjà complet dans n.message
+                        const content = isFollow 
+                            ? `<span class="font-bold text-gray-800">${n.message}</span>`
+                            : `<span class="font-black">${n.user}</span> ${n.text}`;
+
+                        const subText = isFollow
+                            ? 'Voir le profil'
+                            : `Sur ${n.itemTitle || 'un post'}`;
+
+                        const timeDisplay = new Date(n.time || n.timestamp).toLocaleDateString();
+
+                        return `
+                        <div class="notif-item cursor-pointer flex items-start gap-3 py-3 border-b border-gray-50" onclick="${action}">
+                            <div class="notif-icon ${color} text-lg w-8 pt-1">
+                                ${icon}
                             </div>
                             <div class="flex-1">
-                                <div class="text-sm"><span class="font-black">${n.user}</span> ${n.text}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Sur ${n.itemTitle || 'un post'} • ${new Date(n.time).toLocaleDateString()}</div>
+                                <div class="text-sm leading-tight">${content}</div>
+                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">
+                                    ${subText} • ${timeDisplay}
+                                </div>
                             </div>
+                            ${!n.read ? '<div class="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>' : ''}
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
         };
@@ -1624,22 +1673,32 @@
             return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
         };
 
-       /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
+      /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
         window.renderProfile = async () => {
             const container = document.getElementById('main-content');
             const following = window.followingData || [];
             
-            // 1. RÉCUPÉRATION DES ABONNÉS (CORRIGÉ)
+            // 1. Récupération des Abonnés (Followers)
             let followers = [];
             try {
-                // CORRECTION ICI : On cherche dans 'profile' (le nom du dossier), pas 'info'
                 const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
                 const snap = await getDocs(q);
-                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            } catch (e) {
-                console.error("Erreur récup abonnés:", e);
-                // Si l'index manque, on l'affiche pour que tu puisses cliquer
-                console.log("⚠️ CLIQUE SUR LE LIEN CI-DESSOUS DANS LA CONSOLE SI ERREUR ROUGE");
+                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id })); 
+            } catch (e) { console.log("Index manquant", e); }
+
+            // 2. Récupération des Bloqués (Blacklist)
+            let blockedUsers = [];
+            const blockedIds = window.userProfile.blocked || []; // On récupère la liste des IDs bloqués
+            
+            if (blockedIds.length > 0) {
+                try {
+                    // On charge les infos de chaque personne bloquée pour afficher son nom
+                    // (On utilise Promise.all pour charger tout en parallèle rapidement)
+                    const promises = blockedIds.map(uid => getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info')));
+                    const snaps = await Promise.all(promises);
+                    // On ne garde que ceux qui existent encore
+                    blockedUsers = snaps.map((s, i) => s.exists() ? { ...s.data(), id: blockedIds[i] } : null).filter(u => u);
+                } catch (e) { console.error("Err loading blocked", e); }
             }
 
             container.innerHTML = `
@@ -1648,31 +1707,12 @@
                         <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
                         <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
                     </div>
-                    
-                    <div class="mt-6 flex items-center justify-center gap-2">
-                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
-                        <button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button>
-                    </div>
-                    
-                    <div class="mt-2 text-center">
-                         <div class="inline-block bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-mono text-gray-400 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('ID Copié')">
-                            ID: ${window.currentUser.uid} <i class="fa-regular fa-copy ml-1"></i>
-                         </div>
-                    </div>
+                    <div class="mt-6 flex items-center justify-center gap-2"><h2 class="text-3xl font-black">${window.userProfile.name}</h2><button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button></div>
+                    <div class="mt-2 text-center"><div class="inline-block bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-mono text-gray-400 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('ID Copié')">ID: ${window.currentUser.uid} <i class="fa-regular fa-copy ml-1"></i></div></div>
 
                     <div class="flex gap-3 mt-8">
-                        <div class="flex-1">
-                            <button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open')">
-                                <span class="text-xl font-black text-gray-900">${following.length}</span>
-                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span>
-                            </button>
-                        </div>
-                        <div class="flex-1">
-                            <button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open')">
-                                <span class="text-xl font-black text-blue-600">${followers.length}</span>
-                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span>
-                            </button>
-                        </div>
+                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open'); document.getElementById('blocked-list').classList.remove('open')"><span class="text-xl font-black text-gray-900">${following.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span></button></div>
+                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open'); document.getElementById('blocked-list').classList.remove('open')"><span class="text-xl font-black text-blue-600">${followers.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span></button></div>
                     </div>
 
                     <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
@@ -1680,12 +1720,10 @@
                             ${following.length > 0 ? following.map(p => `
                                 <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
                                     <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">
-                                            ${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}
-                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div>
                                         <span class="font-bold text-sm">${p.name}</span>
                                     </div>
-                                    <button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
+                                    <button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
                                 </div>
                             `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
                         </div>
@@ -1695,158 +1733,203 @@
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
                             ${followers.length > 0 ? followers.map(f => `
                                 <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.uid}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">
-                                            ${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}
-                                        </div>
-                                        <span class="font-bold text-sm">${f.name}</span>
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div>
+                                        <span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span>
                                     </div>
-                                    <div class="text-blue-600 text-[10px] font-black uppercase">Suit</div>
+                                    <div class="flex gap-3 items-center">
+                                        <button onclick="window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase hover:text-red-700">Retirer</button>
+                                        <div class="h-3 w-px bg-gray-300"></div>
+                                        <button onclick="window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase hover:text-black" title="Bloquer définitivement">Bloquer</button>
+                                    </div>
                                 </div>
-                            `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné pour le moment</div>'}
+                            `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
                         </div>
                     </div>
 
-                    <div class="ios-group !mx-0 mt-8">
-                        <div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()">
-                            <span class="font-bold text-sm">Nous contacter / Feedback</span>
-                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                    ${blockedIds.length > 0 ? `
+                        <div class="mt-6 text-right">
+                            <button onclick="document.getElementById('blocked-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open'); document.getElementById('followers-list').classList.remove('open')" 
+                                class="text-[10px] font-bold text-gray-400 hover:text-gray-600 uppercase tracking-widest border-b border-gray-200 pb-1">
+                                <i class="fa-solid fa-user-slash mr-1"></i> Gérer les bloqués (${blockedIds.length})
+                            </button>
                         </div>
-                    </div>
 
-                    <div class="ios-group !mx-0 mt-4">
-                        <div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()">
-                            <span class="text-red-500 font-bold text-sm">Déconnexion</span>
+                        <div id="blocked-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
+                            <div class="bg-gray-50 rounded-2xl border border-gray-200 shadow-inner">
+                                <div class="p-3 text-[10px] text-gray-400 uppercase font-bold text-center border-b border-gray-200">Utilisateurs bloqués</div>
+                                ${blockedUsers.map(u => `
+                                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 last:border-0 opacity-75">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-gray-200 grayscale overflow-hidden flex items-center justify-center">${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-500 text-xs">${u.name[0]}</span>`}</div>
+                                            <span class="font-bold text-sm text-gray-500 line-through decoration-gray-400">${u.name}</span>
+                                        </div>
+                                        <button onclick="window.unblockUser('${u.id}')" class="text-blue-600 text-[10px] font-black uppercase bg-white border border-blue-100 px-2 py-1 rounded hover:bg-blue-50">Débloquer</button>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
-                    </div>
+                    ` : ''}
+
+                    <div class="ios-group !mx-0 mt-8"><div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()"><span class="font-bold text-sm">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i></div></div>
+                    <div class="ios-group !mx-0 mt-4"><div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div></div>
                 </div>`;
         };
 
-       /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
+        // --- FONCTIONS DE GESTION ---
+        
+        window.removeFollower = async (targetUid) => {
+            if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
+            try {
+                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
+                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Erreur permissions."); }
+        };
+
+        window.blockUser = async (targetUid) => {
+            if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
+            try {
+                // Kick
+                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
+                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                // Ban
+                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
+                
+                alert("Utilisateur bloqué.");
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
+        };
+
+        // --- NOUVELLE FONCTION : DÉBLOQUER ---
+        window.unblockUser = async (targetUid) => {
+            if(!confirm("Débloquer cet utilisateur ? Il pourra à nouveau voir votre profil et s'abonner.")) return;
+            try {
+                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                // On retire l'ID de la liste 'blocked'
+                await updateDoc(myRef, { blocked: arrayRemove(targetUid) });
+                
+                alert("Utilisateur débloqué.");
+                window.renderProfile(); // Rafraîchissement pour faire disparaître la ligne
+            } catch (e) {
+                console.error(e);
+                alert("Erreur lors du déblocage.");
+            }
+        };
+        
+      /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
         window.openPublicProfile = async (uid) => {
             if (!uid || uid === 'undefined') { console.error("ID utilisateur manquant"); return; }
-            
-            // Si on clique sur son propre avatar, on va sur le profil privé
             if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
             
             document.getElementById('public-profile-modal').classList.add('open');
             const container = document.getElementById('public-profile-content');
-            
-            // Loader
             container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
 
             try {
-                // Chargement des infos de l'ami
                 const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
                 if (!profSnap.exists()) throw new Error("User not found");
                 const prof = profSnap.data();
                 
-                // Chargement de sa collection (pour afficher ses tops)
+                // VERIFICATION DU BLOCAGE
+                // Est-ce que mon ID (currentUser.uid) est dans sa liste 'blocked' ?
+                const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
+
                 const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
                 const items = itemsSnap.docs.map(d => d.data());
-                
-                // Vérifie si JE le suis déjà
                 const isFollowing = (window.following || []).includes(uid);
+
+                let buttonHTML = '';
+                if (iAmBlocked) {
+                    // Si je suis bloqué, on affiche un bouton gris inactif
+                    buttonHTML = `<button disabled class="bg-gray-300 text-gray-500 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed">
+                                    <i class="fa-solid fa-ban mr-1"></i> Indisponible
+                                  </button>`;
+                } else {
+                    // Sinon, bouton normal
+                    buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" 
+                                    class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">
+                                    ${isFollowing ? 'Abonné' : 'S\'abonner'}
+                                  </button>`;
+                }
 
                 let html = `
                     <div class="pt-24 px-6 pb-32">
                         <div class="text-center mb-8 relative">
                             <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
-                            
                             <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
                                  ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
                             </div>
-                            
                             <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
                             
-                            <button onclick="window.toggleFollowFromProfile('${uid}')" 
-                                class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">
-                                ${isFollowing ? 'Abonné' : 'S\'abonner'}
-                            </button>
+                            ${buttonHTML}
                             
                             <p class="text-gray-400 font-bold text-[10px] uppercase mt-4 tracking-widest">${items.filter(i=> i.status === 'Vu' || i.status === 'Lu').length} ÉLÉMENTS TERMINÉS</p>
                         </div>
                 `;
 
-                // Affichage de ses items par catégorie
-                ['Film', 'Série', 'Livre'].forEach(cat => {
-                    const catItems = items.filter(i => i.type === cat && (i.status === 'Vu' || i.status === 'Lu'));
-                    if(catItems.length > 0) {
-                         // Tri par date de fin (récent en premier)
-                         catItems.sort((a,b) => (b.finishDate || 0) > (a.finishDate || 0) ? 1 : -1);
-                         
-                         html += `<div class="year-divider">${cat}s</div><div class="items-grid">`;
-                         // On limite à 4 items par catégorie pour ne pas surcharger
-                         catItems.slice(0, 4).forEach(item => { html += window.generateGridItemHTML(item); });
-                         html += `</div>`;
-                    }
-                });
+                // Affichage des éléments seulement si on n'est PAS bloqué 
+                // (Optionnel : tu peux laisser ça ou cacher aussi les films si tu veux être strict)
+                if (!iAmBlocked) {
+                    ['Film', 'Série', 'Livre'].forEach(cat => {
+                        const catItems = items.filter(i => i.type === cat && (i.status === 'Vu' || i.status === 'Lu'));
+                        if(catItems.length > 0) {
+                             catItems.sort((a,b) => (b.finishDate || 0) > (a.finishDate || 0) ? 1 : -1);
+                             html += `<div class="year-divider">${cat}s</div><div class="items-grid">`;
+                             catItems.slice(0, 4).forEach(item => { html += window.generateGridItemHTML(item); });
+                             html += `</div>`;
+                        }
+                    });
+                } else {
+                    html += `<div class="mt-12 text-center text-gray-400 font-bold text-sm">Le contenu de ce profil n'est pas disponible.</div>`;
+                }
                 
                 html += `</div>`;
                 container.innerHTML = html;
 
             } catch (e) { 
-                container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement profil.<br><span class="text-xs font-normal opacity-50">${e.message}</span></div>`; 
-                console.error(e); 
+                container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement.<br><span class="text-xs font-normal opacity-50">${e.message}</span></div>`; 
             }
         };
         
-        // --- FONCTION DE FOLLOW AVEC NOTIFICATION ---
         window.toggleFollowFromProfile = async (uid) => {
             if(!window.currentUser) return;
-            
-            // Ma référence (pour ajouter à MA liste d'abonnements)
             const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
             const isFollowing = window.following.includes(uid);
             
             try {
                 if (isFollowing) {
-                    // --- SE DÉSABONNER ---
-                    if(confirm("Ne plus suivre cette personne ?")) { 
+                    if(confirm("Ne plus suivre ?")) { 
                         await updateDoc(myRef, { following: arrayRemove(uid) }); 
-                        window.openPublicProfile(uid); // Rafraîchir le bouton
+                        window.openPublicProfile(uid); 
                     }
                 } else {
-                    // --- S'ABONNER ---
-                    
-                    // 1. Mise à jour locale (Moi je le suis)
+                    // S'abonner
                     await updateDoc(myRef, { following: arrayUnion(uid) });
                     
-                    // 2. ENVOI DE LA NOTIFICATION (Chez LUI)
-                    // On écrit dans SA collection 'notifications'
-                    const notifRef = collection(db, 'artifacts', appId, 'users', uid, 'notifications');
-                    
-                    await addDoc(notifRef, {
-                        type: 'follow',                  // Type pour mettre une icône spéciale plus tard
-                        title: 'Nouvel abonné',
-                        message: `${window.userProfile.name} vous suit désormais !`,
-                        timestamp: Date.now(),
-                        read: false,                     // Non lu par défaut
-                        fromUid: window.currentUser.uid, // Qui envoie
-                        img: window.userProfile.avatar || null
-                    });
+                    // Notif
+                    try {
+                        const notifRef = collection(db, 'artifacts', appId, 'users', uid, 'notifications');
+                        await addDoc(notifRef, {
+                            type: 'follow', title: 'Nouvel abonné',
+                            message: `${window.userProfile.name} vous suit !`,
+                            timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null
+                        });
+                    } catch(e) {}
 
-                    // 3. Feedback Visuel (Toast)
+                    // Feedback
                     const toast = document.getElementById('profile-toast');
                     if(toast) { 
-                        toast.innerText = "Abonné avec succès !"; 
-                        toast.style.opacity = "1"; 
-                        setTimeout(() => {
-                            toast.style.opacity = "0";
-                            window.openPublicProfile(uid); // Rafraîchir
-                        }, 1000); 
-                    } else {
-                        window.openPublicProfile(uid);
-                    }
+                        toast.innerText = "Abonné !"; toast.style.opacity = "1"; 
+                        setTimeout(() => { toast.style.opacity = "0"; window.openPublicProfile(uid); }, 1000); 
+                    } else window.openPublicProfile(uid);
                 }
-            } catch (e) { 
-                console.error("Erreur follow:", e); 
-                alert("Erreur lors de l'action. Vérifiez votre connexion."); 
-            }
+            } catch (e) { console.error("Erreur action follow:", e); alert("Erreur connexion."); }
         };
 
         window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
-        
+
         /* --- J.4 RENDU DES STATISTIQUES --- */
         window.toggleStatsMode = (mode) => { window.extState.statsMode = mode; window.renderStatsView(); };
 
