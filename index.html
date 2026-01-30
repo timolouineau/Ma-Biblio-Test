@@ -1304,26 +1304,18 @@
            Affichage du fil d'actualité et Centre de notifications
            ================================================================== */
 
-       /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
+      /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
         window.renderSocialFeed = () => {
-            // Sauvegarde du focus pour ne pas perdre la saisie dans le champ recherche
             const focusedId = document.activeElement ? document.activeElement.id : null;
             const focusedVal = focusedId ? document.activeElement.value : null;
-
             const container = document.getElementById('main-content');
             
-            // --- NOUVEAU BLOC DE RECHERCHE INTÉGRÉ ---
+            // Bloc Recherche
             const searchBlock = `
                 <div class="relative mb-8">
-                    <div class="bg-white p-2 rounded-2xl shadow-sm flex items-center gap-2 border border-gray-100">
-                        <i class="fa-solid fa-magnifying-glass text-gray-400 ml-3"></i>
-                        <input 
-                            id="user-search-input" 
-                            type="text" 
-                            placeholder="Chercher un ami" 
-                            class="flex-1 bg-transparent p-2 outline-none font-medium text-sm text-gray-800"
-                            oninput="window.handleUserSearch(this.value)"
-                        >
+                    <div class="bg-white p-3 rounded-2xl shadow-sm flex items-center gap-3 border border-gray-100">
+                        <i class="fa-solid fa-magnifying-glass text-gray-400 ml-2"></i>
+                        <input id="user-search-input" type="text" placeholder="Chercher un ami..." class="flex-1 bg-transparent outline-none font-bold text-sm text-gray-800 placeholder-gray-400" oninput="window.handleUserSearch(this.value)">
                     </div>
                     <div id="user-search-results" class="mt-2"></div>
                 </div>
@@ -1331,15 +1323,22 @@
 
             let feedHtml = '';
             
-            // Boucle sur chaque activité
             if (window.socialFeed && window.socialFeed.length > 0) {
-                window.socialFeed.forEach(act => {
+                const sortedFeed = [...window.socialFeed].sort((a,b) => b.timestamp - a.timestamp);
+
+                sortedFeed.forEach(act => {
                     const likes = act.likes || [];
                     const isLiked = likes.includes(window.currentUser.uid);
                     const commentsCount = (act.comments || []).length;
-                    let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : 'Soyez le premier à aimer';
+                    
+                    let typeIcon = 'fa-film';
+                    if (act.type === 'Livre') typeIcon = 'fa-book';
+                    if (act.type === 'Série') typeIcon = 'fa-tv';
 
-                    // Génération des petites têtes de likes
+                    // Texte des likes
+                    let likesText = likes.length > 0 ? (likes.length === 1 ? `1 J'aime` : `${likes.length} J'aime`) : 'J\'aime';
+
+                    // Têtes des likeurs
                     let facesHtml = '';
                     if(likes.length > 0) {
                         const firstLikers = likes.slice(0, 3);
@@ -1347,7 +1346,7 @@
                         firstLikers.forEach(uid => {
                             let avatarUrl = '';
                             if(uid === window.currentUser.uid) { avatarUrl = window.userProfile.avatar; } 
-                            else { const friend = window.followingData.find(u => u.uid === uid || u.id === uid); if(friend) avatarUrl = friend.avatar; }
+                            else { const friend = (window.followingData || []).find(u => u.uid === uid || u.id === uid); if(friend) avatarUrl = friend.avatar; }
                             
                             if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover">`; } 
                             else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-200 flex items-center justify-center text-[8px] text-gray-500"><i class="fa-solid fa-user"></i></div>`; }
@@ -1355,89 +1354,127 @@
                         facesHtml += '</div>';
                     }
 
-                    // Données pour l'aperçu cliquable
                     const previewData = {
-                        id: act.id + '_public',
-                        title: act.itemTitle,
-                        img: act.itemImg,
-                        type: act.type,
-                        metricValue: act.metricValue || 0,
-                        desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`,
-                        platform: act.platform, 
-                        releaseDate: null 
+                        id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: act.metricValue || 0,
+                        desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`, platform: act.platform, releaseDate: null 
                     };
                     const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
-                    const platformBadge = act.platform ? `<span class="ml-2 opacity-50 font-normal text-[10px]">• ${act.platform}</span>` : '';
+                    const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${act.platform}</span>` : '';
 
+                    // --- STRUCTURE CARTE BLANCHE UNIQUE (CORRIGÉE) ---
                     feedHtml += `
-                    <div class="activity-card relative" id="act-${act.id}">
-                        ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>` : ''}
-                        
-                        <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
-                            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden border border-gray-100">
-                                ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="font-black text-sm hover:underline">${act.userName}</span>
-                                <div class="text-[9px] text-gray-400 font-bold uppercase flex items-center">
-                                    ${new Date(act.timestamp).toLocaleDateString()}
-                                    ${platformBadge}
+                    <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-50" id="act-${act.id}">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
+                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black overflow-hidden border border-white shadow-sm">
+                                    ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-sm text-gray-900 leading-tight">${act.userName}</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-[10px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
+                                        <span class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[9px] font-black uppercase flex items-center gap-1">
+                                            <i class="fa-solid ${typeIcon}"></i> ${act.type} ${platformBadge}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
+                            ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="text-gray-300 hover:text-red-500 p-2"><i class="fa-solid fa-trash-can text-xs"></i></button>` : ''}
                         </div>
 
-                        <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview(${previewJson})'>
-                            <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200 shadow-sm">
-                            <div class="flex-1">
-                                <div class="font-black text-xs mb-1">${act.itemTitle}</div>
-                                <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
-                                <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
+                        <div class="flex gap-4 bg-gray-50 rounded-xl p-3 mb-4 cursor-pointer group hover:bg-gray-100 transition-colors" onclick='window.openPreview(${previewJson})'>
+                            <div class="relative w-16 h-24 rounded-lg overflow-hidden shadow-sm group-active:scale-95 transition-transform">
+                                <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200">
+                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm">${act.rating}</div>
+                            </div>
+                            <div class="flex-1 py-1">
+                                <h3 class="font-black text-sm text-gray-900 leading-tight mb-1">${act.itemTitle}</h3>
+                                <p class="text-xs text-gray-500 line-clamp-3 leading-relaxed">${act.comment ? `<span class="italic text-gray-600">"${act.comment}"</span>` : '<span class="opacity-50">A noté cette œuvre.</span>'}</p>
                             </div>
                         </div>
                         
-                        <div class="flex items-center gap-6 mt-4 mb-2 px-2">
-                            <button onclick="window.toggleLike('${act.id}')" class="text-2xl transition-transform active:scale-75 ${isLiked ? 'like-bounce' : 'text-gray-400'}">
-                                <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
-                            </button>
-                            <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400">
-                                <i class="fa-regular fa-comment"></i>
-                            </button>
-                        </div>
-
-                        <div class="flex items-center px-2 mb-2 min-h-[20px]">
-                            ${facesHtml}
-                            <div class="text-xs font-bold text-gray-800">${likesText}</div>
-                        </div>
-                        
-                        <div class="px-2">
-                            ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
+                        <div class="flex items-center justify-between pl-1 pr-1 border-t border-gray-50 pt-3">
+                            <div class="flex items-center gap-4">
+                                <button onclick="window.toggleLike('${act.id}')" class="flex items-center gap-2 transition-all active:scale-90 group">
+                                    <i class="${isLiked ? 'fa-solid text-red-500' : 'fa-regular text-gray-400'} fa-heart text-xl group-hover:text-red-400"></i>
+                                </button>
+                                <button onclick="window.openCommentModal('${act.id}')" class="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition-colors">
+                                    <i class="fa-regular fa-comment text-xl"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="flex items-center gap-3">
+                                ${likes.length > 0 ? `
+                                    <div class="flex items-center cursor-pointer hover:opacity-70 transition-opacity" onclick="window.showLikesList('${act.id}')">
+                                        ${facesHtml}
+                                        <span class="text-[10px] font-bold text-gray-500 ml-2 hover:underline">${likesText}</span>
+                                    </div>
+                                ` : ''}
+                                
+                                ${commentsCount > 0 ? `<span class="text-[10px] font-bold text-gray-400 cursor-pointer hover:text-blue-600" onclick="window.openCommentModal('${act.id}')">${commentsCount} com.</span>` : ''}
+                            </div>
                         </div>
                     </div>`
                 });
+                
+                container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="space-y-4">${feedHtml}</div></div>`;
+
             } else {
-                feedHtml = `<div class="text-center text-gray-400 py-10 opacity-60">
-                    <i class="fa-regular fa-comments text-4xl mb-3"></i>
-                    <p class="text-sm">Votre fil d'actualité est vide.<br>Suivez des amis pour voir leur activité !</p>
-                </div>`;
+                container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="text-center py-20 opacity-50"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl"><i class="fa-solid fa-user-group"></i></div><p class="font-bold text-gray-400 text-sm">Votre fil d'actualité est vide.</p></div></div>`;
             }
 
-            container.innerHTML = `<div class="pt-20 px-5 pb-32"><h1 class="text-4xl font-black mb-6">Amis</h1>
-            ${searchBlock}
-            ${feedHtml}
-            </div>`;
+            if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
+        };
 
-            // Restauration du focus pour que l'utilisateur puisse continuer à taper
-            if(focusedId) { 
-                const el = document.getElementById(focusedId); 
-                if(el) { 
-                    el.value = focusedVal; 
-                    el.focus(); 
-                    // Place le curseur à la fin du texte (astuce UX)
-                    const val = el.value; 
-                    el.value = ''; 
-                    el.value = val; 
-                } 
-            }
+        // --- NOUVELLE FONCTION : PETIT POPUP DES LIKES ---
+        window.showLikesList = (actId) => {
+            const act = window.socialFeed.find(a => a.id === actId);
+            if(!act || !act.likes || act.likes.length === 0) return;
+
+            // Création dynamique du popup (Overlay + Boite)
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-6 animate-fade-in';
+            overlay.id = 'likes-popup-overlay';
+            
+            // Fermeture au clic dehors
+            overlay.onclick = (e) => {
+                if (e.target === overlay) document.body.removeChild(overlay);
+            };
+
+            let listHtml = '';
+            act.likes.forEach(uid => {
+                let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
+                if (uid === window.currentUser.uid) u = window.userProfile;
+                const name = u ? u.name : 'Utilisateur';
+                const avatar = u && u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-500 text-xs">${name[0]}</span>`;
+
+                listHtml += `
+                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg px-2" onclick="document.body.removeChild(document.getElementById('likes-popup-overlay')); window.openPublicProfile('${uid}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-50">
+                                ${avatar}
+                            </div>
+                            <span class="font-bold text-sm text-gray-900">${name}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            overlay.innerHTML = `
+                <div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
+                    <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <h3 class="font-black text-sm uppercase text-gray-500 tracking-wider">Aimé par</h3>
+                        <button onclick="document.body.removeChild(document.getElementById('likes-popup-overlay'))" class="text-gray-400 hover:text-black">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="p-3 max-h-[50vh] overflow-y-auto">
+                        ${listHtml}
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
         };
 
         /* --- 2. CENTRE DE NOTIFICATIONS --- */
@@ -1818,114 +1855,200 @@
             }
         };
         
-      /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
+    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - FINAL --- */
+        
+        // Variables d'état pour le profil ami
+        window.friendData = [];
+        window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
+
         window.openPublicProfile = async (uid) => {
             if (!uid || uid === 'undefined') { console.error("ID utilisateur manquant"); return; }
             if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
             
             document.getElementById('public-profile-modal').classList.add('open');
             const container = document.getElementById('public-profile-content');
+            
+            // Loader
             container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
 
             try {
+                // 1. Récupération des données
                 const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
                 if (!profSnap.exists()) throw new Error("User not found");
                 const prof = profSnap.data();
                 
-                // VERIFICATION DU BLOCAGE
-                // Est-ce que mon ID (currentUser.uid) est dans sa liste 'blocked' ?
-                const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
-
+                // Récupération Collection complète
                 const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
-                const items = itemsSnap.docs.map(d => d.data());
+                window.friendData = itemsSnap.docs.map(d => d.data());
+
+                // Vérifications
+                const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
                 const isFollowing = (window.following || []).includes(uid);
 
+                // 2. Bouton d'action (Abonnement / Bloqué)
                 let buttonHTML = '';
                 if (iAmBlocked) {
-                    // Si je suis bloqué, on affiche un bouton gris inactif
-                    buttonHTML = `<button disabled class="bg-gray-300 text-gray-500 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed">
-                                    <i class="fa-solid fa-ban mr-1"></i> Indisponible
-                                  </button>`;
+                    buttonHTML = `<button disabled class="bg-gray-200 text-gray-400 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed border border-gray-200"><i class="fa-solid fa-ban mr-1"></i> Bloqué</button>`;
                 } else {
-                    // Sinon, bouton normal
-                    buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" 
-                                    class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">
-                                    ${isFollowing ? 'Abonné' : 'S\'abonner'}
-                                  </button>`;
+                    buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
                 }
 
+                // 3. Construction HTML
                 let html = `
-                    <div class="pt-24 px-6 pb-32">
-                        <div class="text-center mb-8 relative">
+                    <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black hover:bg-white transition-colors">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+
+                    <div class="pt-24 bg-white relative z-10">
+                        <div class="text-center px-6 pb-6 border-b border-gray-50">
                             <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
                             <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
                                  ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
                             </div>
                             <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
-                            
                             ${buttonHTML}
-                            
-                            <p class="text-gray-400 font-bold text-[10px] uppercase mt-4 tracking-widest">${items.filter(i=> i.status === 'Vu' || i.status === 'Lu').length} ÉLÉMENTS TERMINÉS</p>
                         </div>
                 `;
 
-                // Affichage des éléments seulement si on n'est PAS bloqué 
-                // (Optionnel : tu peux laisser ça ou cacher aussi les films si tu veux être strict)
                 if (!iAmBlocked) {
-                    ['Film', 'Série', 'Livre'].forEach(cat => {
-                        const catItems = items.filter(i => i.type === cat && (i.status === 'Vu' || i.status === 'Lu'));
-                        if(catItems.length > 0) {
-                             catItems.sort((a,b) => (b.finishDate || 0) > (a.finishDate || 0) ? 1 : -1);
-                             html += `<div class="year-divider">${cat}s</div><div class="items-grid">`;
-                             catItems.slice(0, 4).forEach(item => { html += window.generateGridItemHTML(item); });
-                             html += `</div>`;
-                        }
-                    });
+                    // INTERFACE DE NAVIGATION (Onglets + Filtres)
+                    html += `
+                        <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-2 shadow-sm">
+                            <div class="flex gap-6 px-6 border-b border-gray-100">
+                                <button onclick="window.switchFriendTab('Film')" id="f-tab-Film" class="pb-3 text-sm font-bold border-b-2 border-black transition-colors">Films</button>
+                                <button onclick="window.switchFriendTab('Livre')" id="f-tab-Livre" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">Livres</button>
+                                <button onclick="window.switchFriendTab('Série')" id="f-tab-Serie" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">Séries</button>
+                            </div>
+
+                            <div class="flex gap-2 px-6 py-3 overflow-x-auto no-scrollbar">
+                                <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap transition-colors">Vu / Lu</button>
+                                <button onclick="window.switchFriendStatus('Wishlist')" id="f-stat-Wishlist" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap transition-colors">Wishlist</button>
+                                <button onclick="window.switchFriendStatus('En cours')" id="f-stat-En cours" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap transition-colors">En cours</button>
+                            </div>
+                            
+                            <div class="flex justify-between items-center px-6 py-2 bg-gray-50/50 border-b border-gray-100">
+                                <span class="text-[10px] font-black uppercase text-gray-400 tracking-widest" id="friend-count-label">Chargement...</span>
+                                <button onclick="window.cycleFriendSort()" class="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-transform flex items-center gap-1">
+                                    <i class="fa-solid fa-arrow-down-short-wide"></i>
+                                    <span id="friend-sort-label">Date</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="friend-grid-content" class="px-4 py-4 min-h-[300px] pb-32"></div>
+                    </div>`; 
                 } else {
-                    html += `<div class="mt-12 text-center text-gray-400 font-bold text-sm">Le contenu de ce profil n'est pas disponible.</div>`;
+                    html += `<div class="mt-12 p-8 text-center text-gray-400 font-bold text-sm bg-gray-50 rounded-xl mx-6"><i class="fa-solid fa-lock text-2xl mb-2 opacity-30"></i><br>Ce profil n'est pas accessible.</div></div>`;
                 }
-                
-                html += `</div>`;
+
                 container.innerHTML = html;
+
+                // Initialisation du rendu
+                if (!iAmBlocked) {
+                    window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
+                    window.renderFriendGrid();
+                }
 
             } catch (e) { 
                 container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement.<br><span class="text-xs font-normal opacity-50">${e.message}</span></div>`; 
             }
         };
-        
+
+        // --- FONCTIONS DE NAVIGATION ---
+
+        window.switchFriendTab = (type) => {
+            window.friendState.type = type;
+            ['Film', 'Livre', 'Serie'].forEach(t => {
+                const el = document.getElementById(`f-tab-${t}`);
+                if(el) {
+                    if (t === type || (t === 'Serie' && type === 'Série')) {
+                        el.classList.remove('text-gray-400', 'border-transparent'); el.classList.add('text-black', 'border-black');
+                    } else {
+                        el.classList.add('text-gray-400', 'border-transparent'); el.classList.remove('text-black', 'border-black');
+                    }
+                }
+            });
+            window.renderFriendGrid();
+        };
+
+        window.switchFriendStatus = (status) => {
+            window.friendState.status = status;
+            ['Vu', 'Wishlist', 'En cours'].forEach(s => {
+                const el = document.getElementById(`f-stat-${s}`);
+                if(el) {
+                    if (s === status) {
+                        el.classList.remove('bg-gray-100', 'text-gray-500'); el.classList.add('bg-black', 'text-white');
+                    } else {
+                        el.classList.add('bg-gray-100', 'text-gray-500'); el.classList.remove('bg-black', 'text-white');
+                    }
+                }
+            });
+            window.renderFriendGrid();
+        };
+
+        window.cycleFriendSort = () => {
+            const current = window.friendState.sort;
+            if (current === 'date') window.friendState.sort = 'rating';
+            else if (current === 'rating') window.friendState.sort = 'name';
+            else window.friendState.sort = 'date';
+            window.renderFriendGrid();
+        };
+
+        window.renderFriendGrid = () => {
+            const container = document.getElementById('friend-grid-content');
+            if(!container) return;
+
+            // 1. Mise à jour du Label Tri
+            const sortLabel = document.getElementById('friend-sort-label');
+            const map = { 'date': 'Date', 'rating': 'Note', 'name': 'Nom' };
+            if(sortLabel) sortLabel.innerText = map[window.friendState.sort];
+
+            // 2. Filtrage
+            let filtered = window.friendData.filter(i => 
+                i.type === window.friendState.type && 
+                (i.status === window.friendState.status || (window.friendState.status === 'Vu' && i.status === 'Lu'))
+            );
+
+            // Mise à jour compteur
+            const label = document.getElementById('friend-count-label');
+            if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
+
+            // 3. Tri
+            const sortMode = window.friendState.sort;
+            filtered.sort((a, b) => {
+                if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
+                if (sortMode === 'name') return (a.title || '').localeCompare(b.title || '');
+                // Date par défaut
+                const dateA = a.finishDate || a.lastUpdate || '0';
+                const dateB = b.finishDate || b.lastUpdate || '0';
+                return dateB > dateA ? 1 : -1;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="py-20 text-center opacity-40"><i class="fa-solid fa-layer-group text-4xl mb-4 text-gray-300"></i><div class="font-bold text-sm text-gray-400">Aucun élément dans cette catégorie</div></div>`;
+                return;
+            }
+
+            let html = `<div class="items-grid">`;
+            filtered.forEach(item => { html += window.generateGridItemHTML(item); });
+            html += `</div>`;
+            container.innerHTML = html;
+        };
+
+        // --- FONCTIONS SOCIALES (Abonnement) ---
         window.toggleFollowFromProfile = async (uid) => {
             if(!window.currentUser) return;
             const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
             const isFollowing = window.following.includes(uid);
-            
             try {
                 if (isFollowing) {
-                    if(confirm("Ne plus suivre ?")) { 
-                        await updateDoc(myRef, { following: arrayRemove(uid) }); 
-                        window.openPublicProfile(uid); 
-                    }
+                    if(confirm("Ne plus suivre ?")) { await updateDoc(myRef, { following: arrayRemove(uid) }); window.openPublicProfile(uid); }
                 } else {
-                    // S'abonner
                     await updateDoc(myRef, { following: arrayUnion(uid) });
-                    
-                    // Notif
-                    try {
-                        const notifRef = collection(db, 'artifacts', appId, 'users', uid, 'notifications');
-                        await addDoc(notifRef, {
-                            type: 'follow', title: 'Nouvel abonné',
-                            message: `${window.userProfile.name} vous suit !`,
-                            timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null
-                        });
-                    } catch(e) {}
-
-                    // Feedback
-                    const toast = document.getElementById('profile-toast');
-                    if(toast) { 
-                        toast.innerText = "Abonné !"; toast.style.opacity = "1"; 
-                        setTimeout(() => { toast.style.opacity = "0"; window.openPublicProfile(uid); }, 1000); 
-                    } else window.openPublicProfile(uid);
+                    try { await addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), { type: 'follow', title: 'Nouvel abonné', message: `${window.userProfile.name} vous suit !`, timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null }); } catch(e) {}
+                    const toast = document.getElementById('profile-toast'); if(toast) { toast.innerText = "Abonné !"; toast.style.opacity = "1"; setTimeout(() => { toast.style.opacity = "0"; window.openPublicProfile(uid); }, 1000); } else window.openPublicProfile(uid);
                 }
-            } catch (e) { console.error("Erreur action follow:", e); alert("Erreur connexion."); }
+            } catch (e) { console.error(e); alert("Erreur connexion."); }
         };
 
         window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
