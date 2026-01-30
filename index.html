@@ -1624,38 +1624,86 @@
             return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
         };
 
-        /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
-        window.renderProfile = () => {
-            const following = window.followingData || [];
+       /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
+        window.renderProfile = async () => {
             const container = document.getElementById('main-content');
+            const following = window.followingData || [];
             
+            // 1. RÉCUPÉRATION DES ABONNÉS (CORRIGÉ)
+            let followers = [];
+            try {
+                // CORRECTION ICI : On cherche dans 'profile' (le nom du dossier), pas 'info'
+                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
+                const snap = await getDocs(q);
+                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            } catch (e) {
+                console.error("Erreur récup abonnés:", e);
+                // Si l'index manque, on l'affiche pour que tu puisses cliquer
+                console.log("⚠️ CLIQUE SUR LE LIEN CI-DESSOUS DANS LA CONSOLE SI ERREUR ROUGE");
+            }
+
             container.innerHTML = `
                 <div class="pt-28 px-6 pb-32 text-center">
                     <div class="avatar-container">
                         <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
                         <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
                     </div>
-                    <div class="mt-6 flex items-center justify-center gap-2"><h2 class="text-3xl font-black">${window.userProfile.name}</h2><button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button></div>
                     
-                    <div class="mt-6 text-center">
-                         <div class="inline-block bg-gray-100 px-3 py-1 rounded-lg text-xs font-mono text-gray-500 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('Copié')">ID: ${window.currentUser.uid} <i class="fa-regular fa-copy ml-1"></i></div>
+                    <div class="mt-6 flex items-center justify-center gap-2">
+                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
+                        <button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </div>
+                    
+                    <div class="mt-2 text-center">
+                         <div class="inline-block bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-mono text-gray-400 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('ID Copié')">
+                            ID: ${window.currentUser.uid} <i class="fa-regular fa-copy ml-1"></i>
+                         </div>
                     </div>
 
-                    <div class="mt-8 text-left">
-                        <button class="follow-toggle-btn shadow-sm" onclick="document.getElementById('following-list').classList.toggle('open')">
-                            <span>Mes Abonnements (${following.length})</span>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div id="following-list" class="following-dropdown">
+                    <div class="flex gap-3 mt-8">
+                        <div class="flex-1">
+                            <button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open')">
+                                <span class="text-xl font-black text-gray-900">${following.length}</span>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span>
+                            </button>
+                        </div>
+                        <div class="flex-1">
+                            <button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open')">
+                                <span class="text-xl font-black text-blue-600">${followers.length}</span>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
                             ${following.length > 0 ? following.map(p => `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
                                     <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center font-bold text-xs">${p.name[0]}</div>`}</div>
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">
+                                            ${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}
+                                        </div>
                                         <span class="font-bold text-sm">${p.name}</span>
                                     </div>
-                                    <button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-xs font-bold">Retirer</button>
+                                    <button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
                                 </div>
-                            `).join('') : '<div class="p-4 text-center text-sm text-gray-400">Aucun abonnement</div>'}
+                            `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                        </div>
+                    </div>
+
+                    <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
+                            ${followers.length > 0 ? followers.map(f => `
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.uid}')">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">
+                                            ${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}
+                                        </div>
+                                        <span class="font-bold text-sm">${f.name}</span>
+                                    </div>
+                                    <div class="text-blue-600 text-[10px] font-black uppercase">Suit</div>
+                                </div>
+                            `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné pour le moment</div>'}
                         </div>
                     </div>
 
@@ -1667,71 +1715,134 @@
                     </div>
 
                     <div class="ios-group !mx-0 mt-4">
-                        <div class="ios-cell py-4 cursor-pointer" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div>
+                        <div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()">
+                            <span class="text-red-500 font-bold text-sm">Déconnexion</span>
+                        </div>
                     </div>
                 </div>`;
         };
 
-        /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
+       /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
         window.openPublicProfile = async (uid) => {
             if (!uid || uid === 'undefined') { console.error("ID utilisateur manquant"); return; }
+            
+            // Si on clique sur son propre avatar, on va sur le profil privé
             if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
             
             document.getElementById('public-profile-modal').classList.add('open');
             const container = document.getElementById('public-profile-content');
+            
+            // Loader
             container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
 
             try {
+                // Chargement des infos de l'ami
                 const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
                 if (!profSnap.exists()) throw new Error("User not found");
                 const prof = profSnap.data();
+                
+                // Chargement de sa collection (pour afficher ses tops)
                 const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
                 const items = itemsSnap.docs.map(d => d.data());
+                
+                // Vérifie si JE le suis déjà
                 const isFollowing = (window.following || []).includes(uid);
 
                 let html = `
                     <div class="pt-24 px-6 pb-32">
                         <div class="text-center mb-8 relative">
                             <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
+                            
                             <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
-                                 ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : prof.name[0]}
+                                 ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
                             </div>
+                            
                             <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
-                            <button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-200 text-black' : 'bg-blue-600 text-white'} px-6 py-2 rounded-full font-bold mt-3 text-sm transition-colors">
+                            
+                            <button onclick="window.toggleFollowFromProfile('${uid}')" 
+                                class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">
                                 ${isFollowing ? 'Abonné' : 'S\'abonner'}
                             </button>
-                            <p class="text-gray-400 font-bold text-xs uppercase mt-4">${items.filter(i=> i.status === 'Vu' || i.status === 'Lu').length} éléments terminés</p>
+                            
+                            <p class="text-gray-400 font-bold text-[10px] uppercase mt-4 tracking-widest">${items.filter(i=> i.status === 'Vu' || i.status === 'Lu').length} ÉLÉMENTS TERMINÉS</p>
                         </div>
                 `;
 
+                // Affichage de ses items par catégorie
                 ['Film', 'Série', 'Livre'].forEach(cat => {
                     const catItems = items.filter(i => i.type === cat && (i.status === 'Vu' || i.status === 'Lu'));
                     if(catItems.length > 0) {
+                         // Tri par date de fin (récent en premier)
                          catItems.sort((a,b) => (b.finishDate || 0) > (a.finishDate || 0) ? 1 : -1);
+                         
                          html += `<div class="year-divider">${cat}s</div><div class="items-grid">`;
-                         catItems.forEach(item => { html += window.generateGridItemHTML(item); });
+                         // On limite à 4 items par catégorie pour ne pas surcharger
+                         catItems.slice(0, 4).forEach(item => { html += window.generateGridItemHTML(item); });
                          html += `</div>`;
                     }
                 });
+                
                 html += `</div>`;
                 container.innerHTML = html;
-            } catch (e) { container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement profil</div>`; console.error(e); }
+
+            } catch (e) { 
+                container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement profil.<br><span class="text-xs font-normal opacity-50">${e.message}</span></div>`; 
+                console.error(e); 
+            }
         };
         
+        // --- FONCTION DE FOLLOW AVEC NOTIFICATION ---
         window.toggleFollowFromProfile = async (uid) => {
             if(!window.currentUser) return;
-            const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+            
+            // Ma référence (pour ajouter à MA liste d'abonnements)
+            const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
             const isFollowing = window.following.includes(uid);
+            
             try {
                 if (isFollowing) {
-                    if(confirm("Ne plus suivre ?")) { await updateDoc(ref, { following: arrayRemove(uid) }); window.openPublicProfile(uid); }
+                    // --- SE DÉSABONNER ---
+                    if(confirm("Ne plus suivre cette personne ?")) { 
+                        await updateDoc(myRef, { following: arrayRemove(uid) }); 
+                        window.openPublicProfile(uid); // Rafraîchir le bouton
+                    }
                 } else {
-                    await updateDoc(ref, { following: arrayUnion(uid) });
+                    // --- S'ABONNER ---
+                    
+                    // 1. Mise à jour locale (Moi je le suis)
+                    await updateDoc(myRef, { following: arrayUnion(uid) });
+                    
+                    // 2. ENVOI DE LA NOTIFICATION (Chez LUI)
+                    // On écrit dans SA collection 'notifications'
+                    const notifRef = collection(db, 'artifacts', appId, 'users', uid, 'notifications');
+                    
+                    await addDoc(notifRef, {
+                        type: 'follow',                  // Type pour mettre une icône spéciale plus tard
+                        title: 'Nouvel abonné',
+                        message: `${window.userProfile.name} vous suit désormais !`,
+                        timestamp: Date.now(),
+                        read: false,                     // Non lu par défaut
+                        fromUid: window.currentUser.uid, // Qui envoie
+                        img: window.userProfile.avatar || null
+                    });
+
+                    // 3. Feedback Visuel (Toast)
                     const toast = document.getElementById('profile-toast');
-                    if(toast) { toast.innerText = "Abonné avec succès !"; toast.style.opacity = "1"; setTimeout(() => window.openPublicProfile(uid), 1000); } 
-                    else window.openPublicProfile(uid);
+                    if(toast) { 
+                        toast.innerText = "Abonné avec succès !"; 
+                        toast.style.opacity = "1"; 
+                        setTimeout(() => {
+                            toast.style.opacity = "0";
+                            window.openPublicProfile(uid); // Rafraîchir
+                        }, 1000); 
+                    } else {
+                        window.openPublicProfile(uid);
+                    }
                 }
-            } catch (e) { console.error("Erreur follow:", e); alert("Erreur lors de l'action"); }
+            } catch (e) { 
+                console.error("Erreur follow:", e); 
+                alert("Erreur lors de l'action. Vérifiez votre connexion."); 
+            }
         };
 
         window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
