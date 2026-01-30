@@ -104,6 +104,8 @@
         .suggestion-item:last-child { border-bottom: none; }
     </style>
 </head>
+
+</head>
 <body>
 
     <div id="auth-screen">
@@ -134,8 +136,9 @@
     </div>
 
     <div class="app-shell">
-        <header id="app-header">
+        <header id="app-header" class="relative">
             <div class="header-title">Ma Biblio</div>
+            
             <div class="type-tabs">
                 <div class="type-tab active" id="tab-Film" onclick="window.switchType('Film')">Films</div>
                 <div class="type-tab" id="tab-Livre" onclick="window.switchType('Livre')">Livres</div>
@@ -157,7 +160,11 @@
 
     <div id="search-modal" class="modal flex flex-col">
         <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajouter</h2><button onclick="window.closeSearchModal()" class="text-blue-600 font-bold">Fermer</button></div>
-        <div class="p-4 bg-white flex gap-2"><button id="s-Film" onclick="window.setSearchType('Film')" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm">Film</button><button id="s-Livre" onclick="window.setSearchType('Livre')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button><button id="s-Série" onclick="window.setSearchType('Série')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Série</button></div>
+        <div class="p-4 bg-white flex gap-2">
+            <button id="s-Film" onclick="window.setSearchType('Film')" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm">Film</button>
+            <button id="s-Livre" onclick="window.setSearchType('Livre')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button>
+            <button id="s-Série" onclick="window.setSearchType('Série')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Série</button>
+        </div>
         <div class="px-4 pb-4 bg-white flex flex-col gap-3">
             <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" id="search-input" placeholder="Rechercher..." class="w-full p-3.5 pl-11 bg-gray-100 rounded-2xl outline-none font-medium" oninput="window.handleSearch(this.value)"></div>
             <button onclick="window.openManualModal()" class="text-blue-600 font-bold text-sm bg-blue-50 py-3 rounded-xl">Créer manuellement</button>
@@ -168,9 +175,28 @@
     <div id="manual-modal" class="modal flex flex-col">
         <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajout Manuel</h2><button onclick="window.closeManualModal()" class="text-blue-600 font-bold">Annuler</button></div>
         <div class="p-6 overflow-y-auto flex-1">
-            <div class="flex gap-4 mb-6"><div class="w-1/3"><label class="manual-image-upload" id="manual-preview-container"><i class="fa-solid fa-plus"></i><span class="text-[10px] text-gray-400 font-black uppercase">Photo</span><input type="file" accept="image/*" class="hidden" onchange="window.handleManualImageUpload(event)"></label></div><div class="flex-1 flex flex-col gap-3"><input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm"><select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm"><option value="Film">Film</option><option value="Livre">Livre</option><option value="Série">Série</option></select></div></div>
-            <div class="ios-group !mx-0"><div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/saisons)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div></div>
-            <textarea id="m-desc" placeholder="Résumé" class="w-full bg-white p-4 rounded-xl border border-gray-100 h-24 outline-none mb-6 font-medium text-sm"></textarea>
+            <div class="flex gap-4 mb-6">
+                <div class="w-1/3">
+                    <label class="manual-image-upload" id="manual-preview-container">
+                        <i class="fa-solid fa-plus"></i><span class="text-[10px] text-gray-400 font-black uppercase">Photo</span>
+                        <input type="file" accept="image/*" class="hidden" onchange="window.handleManualImageUpload(event)">
+                    </label>
+                </div>
+                <div class="flex-1 flex flex-col gap-3">
+                    <input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
+                    <select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
+                        <option value="Film">Film</option>
+                        <option value="Livre">Livre</option>
+                        <option value="Série">Série</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="ios-group !mx-0">
+                <div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/saisons)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
+            </div>
+
+            <textarea id="m-desc" placeholder="Résumé" class="w-full bg-white p-4 rounded-xl border border-gray-100 h-24 outline-none mb-6 mt-6 font-medium text-sm"></textarea>
             <button onclick="window.confirmManualAdd()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg">Suivant</button>
         </div>
     </div>
@@ -267,6 +293,8 @@
         </div>
     </div>
 
+    </body>
+
     <script type="module">
         
        // -----------------------------------------------------------
@@ -276,7 +304,8 @@
         /* --- A.1 IMPORTS DES MODULES --- */
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- A.2 CONFIGURATION DU PROJET --- */
         const firebaseConfig = {
@@ -292,7 +321,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'mabiblio-dc595'; 
+        const appId = 'mabiblio-dc595';
 
        // -----------------------------------------------------------
         // B. ETAT GLOBAL DE L'APPLICATION
@@ -1169,43 +1198,84 @@
             input.value = "";
         };
 
-        /* --- 4. GESTION ABONNEMENTS & NAVIGATION SOCIALE --- */
-        window.followUser = async () => {
-            let val = document.getElementById('follow-id').value;
-            if (val) val = val.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
+       /* --- 4. GESTION ABONNEMENTS & NAVIGATION SOCIALE --- */
+        
+        // --- A. MOTEUR DE RECHERCHE "FUZZY" (INTELLIGENT) ---
+        
+        window.handleUserSearch = async (val) => {
+            // On cible le conteneur de résultats (qu'il soit dans une modale ou dans la page)
+            const container = document.getElementById('user-search-results');
+            if (!container) return;
 
-            if (val && val !== window.userProfile.name) {
-                try {
-                    const q = query(collectionGroup(db, 'profile'), where('name', '==', val));
-                    const querySnapshot = await getDocs(q);
-
-                    if (!querySnapshot.empty) {
-                        const targetUserDoc = querySnapshot.docs[0].data();
-                        const targetUid = targetUserDoc.uid;
-
-                        if (targetUid && targetUid !== window.currentUser.uid) {
-                            window.followFeedback = { type: 'success', msg: `✓ ${val} ajouté !` };
-                            await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayUnion(targetUid) });
-                            window.renderSocialFeed();
-                            setTimeout(() => { window.followFeedback = null; const el = document.getElementById('follow-success'); if(el) el.classList.add('hidden'); }, 3000);
-                        } else {
-                            window.followFeedback = { type: 'error', msg: "✕ C'est vous !" }; window.renderSocialFeed();
-                        }
-                    } else {
-                        window.followFeedback = { type: 'error', msg: "✕ Pseudo introuvable" }; window.renderSocialFeed();
-                    }
-                } catch (e) {
-                    console.error("ERREUR AJOUT AMI :", e);
-                    window.followFeedback = { type: 'error', msg: "✕ Erreur technique" }; window.renderSocialFeed();
-                }
+            val = val.trim().toLowerCase(); // On met tout en minuscule pour comparer
+            
+            if (!val) {
+                container.innerHTML = '<div class="text-center text-gray-400 mt-4 text-sm">Cherchez un ami...</div>';
+                return;
             }
-            document.getElementById('follow-id').value = "";
+
+            // Petit spinner discret
+            container.innerHTML = `<div class="text-center mt-6"><i class="fa-solid fa-spinner fa-spin text-blue-600"></i></div>`;
+
+            try {
+                // STRATÉGIE "FUZZY" : 
+                // 1. On récupère les 100 derniers profils actifs (ou tout le monde si petite app)
+                // 2. On filtre en JavaScript pour être souple (insensible à la casse, partie du mot...)
+                const q = query(collectionGroup(db, 'profile'), limit(100));
+                const snapshot = await getDocs(q);
+                
+                const allUsers = snapshot.docs.map(doc => doc.data());
+                
+                // Le filtre magique : convertit les deux en minuscules et vérifie si ça "contient" le texte
+                const matches = allUsers.filter(u => 
+                    u.name && 
+                    u.name.toLowerCase().includes(val) && 
+                    u.uid !== window.currentUser.uid
+                );
+                
+                if (matches.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-400 mt-4 text-sm font-bold">Aucun utilisateur trouvé.</div>';
+                    return;
+                }
+
+                // Rendu des résultats
+                container.innerHTML = matches.map(u => {
+                    const isFollowing = (window.following || []).includes(u.uid);
+                    // On échappe les caractères pour éviter les bugs d'affichage
+                    const safeName = u.name.replace(/'/g, "&apos;");
+                    const safeUid = u.uid;
+
+                    return `
+                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl mb-2 shadow-sm" onclick="window.openPublicProfile('${safeUid}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center border border-gray-100">
+                                ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-black text-blue-600 text-xs">${safeName[0]}</span>`}
+                            </div>
+                            <div class="flex flex-col text-left">
+                                <span class="font-bold text-sm text-gray-900 leading-tight">${safeName}</span>
+                                <span class="text-[10px] text-gray-400 font-medium">Membre</span>
+                            </div>
+                        </div>
+                        <div class="text-xs font-bold px-3 py-1 rounded-full ${isFollowing ? 'bg-green-100 text-green-600' : 'bg-blue-600 text-white'}">
+                            ${isFollowing ? 'Abonné' : 'Suivre'}
+                        </div>
+                    </div>`;
+                }).join('');
+
+            } catch (e) {
+                console.error("Erreur recherche:", e);
+                container.innerHTML = '<div class="text-center text-red-400 mt-4 text-xs">Erreur de chargement.</div>';
+            }
         };
+
+        // --- B. UTILITAIRES ---
+        // (Note: Les fonctions de modale open/closeUserSearchModal sont supprimées 
+        // car nous allons intégrer la recherche directement dans la page ci-dessous)
 
         window.updateNotifBadge = () => {
             const badge = document.getElementById('notif-badge');
             if (!badge) return;
-            const count = window.extState.notifications.filter(n => !n.read).length;
+            const count = (window.extState && window.extState.notifications) ? window.extState.notifications.filter(n => !n.read).length : 0;
 
             if(count > 0) {
                 badge.innerText = count > 9 ? '9+' : count;
@@ -1222,132 +1292,152 @@
                 const el = document.getElementById('act-' + actId);
                 if(el) { 
                     el.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    el.style.transition = "transform 0.3s";
-                    el.style.transform = "scale(0.96)";
-                    setTimeout(() => el.style.transform = "scale(1)", 300);
                 }
             }, 600); 
         };
+        
+        // Ancienne fonction conservée pour éviter les erreurs si appelée ailleurs
+        window.followUser = async () => {};
 
         /* ==================================================================
            H.2 : SOCIAL - FEED & NOTIFICATIONS
            Affichage du fil d'actualité et Centre de notifications
            ================================================================== */
 
-        /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
+       /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
         window.renderSocialFeed = () => {
             // Sauvegarde du focus pour ne pas perdre la saisie dans le champ recherche
             const focusedId = document.activeElement ? document.activeElement.id : null;
             const focusedVal = focusedId ? document.activeElement.value : null;
 
             const container = document.getElementById('main-content');
-            const feedbackActive = window.followFeedback !== null;
-            const feedbackMsg = window.followFeedback?.msg || '';
-            const feedbackColor = window.followFeedback?.type === 'error' ? 'text-red-500' : 'text-green-500';
-
-            // Bloc de recherche d'amis
+            
+            // --- NOUVEAU BLOC DE RECHERCHE INTÉGRÉ ---
             const searchBlock = `
                 <div class="relative mb-8">
-                    <div class="flex gap-2">
-                        <input id="follow-id" placeholder="Pseudo ami..." class="flex-1 bg-white p-4 rounded-2xl shadow-sm outline-none font-medium">
-                        <button onclick="window.followUser()" class="bg-blue-600 text-white px-6 rounded-2xl font-black relative overflow-hidden">Suivre</button>
+                    <div class="bg-white p-2 rounded-2xl shadow-sm flex items-center gap-2 border border-gray-100">
+                        <i class="fa-solid fa-magnifying-glass text-gray-400 ml-3"></i>
+                        <input 
+                            id="user-search-input" 
+                            type="text" 
+                            placeholder="Chercher un ami (ex: Timo...)" 
+                            class="flex-1 bg-transparent p-2 outline-none font-medium text-sm text-gray-800"
+                            oninput="window.handleUserSearch(this.value)"
+                        >
                     </div>
-                    <div id="follow-success" class="${feedbackActive ? '' : 'hidden'} absolute -bottom-6 left-0 ${feedbackColor} text-[10px] font-black uppercase tracking-wider">${feedbackMsg}</div>
+                    <div id="user-search-results" class="mt-2"></div>
                 </div>
             `;
 
             let feedHtml = '';
             
             // Boucle sur chaque activité
-            window.socialFeed.forEach(act => {
-                const likes = act.likes || [];
-                const isLiked = likes.includes(window.currentUser.uid);
-                const commentsCount = (act.comments || []).length;
-                let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : 'Soyez le premier à aimer';
+            if (window.socialFeed && window.socialFeed.length > 0) {
+                window.socialFeed.forEach(act => {
+                    const likes = act.likes || [];
+                    const isLiked = likes.includes(window.currentUser.uid);
+                    const commentsCount = (act.comments || []).length;
+                    let likesText = likes.length > 0 ? (likes.length === 1 ? `Aimé par 1 personne` : `Aimé par ${likes.length} personnes`) : 'Soyez le premier à aimer';
 
-                // Génération des petites têtes de likes
-                let facesHtml = '';
-                if(likes.length > 0) {
-                    const firstLikers = likes.slice(0, 3);
-                    facesHtml = '<div class="flex -space-x-2 mr-2">';
-                    firstLikers.forEach(uid => {
-                        let avatarUrl = '';
-                        if(uid === window.currentUser.uid) { avatarUrl = window.userProfile.avatar; } 
-                        else { const friend = window.followingData.find(u => u.uid === uid || u.id === uid); if(friend) avatarUrl = friend.avatar; }
+                    // Génération des petites têtes de likes
+                    let facesHtml = '';
+                    if(likes.length > 0) {
+                        const firstLikers = likes.slice(0, 3);
+                        facesHtml = '<div class="flex -space-x-2 mr-2">';
+                        firstLikers.forEach(uid => {
+                            let avatarUrl = '';
+                            if(uid === window.currentUser.uid) { avatarUrl = window.userProfile.avatar; } 
+                            else { const friend = window.followingData.find(u => u.uid === uid || u.id === uid); if(friend) avatarUrl = friend.avatar; }
+                            
+                            if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover">`; } 
+                            else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-200 flex items-center justify-center text-[8px] text-gray-500"><i class="fa-solid fa-user"></i></div>`; }
+                        });
+                        facesHtml += '</div>';
+                    }
+
+                    // Données pour l'aperçu cliquable
+                    const previewData = {
+                        id: act.id + '_public',
+                        title: act.itemTitle,
+                        img: act.itemImg,
+                        type: act.type,
+                        metricValue: act.metricValue || 0,
+                        desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`,
+                        platform: act.platform, 
+                        releaseDate: null 
+                    };
+                    const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
+                    const platformBadge = act.platform ? `<span class="ml-2 opacity-50 font-normal text-[10px]">• ${act.platform}</span>` : '';
+
+                    feedHtml += `
+                    <div class="activity-card relative" id="act-${act.id}">
+                        ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>` : ''}
                         
-                        if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover">`; } 
-                        else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-200 flex items-center justify-center text-[8px] text-gray-500"><i class="fa-solid fa-user"></i></div>`; }
-                    });
-                    facesHtml += '</div>';
-                }
-
-                // Données pour l'aperçu cliquable
-                const previewData = {
-                    id: act.id + '_public',
-                    title: act.itemTitle,
-                    img: act.itemImg,
-                    type: act.type,
-                    metricValue: act.metricValue || 0,
-                    desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`,
-                    platform: act.platform, 
-                    releaseDate: null 
-                };
-                const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
-                const platformBadge = act.platform ? `<span class="ml-2 opacity-50 font-normal text-[10px]">• ${act.platform}</span>` : '';
-
-                feedHtml += `
-                <div class="activity-card relative" id="act-${act.id}">
-                    ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="absolute top-5 right-5 text-gray-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>` : ''}
-                    
-                    <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
-                        <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden border border-gray-100">
-                            ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="font-black text-sm hover:underline">${act.userName}</span>
-                            <div class="text-[9px] text-gray-400 font-bold uppercase flex items-center">
-                                ${new Date(act.timestamp).toLocaleDateString()}
-                                ${platformBadge}
+                        <div class="flex items-center gap-3 mb-4 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
+                            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-black overflow-hidden border border-gray-100">
+                                ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-black text-sm hover:underline">${act.userName}</span>
+                                <div class="text-[9px] text-gray-400 font-bold uppercase flex items-center">
+                                    ${new Date(act.timestamp).toLocaleDateString()}
+                                    ${platformBadge}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview(${previewJson})'>
-                        <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200 shadow-sm">
-                        <div class="flex-1">
-                            <div class="font-black text-xs mb-1">${act.itemTitle}</div>
-                            <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
-                            <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
+                        <div class="flex gap-4 bg-gray-50 rounded-2xl p-3 mb-3" onclick='window.openPreview(${previewJson})'>
+                            <img src="${act.itemImg}" class="w-14 h-20 rounded-lg object-cover bg-gray-200 shadow-sm">
+                            <div class="flex-1">
+                                <div class="font-black text-xs mb-1">${act.itemTitle}</div>
+                                <div class="text-orange-500 font-black text-xs">★ ${act.rating}</div>
+                                <p class="mt-2 text-gray-600 text-[11px] italic">"${act.comment || ''}"</p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-6 mt-4 mb-2 px-2">
-                        <button onclick="window.toggleLike('${act.id}')" class="text-2xl transition-transform active:scale-75 ${isLiked ? 'like-bounce' : 'text-gray-400'}">
-                            <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
-                        </button>
-                        <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400">
-                            <i class="fa-regular fa-comment"></i>
-                        </button>
-                    </div>
+                        
+                        <div class="flex items-center gap-6 mt-4 mb-2 px-2">
+                            <button onclick="window.toggleLike('${act.id}')" class="text-2xl transition-transform active:scale-75 ${isLiked ? 'like-bounce' : 'text-gray-400'}">
+                                <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
+                            </button>
+                            <button onclick="window.openCommentModal('${act.id}')" class="text-2xl text-gray-400">
+                                <i class="fa-regular fa-comment"></i>
+                            </button>
+                        </div>
 
-                    <div class="flex items-center px-2 mb-2 min-h-[20px]">
-                        ${facesHtml}
-                        <div class="text-xs font-bold text-gray-800">${likesText}</div>
-                    </div>
-                    
-                    <div class="px-2">
-                        ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
-                    </div>
-                </div>`
-            });
+                        <div class="flex items-center px-2 mb-2 min-h-[20px]">
+                            ${facesHtml}
+                            <div class="text-xs font-bold text-gray-800">${likesText}</div>
+                        </div>
+                        
+                        <div class="px-2">
+                            ${commentsCount > 0 ? `<div class="text-[11px] text-gray-500 font-medium mt-1 cursor-pointer" onclick="window.openCommentModal('${act.id}')">Voir les ${commentsCount} commentaires</div>` : ''}
+                        </div>
+                    </div>`
+                });
+            } else {
+                feedHtml = `<div class="text-center text-gray-400 py-10 opacity-60">
+                    <i class="fa-regular fa-comments text-4xl mb-3"></i>
+                    <p class="text-sm">Votre fil d'actualité est vide.<br>Suivez des amis pour voir leur activité !</p>
+                </div>`;
+            }
 
             container.innerHTML = `<div class="pt-20 px-5 pb-32"><h1 class="text-4xl font-black mb-6">Amis</h1>
             ${searchBlock}
             ${feedHtml}
             </div>`;
 
-            // Restauration du focus
-            if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); } }
+            // Restauration du focus pour que l'utilisateur puisse continuer à taper
+            if(focusedId) { 
+                const el = document.getElementById(focusedId); 
+                if(el) { 
+                    el.value = focusedVal; 
+                    el.focus(); 
+                    // Place le curseur à la fin du texte (astuce UX)
+                    const val = el.value; 
+                    el.value = ''; 
+                    el.value = val; 
+                } 
+            }
         };
 
         /* --- 2. CENTRE DE NOTIFICATIONS --- */
