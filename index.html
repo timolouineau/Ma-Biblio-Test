@@ -102,8 +102,41 @@
         .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
         .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
         .suggestion-item:last-child { border-bottom: none; }
+
+        /* --- STYLE DES FAVORIS (PINNED) --- */
+.pinned-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+    margin-bottom: 24px;
+}
+.pinned-item {
+    aspect-ratio: 2/3;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 2px dashed #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.pinned-item:active { transform: scale(0.95); }
+.pinned-item.filled { border: none; background: black; }
+.pinned-item img { width: 100%; height: 100%; object-fit: cover; }
+.pinned-overlay {
+    position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    display: flex; align-items: flex-end; justify-content: center; padding: 8px;
+    opacity: 0; transition: opacity 0.2s;
+}
+.pinned-item.filled:hover .pinned-overlay { opacity: 1; }
+.bio-text { font-size: 14px; color: #4b5563; margin-top: 8px; line-height: 1.4; padding: 0 20px; font-style: italic; }
     </style>
-</head>
+
 
 </head>
 <body>
@@ -292,6 +325,17 @@
             <div id="fb-status" class="text-center mt-4 text-sm font-bold text-gray-400 hidden">Envoi en cours...</div>
         </div>
     </div>
+    <div id="pin-selector-modal" class="modal flex flex-col">
+    <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
+        <h2 class="text-xl font-black">Choisir un favori</h2>
+        <button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="text-blue-600 font-bold">Annuler</button>
+    </div>
+    <div class="p-4 bg-gray-50">
+        <input type="text" id="pin-search" placeholder="Rechercher dans ma collection..." class="w-full p-3 rounded-xl border border-gray-200 outline-none font-bold text-sm" oninput="window.filterPinSelector(this.value)">
+    </div>
+    <div class="flex-1 overflow-y-auto p-4" id="pin-selector-list">
+        </div>
+</div>
 
     </body>
 
@@ -1710,348 +1754,326 @@
             return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
         };
 
-      /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
+      /* --- J.2 RENDU DU PROFIL PRIVÉ (AVEC FAVORIS & BIO) --- */
         window.renderProfile = async () => {
             const container = document.getElementById('main-content');
             const following = window.followingData || [];
             
-            // 1. Récupération des Abonnés (Followers)
+            // 1. Récupération des données
             let followers = [];
             try {
                 const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
                 const snap = await getDocs(q);
                 followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id })); 
-            } catch (e) { console.log("Index manquant", e); }
+            } catch (e) {}
 
-            // 2. Récupération des Bloqués (Blacklist)
-            let blockedUsers = [];
-            const blockedIds = window.userProfile.blocked || []; // On récupère la liste des IDs bloqués
-            
-            if (blockedIds.length > 0) {
-                try {
-                    // On charge les infos de chaque personne bloquée pour afficher son nom
-                    // (On utilise Promise.all pour charger tout en parallèle rapidement)
-                    const promises = blockedIds.map(uid => getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info')));
-                    const snaps = await Promise.all(promises);
-                    // On ne garde que ceux qui existent encore
-                    blockedUsers = snaps.map((s, i) => s.exists() ? { ...s.data(), id: blockedIds[i] } : null).filter(u => u);
-                } catch (e) { console.error("Err loading blocked", e); }
-            }
+            // Données utilisateur
+            const bio = window.userProfile.bio || "Ajouter une biographie...";
+            const pinned = window.userProfile.pinned || [null, null, null]; // 3 emplacements
 
             container.innerHTML = `
                 <div class="pt-28 px-6 pb-32 text-center">
+                    
                     <div class="avatar-container">
                         <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
                         <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
                     </div>
-                    <div class="mt-6 flex items-center justify-center gap-2"><h2 class="text-3xl font-black">${window.userProfile.name}</h2><button onclick="window.updateProfileName()" class="text-blue-600 text-xl"><i class="fa-solid fa-pen-to-square"></i></button></div>
-                    <div class="mt-2 text-center"><div class="inline-block bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-mono text-gray-400 cursor-pointer" onclick="navigator.clipboard.writeText(window.currentUser.uid); alert('ID Copié')">ID: ${window.currentUser.uid} <i class="fa-regular fa-copy ml-1"></i></div></div>
+                    
+                    <div class="mt-4 flex items-center justify-center gap-2">
+                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
+                        <button onclick="window.updateProfileName()" class="text-blue-600 text-lg"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </div>
+                    <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${bio} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
 
-                    <div class="flex gap-3 mt-8">
-                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open'); document.getElementById('blocked-list').classList.remove('open')"><span class="text-xl font-black text-gray-900">${following.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span></button></div>
-                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open'); document.getElementById('blocked-list').classList.remove('open')"><span class="text-xl font-black text-blue-600">${followers.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span></button></div>
+                    <div class="text-left mt-8 mb-2 px-1"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Mes 3 Coups de ❤️</span></div>
+                    <div class="pinned-grid">
+                        ${[0, 1, 2].map(i => {
+                            const item = pinned[i];
+                            if (item) {
+                                return `
+                                <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
+                                    <img src="${item.img}">
+                                    <div class="pinned-overlay"><i class="fa-solid fa-rotate text-white"></i></div>
+                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
+                                </div>`;
+                            } else {
+                                return `
+                                <div class="pinned-item" onclick="window.openPinSelector(${i})">
+                                    <i class="fa-solid fa-plus text-gray-300 text-2xl"></i>
+                                </div>`;
+                            }
+                        }).join('')}
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open')"><span class="text-xl font-black text-gray-900">${following.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span></button></div>
+                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open')"><span class="text-xl font-black text-blue-600">${followers.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span></button></div>
                     </div>
 
                     <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${following.length > 0 ? following.map(p => `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div>
-                                        <span class="font-bold text-sm">${p.name}</span>
-                                    </div>
-                                    <button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
-                                </div>
-                            `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                            ${following.length > 0 ? following.map(p => `<div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0"><div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')"><div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div><span class="font-bold text-sm">${p.name}</span></div><button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button></div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
                         </div>
                     </div>
 
                     <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${followers.length > 0 ? followers.map(f => `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div>
-                                        <span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span>
-                                    </div>
-                                    <div class="flex gap-3 items-center">
-                                        <button onclick="window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase hover:text-red-700">Retirer</button>
-                                        <div class="h-3 w-px bg-gray-300"></div>
-                                        <button onclick="window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase hover:text-black" title="Bloquer définitivement">Bloquer</button>
-                                    </div>
-                                </div>
-                            `).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
+                            ${followers.length > 0 ? followers.map(f => `<div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0"><div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')"><div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div><span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span></div><div class="flex gap-3 items-center"><button onclick="window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button><div class="h-3 w-px bg-gray-300"></div><button onclick="window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button></div></div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
                         </div>
                     </div>
-
-                    ${blockedIds.length > 0 ? `
-                        <div class="mt-6 text-right">
-                            <button onclick="document.getElementById('blocked-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open'); document.getElementById('followers-list').classList.remove('open')" 
-                                class="text-[10px] font-bold text-gray-400 hover:text-gray-600 uppercase tracking-widest border-b border-gray-200 pb-1">
-                                <i class="fa-solid fa-user-slash mr-1"></i> Gérer les bloqués (${blockedIds.length})
-                            </button>
-                        </div>
-
-                        <div id="blocked-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
-                            <div class="bg-gray-50 rounded-2xl border border-gray-200 shadow-inner">
-                                <div class="p-3 text-[10px] text-gray-400 uppercase font-bold text-center border-b border-gray-200">Utilisateurs bloqués</div>
-                                ${blockedUsers.map(u => `
-                                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 last:border-0 opacity-75">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-8 h-8 rounded-full bg-gray-200 grayscale overflow-hidden flex items-center justify-center">${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-500 text-xs">${u.name[0]}</span>`}</div>
-                                            <span class="font-bold text-sm text-gray-500 line-through decoration-gray-400">${u.name}</span>
-                                        </div>
-                                        <button onclick="window.unblockUser('${u.id}')" class="text-blue-600 text-[10px] font-black uppercase bg-white border border-blue-100 px-2 py-1 rounded hover:bg-blue-50">Débloquer</button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
 
                     <div class="ios-group !mx-0 mt-8"><div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()"><span class="font-bold text-sm">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i></div></div>
                     <div class="ios-group !mx-0 mt-4"><div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div></div>
                 </div>`;
         };
 
-        // --- FONCTIONS DE GESTION ---
+        // --- NOUVELLES FONCTIONS DE GESTION (BIO & PIN) ---
         
-        window.removeFollower = async (targetUid) => {
-            if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
-            try {
-                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
-                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
-                window.renderProfile();
-            } catch (e) { console.error(e); alert("Erreur permissions."); }
-        };
-
-        window.blockUser = async (targetUid) => {
-            if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
-            try {
-                // Kick
-                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
-                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
-                // Ban
-                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
-                
-                alert("Utilisateur bloqué.");
-                window.renderProfile();
-            } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
-        };
-
-        // --- NOUVELLE FONCTION : DÉBLOQUER ---
-        window.unblockUser = async (targetUid) => {
-            if(!confirm("Débloquer cet utilisateur ? Il pourra à nouveau voir votre profil et s'abonner.")) return;
-            try {
-                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                // On retire l'ID de la liste 'blocked'
-                await updateDoc(myRef, { blocked: arrayRemove(targetUid) });
-                
-                alert("Utilisateur débloqué.");
-                window.renderProfile(); // Rafraîchissement pour faire disparaître la ligne
-            } catch (e) {
-                console.error(e);
-                alert("Erreur lors du déblocage.");
+        // 1. Mise à jour de la Bio
+        window.updateBio = async () => {
+            const current = window.userProfile.bio || "";
+            const newBio = prompt("Entrez votre biographie (courte phrase) :", current);
+            if (newBio !== null && newBio !== current) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                    await updateDoc(ref, { bio: newBio });
+                    window.userProfile.bio = newBio;
+                    window.renderProfile();
+                } catch(e) { console.error(e); alert("Erreur sauvegarde bio."); }
             }
         };
-        
-    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - FINAL --- */
-        
-        // Variables d'état pour le profil ami
-        window.friendData = [];
-        window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
 
-        window.openPublicProfile = async (uid) => {
-            if (!uid || uid === 'undefined') { console.error("ID utilisateur manquant"); return; }
-            if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
+        // 2. Ouvrir le sélecteur de favoris
+        window.currentPinSlot = 0;
+        window.openPinSelector = (slotIndex) => {
+            window.currentPinSlot = slotIndex;
+            const modal = document.getElementById('pin-selector-modal');
+            const list = document.getElementById('pin-selector-list');
+            modal.classList.add('open');
             
-            document.getElementById('public-profile-modal').classList.add('open');
-            const container = document.getElementById('public-profile-content');
+            // On affiche seulement les éléments terminés (Vu ou Lu)
+            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
             
-            // Loader
-            container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
-
-            try {
-                // 1. Récupération des données
-                const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
-                if (!profSnap.exists()) throw new Error("User not found");
-                const prof = profSnap.data();
+            // Fonction interne d'affichage
+            window.renderPinList = (items) => {
+                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des films vus d\'abord !</div>'; return; }
                 
-                // Récupération Collection complète
-                const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
-                window.friendData = itemsSnap.docs.map(d => d.data());
-
-                // Vérifications
-                const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
-                const isFollowing = (window.following || []).includes(uid);
-
-                // 2. Bouton d'action (Abonnement / Bloqué)
-                let buttonHTML = '';
-                if (iAmBlocked) {
-                    buttonHTML = `<button disabled class="bg-gray-200 text-gray-400 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed border border-gray-200"><i class="fa-solid fa-ban mr-1"></i> Bloqué</button>`;
-                } else {
-                    buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
-                }
-
-                // 3. Construction HTML
-                let html = `
-                    <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black hover:bg-white transition-colors">
-                        <i class="fa-solid fa-arrow-left"></i>
-                    </button>
-
-                    <div class="pt-24 bg-white relative z-10">
-                        <div class="text-center px-6 pb-6 border-b border-gray-50">
-                            <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
-                            <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
-                                 ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
-                            </div>
-                            <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
-                            ${buttonHTML}
+                list.innerHTML = items.map(item => {
+                    // On prépare l'objet à sauvegarder (pas besoin de tout, juste l'essentiel)
+                    const safeItem = { 
+                        id: item.id, title: item.title, img: item.img, 
+                        rating: item.rating, type: item.type 
+                    };
+                    const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
+                    
+                    return `
+                    <div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'>
+                        <img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200">
+                        <div>
+                            <div class="font-bold text-sm">${item.title}</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div>
                         </div>
-                `;
-
-                if (!iAmBlocked) {
-                    // INTERFACE DE NAVIGATION (Onglets + Filtres)
-                    html += `
-                        <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-2 shadow-sm">
-                            <div class="flex gap-6 px-6 border-b border-gray-100">
-                                <button onclick="window.switchFriendTab('Film')" id="f-tab-Film" class="pb-3 text-sm font-bold border-b-2 border-black transition-colors">Films</button>
-                                <button onclick="window.switchFriendTab('Livre')" id="f-tab-Livre" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">Livres</button>
-                                <button onclick="window.switchFriendTab('Série')" id="f-tab-Serie" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">Séries</button>
-                            </div>
-
-                            <div class="flex gap-2 px-6 py-3 overflow-x-auto no-scrollbar">
-                                <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap transition-colors">Vu / Lu</button>
-                                <button onclick="window.switchFriendStatus('Wishlist')" id="f-stat-Wishlist" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap transition-colors">Wishlist</button>
-                                <button onclick="window.switchFriendStatus('En cours')" id="f-stat-En cours" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap transition-colors">En cours</button>
-                            </div>
-                            
-                            <div class="flex justify-between items-center px-6 py-2 bg-gray-50/50 border-b border-gray-100">
-                                <span class="text-[10px] font-black uppercase text-gray-400 tracking-widest" id="friend-count-label">Chargement...</span>
-                                <button onclick="window.cycleFriendSort()" class="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-[10px] font-bold active:scale-95 transition-transform flex items-center gap-1">
-                                    <i class="fa-solid fa-arrow-down-short-wide"></i>
-                                    <span id="friend-sort-label">Date</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="friend-grid-content" class="px-4 py-4 min-h-[300px] pb-32"></div>
-                    </div>`; 
-                } else {
-                    html += `<div class="mt-12 p-8 text-center text-gray-400 font-bold text-sm bg-gray-50 rounded-xl mx-6"><i class="fa-solid fa-lock text-2xl mb-2 opacity-30"></i><br>Ce profil n'est pas accessible.</div></div>`;
+                    </div>`;
+                }).join('');
+                
+                // Option "Vider la case" si elle est déjà pleine
+                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) {
+                     list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML;
                 }
-
-                container.innerHTML = html;
-
-                // Initialisation du rendu
-                if (!iAmBlocked) {
-                    window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
-                    window.renderFriendGrid();
-                }
-
-            } catch (e) { 
-                container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur chargement.<br><span class="text-xs font-normal opacity-50">${e.message}</span></div>`; 
-            }
+            };
+            
+            window.renderPinList(candidates);
         };
 
-        // --- FONCTIONS DE NAVIGATION ---
-
-        window.switchFriendTab = (type) => {
-            window.friendState.type = type;
-            ['Film', 'Livre', 'Serie'].forEach(t => {
-                const el = document.getElementById(`f-tab-${t}`);
-                if(el) {
-                    if (t === type || (t === 'Serie' && type === 'Série')) {
-                        el.classList.remove('text-gray-400', 'border-transparent'); el.classList.add('text-black', 'border-black');
-                    } else {
-                        el.classList.add('text-gray-400', 'border-transparent'); el.classList.remove('text-black', 'border-black');
-                    }
-                }
-            });
-            window.renderFriendGrid();
+        // 3. Filtrer la recherche dans la modale
+        window.filterPinSelector = (query) => {
+            const term = query.toLowerCase();
+            const all = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
+            const filtered = all.filter(i => i.title.toLowerCase().includes(term));
+            window.renderPinList(filtered);
         };
 
-        window.switchFriendStatus = (status) => {
-            window.friendState.status = status;
-            ['Vu', 'Wishlist', 'En cours'].forEach(s => {
-                const el = document.getElementById(`f-stat-${s}`);
-                if(el) {
-                    if (s === status) {
-                        el.classList.remove('bg-gray-100', 'text-gray-500'); el.classList.add('bg-black', 'text-white');
-                    } else {
-                        el.classList.add('bg-gray-100', 'text-gray-500'); el.classList.remove('bg-black', 'text-white');
-                    }
-                }
-            });
-            window.renderFriendGrid();
-        };
-
-        window.cycleFriendSort = () => {
-            const current = window.friendState.sort;
-            if (current === 'date') window.friendState.sort = 'rating';
-            else if (current === 'rating') window.friendState.sort = 'name';
-            else window.friendState.sort = 'date';
-            window.renderFriendGrid();
-        };
-
-        window.renderFriendGrid = () => {
-            const container = document.getElementById('friend-grid-content');
-            if(!container) return;
-
-            // 1. Mise à jour du Label Tri
-            const sortLabel = document.getElementById('friend-sort-label');
-            const map = { 'date': 'Date', 'rating': 'Note', 'name': 'Nom' };
-            if(sortLabel) sortLabel.innerText = map[window.friendState.sort];
-
-            // 2. Filtrage
-            let filtered = window.friendData.filter(i => 
-                i.type === window.friendState.type && 
-                (i.status === window.friendState.status || (window.friendState.status === 'Vu' && i.status === 'Lu'))
-            );
-
-            // Mise à jour compteur
-            const label = document.getElementById('friend-count-label');
-            if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
-
-            // 3. Tri
-            const sortMode = window.friendState.sort;
-            filtered.sort((a, b) => {
-                if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-                if (sortMode === 'name') return (a.title || '').localeCompare(b.title || '');
-                // Date par défaut
-                const dateA = a.finishDate || a.lastUpdate || '0';
-                const dateB = b.finishDate || b.lastUpdate || '0';
-                return dateB > dateA ? 1 : -1;
-            });
-
-            if (filtered.length === 0) {
-                container.innerHTML = `<div class="py-20 text-center opacity-40"><i class="fa-solid fa-layer-group text-4xl mb-4 text-gray-300"></i><div class="font-bold text-sm text-gray-400">Aucun élément dans cette catégorie</div></div>`;
-                return;
-            }
-
-            let html = `<div class="items-grid">`;
-            filtered.forEach(item => { html += window.generateGridItemHTML(item); });
-            html += `</div>`;
-            container.innerHTML = html;
-        };
-
-        // --- FONCTIONS SOCIALES (Abonnement) ---
-        window.toggleFollowFromProfile = async (uid) => {
-            if(!window.currentUser) return;
-            const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-            const isFollowing = window.following.includes(uid);
+        // 4. Sauvegarder le choix
+        window.savePin = async (itemData) => {
             try {
-                if (isFollowing) {
-                    if(confirm("Ne plus suivre ?")) { await updateDoc(myRef, { following: arrayRemove(uid) }); window.openPublicProfile(uid); }
-                } else {
-                    await updateDoc(myRef, { following: arrayUnion(uid) });
-                    try { await addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), { type: 'follow', title: 'Nouvel abonné', message: `${window.userProfile.name} vous suit !`, timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null }); } catch(e) {}
-                    const toast = document.getElementById('profile-toast'); if(toast) { toast.innerText = "Abonné !"; toast.style.opacity = "1"; setTimeout(() => { toast.style.opacity = "0"; window.openPublicProfile(uid); }, 1000); } else window.openPublicProfile(uid);
-                }
-            } catch (e) { console.error(e); alert("Erreur connexion."); }
+                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                let newPinned = window.userProfile.pinned || [null, null, null];
+                newPinned[window.currentPinSlot] = itemData; // itemData est null si on supprime
+                
+                await updateDoc(ref, { pinned: newPinned });
+                window.userProfile.pinned = newPinned; // Update local
+                
+                document.getElementById('pin-selector-modal').classList.remove('open');
+                window.renderProfile(); // Rafraîchir l'interface
+            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
         };
+        
+    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION FIXÉE --- */
+window.friendData = [];
+window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
 
-        window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
+window.openPublicProfile = async (uid) => {
+    if (!uid || uid === 'undefined') { console.error("ID manquant"); return; }
+    if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
+    
+    document.getElementById('public-profile-modal').classList.add('open');
+    const container = document.getElementById('public-profile-content');
+    container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
+
+    try {
+        const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
+        if (!profSnap.exists()) throw new Error("User not found");
+        const prof = profSnap.data();
+        
+        const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
+        window.friendData = itemsSnap.docs.map(d => d.data());
+
+        const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
+        const isFollowing = (window.following || []).includes(uid);
+        
+        const bio = prof.bio || "";
+        const pinned = prof.pinned || [null, null, null];
+        const hasPinned = pinned.some(p => p !== null);
+
+        let buttonHTML = '';
+        if (iAmBlocked) {
+            buttonHTML = `<button disabled class="bg-gray-200 text-gray-400 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed"><i class="fa-solid fa-ban mr-1"></i> Bloqué</button>`;
+        } else {
+            buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
+        }
+
+        let html = `
+            <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
+
+            <div class="pt-24 bg-white relative z-10">
+                <div class="text-center px-6 pb-6 border-b border-gray-50">
+                    <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
+                    <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
+                         ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
+                    </div>
+                    <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
+                    ${bio ? `<p class="bio-text mt-2">"${bio}"</p>` : ''}
+                    ${buttonHTML}
+
+                    ${hasPinned && !iAmBlocked ? `
+                        <div class="mt-8 mb-2 px-1 text-left"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Ses Coups de ❤️</span></div>
+                        <div class="pinned-grid">
+                            ${pinned.map(item => item ? `
+                                <div class="pinned-item filled">
+                                    <img src="${item.img}">
+                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
+                                </div>
+                            ` : `<div class="pinned-item opacity-20"></div>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+        `;
+
+        if (!iAmBlocked) {
+            html += `
+                <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-2 shadow-sm">
+                    <div class="flex gap-6 px-6 border-b border-gray-100">
+                        <button onclick="window.switchFriendTab('Film')" id="f-tab-Film" class="pb-3 text-sm font-bold border-b-2 border-black">Films</button>
+                        <button onclick="window.switchFriendTab('Livre')" id="f-tab-Livre" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent">Livres</button>
+                        <button onclick="window.switchFriendTab('Série')" id="f-tab-Serie" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent">Séries</button>
+                    </div>
+                    <div class="flex gap-2 px-6 py-3 overflow-x-auto no-scrollbar">
+                        <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap">Vu / Lu</button>
+                        <button onclick="window.switchFriendStatus('Wishlist')" id="f-stat-Wishlist" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap">Wishlist</button>
+                    </div>
+                    <div class="flex justify-between items-center px-6 py-2 bg-gray-50/50 border-b border-gray-100">
+                        <span class="text-[10px] font-black uppercase text-gray-400 tracking-widest" id="friend-count-label">...</span>
+                        <button onclick="window.cycleFriendSort()" class="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"><i class="fa-solid fa-arrow-down-short-wide"></i><span id="friend-sort-label">Date</span></button>
+                    </div>
+                </div>
+                <div id="friend-grid-content" class="px-4 py-4 min-h-[300px] pb-32"></div>
+            </div>`; 
+        }
+
+        container.innerHTML = html;
+        if (!iAmBlocked) window.renderFriendGrid();
+
+    } catch (e) { 
+        console.error(e);
+        container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur de chargement.</div>`; 
+    }
+};
+
+// --- FONCTIONS DE NAVIGATION (INDISPENSABLES) ---
+window.switchFriendTab = (type) => {
+    window.friendState.type = type;
+    ['Film', 'Livre', 'Serie'].forEach(t => {
+        const el = document.getElementById(`f-tab-${t}`);
+        if(el) {
+            if (t === type || (t === 'Serie' && type === 'Série')) {
+                el.classList.remove('text-gray-400', 'border-transparent'); el.classList.add('text-black', 'border-black');
+            } else { el.classList.add('text-gray-400', 'border-transparent'); el.classList.remove('text-black', 'border-black'); }
+        }
+    });
+    window.renderFriendGrid();
+};
+
+window.switchFriendStatus = (status) => {
+    window.friendState.status = status;
+    ['Vu', 'Wishlist'].forEach(s => {
+        const el = document.getElementById(`f-stat-${s}`);
+        if(el) {
+            if (s === status) { el.classList.remove('bg-gray-100', 'text-gray-500'); el.classList.add('bg-black', 'text-white'); }
+            else { el.classList.add('bg-gray-100', 'text-gray-500'); el.classList.remove('bg-black', 'text-white'); }
+        }
+    });
+    window.renderFriendGrid();
+};
+
+window.cycleFriendSort = () => {
+    const current = window.friendState.sort;
+    if (current === 'date') window.friendState.sort = 'rating';
+    else if (current === 'rating') window.friendState.sort = 'name';
+    else window.friendState.sort = 'date';
+    window.renderFriendGrid();
+};
+
+window.renderFriendGrid = () => {
+    const container = document.getElementById('friend-grid-content');
+    if(!container) return;
+    const sortLabel = document.getElementById('friend-sort-label');
+    const map = { 'date': 'Date', 'rating': 'Note', 'name': 'Nom' };
+    if(sortLabel) sortLabel.innerText = map[window.friendState.sort];
+
+    let filtered = window.friendData.filter(i => i.type === window.friendState.type && (i.status === window.friendState.status || (window.friendState.status === 'Vu' && i.status === 'Lu')));
+    const label = document.getElementById('friend-count-label');
+    if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
+
+    const sortMode = window.friendState.sort;
+    filtered.sort((a, b) => {
+        if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
+        if (sortMode === 'name') return (a.title || '').localeCompare(b.title || '');
+        return (b.finishDate || b.lastUpdate || '0') > (a.finishDate || a.lastUpdate || '0') ? 1 : -1;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="py-20 text-center opacity-40"><div class="font-bold text-sm text-gray-400">Aucun élément ici</div></div>`;
+        return;
+    }
+
+    container.innerHTML = `<div class="items-grid">${filtered.map(item => window.generateGridItemHTML(item)).join('')}</div>`;
+};
+
+window.toggleFollowFromProfile = async (uid) => {
+    const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+    const isFollowing = window.following.includes(uid);
+    try {
+        if (isFollowing) {
+            if(confirm("Ne plus suivre ?")) { await updateDoc(myRef, { following: arrayRemove(uid) }); window.openPublicProfile(uid); }
+        } else {
+            await updateDoc(myRef, { following: arrayUnion(uid) });
+            try { await addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), { type: 'follow', title: 'Nouvel abonné', message: `${window.userProfile.name} vous suit !`, timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null }); } catch(e) {}
+            window.openPublicProfile(uid);
+        }
+    } catch (e) { console.error(e); }
+};
+
+window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
 
         /* --- J.4 RENDU DES STATISTIQUES --- */
         window.toggleStatsMode = (mode) => { window.extState.statsMode = mode; window.renderStatsView(); };
