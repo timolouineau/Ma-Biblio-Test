@@ -217,6 +217,7 @@
                 </div>
                 <div class="flex-1 flex flex-col gap-3">
                     <input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
+                    <input type="text" id="m-author" placeholder="Auteur / Réalisateur" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
                     <select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
                         <option value="Film">Film</option>
                         <option value="Livre">Livre</option>
@@ -227,6 +228,7 @@
             
             <div class="ios-group !mx-0">
                 <div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/saisons)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
+                <div class="ios-cell border-t border-gray-100"><span class="font-bold text-sm">Date de parution</span><input type="date" id="m-date" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div>
             </div>
 
             <textarea id="m-desc" placeholder="Résumé" class="w-full bg-white p-4 rounded-xl border border-gray-100 h-24 outline-none mb-6 mt-6 font-medium text-sm"></textarea>
@@ -325,17 +327,17 @@
             <div id="fb-status" class="text-center mt-4 text-sm font-bold text-gray-400 hidden">Envoi en cours...</div>
         </div>
     </div>
+    
     <div id="pin-selector-modal" class="modal flex flex-col">
-    <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
-        <h2 class="text-xl font-black">Choisir un favori</h2>
-        <button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="text-blue-600 font-bold">Annuler</button>
-    </div>
-    <div class="p-4 bg-gray-50">
-        <input type="text" id="pin-search" placeholder="Rechercher dans ma collection..." class="w-full p-3 rounded-xl border border-gray-200 outline-none font-bold text-sm" oninput="window.filterPinSelector(this.value)">
-    </div>
-    <div class="flex-1 overflow-y-auto p-4" id="pin-selector-list">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
+            <h2 class="text-xl font-black">Choisir un favori</h2>
+            <button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="text-blue-600 font-bold">Annuler</button>
         </div>
-</div>
+        <div class="p-4 bg-gray-50">
+            <input type="text" id="pin-search" placeholder="Rechercher dans ma collection..." class="w-full p-3 rounded-xl border border-gray-200 outline-none font-bold text-sm" oninput="window.filterPinSelector(this.value)">
+        </div>
+        <div class="flex-1 overflow-y-auto p-4" id="pin-selector-list"></div>
+    </div>
 
     </body>
 
@@ -874,90 +876,112 @@
             document.getElementById('search-results').innerHTML = results.map(i => `<div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200"><div class="flex-1 font-black text-xs">${i.title}<div class="text-[10px] text-gray-400 font-normal mt-0.5">${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''}</div></div></div>`).join(''); 
         };
 
-        /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS) --- */
+       /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS & IMPORT) --- */
         window.openPreview = (item) => { 
             window.tempItem = item; 
             document.getElementById('preview-modal').classList.add('open'); 
-            const showDelete = item.docId ? true : false;
             
-            const isEdited = item.rating || item.status === 'Vu' || item.status === 'Lu';
-            const actionText = isEdited ? "Modifier ma note" : CONFIG[item.type].action;
+            // 1. DÉTECTION : Mode Lecture (Ami) ou Édition (Moi)
+            const isPublicProfileOpen = document.getElementById('public-profile-modal').classList.contains('open');
+            const isFeedItem = item.id && typeof item.id === 'string' && item.id.endsWith('_public');
+            const isReadOnly = isPublicProfileOpen || isFeedItem;
 
+            const showDelete = (item.docId && !isReadOnly) ? true : false;
+            
+            // 2. Commentaire
             let commentHtml = '';
             if (item.comment && item.comment.trim() !== '') {
                 commentHtml = `
                     <div class="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl mb-8 text-left border border-white/5">
                         <div class="flex items-center gap-2 mb-2">
                             <i class="fa-solid fa-quote-left text-blue-500"></i>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mon Avis</span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avis</span>
                         </div>
                         <p class="text-white font-medium text-sm italic leading-relaxed">"${item.comment}"</p>
                     </div>`;
             }
 
             const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${item.platform}</span>` : '';
-            
-            // --- Construction du Bloc Info "Propre" ---
             const year = item.releaseDate ? item.releaseDate.split('-')[0] : 'Inconnue';
+            
+            // 3. Méta-Infos
             let metaInfos = '';
-
-            // On affiche ce bloc seulement si on a des infos intéressantes (Auteur ou Casting)
             if (item.author || item.cast) {
                 metaInfos = `
                 <div class="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10 flex flex-col gap-3 text-left">
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex-1">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">
-                                <i class="fa-solid ${item.type === 'Livre' ? 'fa-pen-nib' : 'fa-video'} mr-1"></i> ${item.type === 'Livre' ? 'Auteur' : 'De'}
-                            </div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid ${item.type === 'Livre' ? 'fa-pen-nib' : 'fa-video'} mr-1"></i> ${item.type === 'Livre' ? 'Auteur' : 'De'}</div>
                             <div class="text-sm font-bold text-white leading-tight">${item.author || 'Inconnu'}</div>
                         </div>
                         <div class="text-right">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">
-                                <i class="fa-solid fa-calendar-day mr-1"></i> Année
-                            </div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid fa-calendar-day mr-1"></i> Année</div>
                             <div class="text-sm font-bold text-white">${year}</div>
                         </div>
                     </div>
-                    ${item.cast ? `
-                    <div class="pt-3 border-t border-white/10">
-                        <div class="text-[10px] text-gray-500 font-bold uppercase mb-1">
-                            <i class="fa-solid fa-users mr-1"></i> Avec
-                        </div>
-                        <div class="text-xs text-gray-300 leading-snug">${item.cast}</div>
-                    </div>` : ''}
+                    ${item.cast ? `<div class="pt-3 border-t border-white/10"><div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid fa-users mr-1"></i> Avec</div><div class="text-xs text-gray-300 leading-snug">${item.cast}</div></div>` : ''}
                 </div>`;
             } else {
-                // Fallback minimal si pas de données riches (pour garder l'ancien style)
                 metaInfos = `<div class="mb-6 text-gray-400 font-bold text-xs uppercase">Sortie en ${year}</div>`;
             }
-            // -------------------------------------------
+
+            // 4. BOUTONS D'ACTION (LOGIQUE HYBRIDE)
+            let actionButtonsHtml = '';
+            
+            if (isReadOnly) {
+                // --- CAS 1 : PROFIL AMI (Lecture + Import) ---
+                actionButtonsHtml = `
+                    <div class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 flex flex-col items-center justify-center">
+                        <div class="text-orange-500 text-4xl mb-2 drop-shadow-lg"><i class="fa-solid fa-star"></i></div>
+                        <div class="text-4xl font-black text-white tracking-tight">${item.rating || '-'} <span class="text-lg text-gray-500 font-bold">/ 10</span></div>
+                        <div class="text-gray-400 text-[10px] font-bold uppercase mt-2 tracking-widest">Note de l'utilisateur</div>
+                    </div>
+
+                    <div class="w-full pt-6 border-t border-white/10 mb-6">
+                        <p class="text-center text-gray-500 text-[10px] font-bold uppercase mb-4 tracking-widest">Ajouter à ma bibliothèque</p>
+                        <div class="space-y-3">
+                            <button onclick="window.tempItem.docId = null; window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">
+                                ${CONFIG[item.type].action} </button>
+                            
+                            ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">En cours</button>` : ''}
+                            
+                            <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Wishlist</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // --- CAS 2 : MON PROFIL (Édition) ---
+                const isEdited = item.rating || item.status === 'Vu' || item.status === 'Lu';
+                const actionText = isEdited ? "Modifier ma note" : CONFIG[item.type].action;
+                
+                actionButtonsHtml = `
+                    <div class="w-full space-y-3 mb-8">
+                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${actionText}</button>
+                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}
+                        <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>
+                        ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}
+                    </div>
+                `;
+            }
 
             document.getElementById('preview-content').innerHTML = `
                 <div class="px-6 pt-24 pb-20 flex flex-col items-center">
                     <img src="${item.img || ''}" class="w-44 h-64 rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
-                    <h2 class="text-2xl font-black mb-2 text-center text-white">${item.title}</h2>
+                    <h2 class="text-2xl font-black mb-2 text-center text-white leading-tight">${item.title}</h2>
                     <p class="text-blue-400 font-bold mb-6 text-sm uppercase">
                         ${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric} ${platformBadge}
                     </p>
                     
                     ${metaInfos}
-
-                    <div class="w-full space-y-3 mb-8">
-                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20">${actionText}</button>
-                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}
-                        <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>
-                        ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}
-                    </div>
-
+                    ${actionButtonsHtml}
                     ${commentHtml}
 
-                    <div class="w-full text-gray-400 text-sm leading-relaxed text-justify">${item.desc || "Aucun résumé."}</div>
+                    <div class="w-full text-gray-400 text-sm leading-relaxed text-justify opacity-80">${item.desc || "Aucun résumé."}</div>
                 </div>`; 
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
-        
+
         /* --- G.3 SYSTÈME DE NOTATION (SHEET) --- */
         window.openNotation = () => { 
             document.getElementById('rating-sheet').classList.add('open'); 
@@ -1405,7 +1429,7 @@
                     const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
                     const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${act.platform}</span>` : '';
 
-                    // --- STRUCTURE CARTE BLANCHE UNIQUE (CORRIGÉE) ---
+                    // --- STRUCTURE CARTE BLANCHE UNIQUE ---
                     feedHtml += `
                     <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-50" id="act-${act.id}">
                         <div class="flex justify-between items-start mb-4">
@@ -1433,7 +1457,9 @@
                             </div>
                             <div class="flex-1 py-1">
                                 <h3 class="font-black text-sm text-gray-900 leading-tight mb-1">${act.itemTitle}</h3>
-                                <p class="text-xs text-gray-500 line-clamp-3 leading-relaxed">${act.comment ? `<span class="italic text-gray-600">"${act.comment}"</span>` : '<span class="opacity-50">A noté cette œuvre.</span>'}</p>
+                                <p class="text-xs text-gray-500 line-clamp-3 leading-relaxed cursor-pointer hover:text-gray-800 transition-colors" onclick="event.stopPropagation(); this.classList.toggle('line-clamp-3')">
+                                    ${act.comment ? `<span class="italic text-gray-600">"${act.comment}"</span>` : '<span class="opacity-50">A noté cette œuvre.</span>'}
+                                </p>
                             </div>
                         </div>
                         
@@ -1470,20 +1496,16 @@
             if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
         };
 
-        // --- NOUVELLE FONCTION : PETIT POPUP DES LIKES ---
+        // --- NOUVELLE FONCTION : PETIT POPUP DES LIKES (INCHANGÉE) ---
         window.showLikesList = (actId) => {
             const act = window.socialFeed.find(a => a.id === actId);
             if(!act || !act.likes || act.likes.length === 0) return;
 
-            // Création dynamique du popup (Overlay + Boite)
             const overlay = document.createElement('div');
             overlay.className = 'fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-6 animate-fade-in';
             overlay.id = 'likes-popup-overlay';
             
-            // Fermeture au clic dehors
-            overlay.onclick = (e) => {
-                if (e.target === overlay) document.body.removeChild(overlay);
-            };
+            overlay.onclick = (e) => { if (e.target === overlay) document.body.removeChild(overlay); };
 
             let listHtml = '';
             act.likes.forEach(uid => {
@@ -1504,20 +1526,7 @@
                 `;
             });
 
-            overlay.innerHTML = `
-                <div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100">
-                    <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                        <h3 class="font-black text-sm uppercase text-gray-500 tracking-wider">Aimé par</h3>
-                        <button onclick="document.body.removeChild(document.getElementById('likes-popup-overlay'))" class="text-gray-400 hover:text-black">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                    <div class="p-3 max-h-[50vh] overflow-y-auto">
-                        ${listHtml}
-                    </div>
-                </div>
-            `;
-
+            overlay.innerHTML = `<div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100"><div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h3 class="font-black text-sm uppercase text-gray-500 tracking-wider">Aimé par</h3><button onclick="document.body.removeChild(document.getElementById('likes-popup-overlay'))" class="text-gray-400 hover:text-black"><i class="fa-solid fa-xmark"></i></button></div><div class="p-3 max-h-[50vh] overflow-y-auto">${listHtml}</div></div>`;
             document.body.appendChild(overlay);
         };
 
@@ -1754,7 +1763,7 @@
             return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
         };
 
-      /* --- J.2 RENDU DU PROFIL PRIVÉ (AVEC FAVORIS & BIO) --- */
+      /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ) --- */
         window.renderProfile = async () => {
             const container = document.getElementById('main-content');
             const following = window.followingData || [];
@@ -1769,7 +1778,7 @@
 
             // Données utilisateur
             const bio = window.userProfile.bio || "Ajouter une biographie...";
-            const pinned = window.userProfile.pinned || [null, null, null]; // 3 emplacements
+            const pinned = window.userProfile.pinned || [null, null, null]; 
 
             container.innerHTML = `
                 <div class="pt-28 px-6 pb-32 text-center">
@@ -1812,13 +1821,31 @@
 
                     <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${following.length > 0 ? following.map(p => `<div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0"><div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')"><div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div><span class="font-bold text-sm">${p.name}</span></div><button onclick="window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button></div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                            ${following.length > 0 ? following.map(p => `
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div>
+                                        <span class="font-bold text-sm">${p.name}</span>
+                                    </div>
+                                    <button onclick="event.stopPropagation(); window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
+                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
                         </div>
                     </div>
 
                     <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${followers.length > 0 ? followers.map(f => `<div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0"><div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')"><div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div><span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span></div><div class="flex gap-3 items-center"><button onclick="window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button><div class="h-3 w-px bg-gray-300"></div><button onclick="window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button></div></div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
+                            ${followers.length > 0 ? followers.map(f => `
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div>
+                                        <span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span>
+                                    </div>
+                                    <div class="flex gap-3 items-center">
+                                        <button onclick="event.stopPropagation(); window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
+                                        <div class="h-3 w-px bg-gray-300"></div>
+                                        <button onclick="event.stopPropagation(); window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button>
+                                    </div>
+                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
                         </div>
                     </div>
 
@@ -1827,9 +1854,8 @@
                 </div>`;
         };
 
-        // --- NOUVELLES FONCTIONS DE GESTION (BIO & PIN) ---
+        // --- FONCTIONS DE GESTION ---
         
-        // 1. Mise à jour de la Bio
         window.updateBio = async () => {
             const current = window.userProfile.bio || "";
             const newBio = prompt("Entrez votre biographie (courte phrase) :", current);
@@ -1843,46 +1869,71 @@
             }
         };
 
-        // 2. Ouvrir le sélecteur de favoris
-        window.currentPinSlot = 0;
         window.openPinSelector = (slotIndex) => {
             window.currentPinSlot = slotIndex;
             const modal = document.getElementById('pin-selector-modal');
             const list = document.getElementById('pin-selector-list');
             modal.classList.add('open');
-            
-            // On affiche seulement les éléments terminés (Vu ou Lu)
             const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
             
-            // Fonction interne d'affichage
             window.renderPinList = (items) => {
                 if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des films vus d\'abord !</div>'; return; }
-                
                 list.innerHTML = items.map(item => {
-                    // On prépare l'objet à sauvegarder (pas besoin de tout, juste l'essentiel)
-                    const safeItem = { 
-                        id: item.id, title: item.title, img: item.img, 
-                        rating: item.rating, type: item.type 
-                    };
+                    const safeItem = { id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type };
                     const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
-                    
-                    return `
-                    <div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'>
-                        <img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200">
-                        <div>
-                            <div class="font-bold text-sm">${item.title}</div>
-                            <div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div>
-                        </div>
-                    </div>`;
+                    return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'><img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${item.title}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div></div></div>`;
                 }).join('');
-                
-                // Option "Vider la case" si elle est déjà pleine
-                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) {
-                     list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML;
-                }
+                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML; }
             };
-            
             window.renderPinList(candidates);
+        };
+
+        window.filterPinSelector = (query) => {
+            const term = query.toLowerCase();
+            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu') && i.title.toLowerCase().includes(term));
+            window.renderPinList(filtered);
+        };
+
+        window.savePin = async (itemData) => {
+            try {
+                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                let newPinned = window.userProfile.pinned || [null, null, null];
+                newPinned[window.currentPinSlot] = itemData;
+                await updateDoc(ref, { pinned: newPinned });
+                window.userProfile.pinned = newPinned;
+                document.getElementById('pin-selector-modal').classList.remove('open');
+                window.renderProfile();
+            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
+        };
+
+        // --- FONCTIONS BLOQUER / RETIRER ---
+
+        window.removeFollower = async (targetUid) => {
+            if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
+            try {
+                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
+                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                alert("Utilisateur retiré.");
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Impossible de modifier le profil distant (permissions)."); }
+        };
+
+        window.blockUser = async (targetUid) => {
+            if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
+            try {
+                // 1. Force Unfollow (Kick)
+                try {
+                    const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
+                    await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                } catch(e) {}
+                
+                // 2. Add to blocked list (Ban)
+                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
+                
+                alert("Utilisateur bloqué.");
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
         };
 
         // 3. Filtrer la recherche dans la modale
