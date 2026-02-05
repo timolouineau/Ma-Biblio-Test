@@ -53,12 +53,114 @@
     </style>
 </head>
 
-    <style>
-    /* 🎨 PARTIE 1 : STYLE CSS */
+  <style>
+    /* 🎨 PARTIE 1 : STYLE CSS - APPLE MINIMALIST */
     @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap');
+    
     :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background-color: var(--ios-bg); margin: 0; padding: 0; overflow: hidden; height: 100vh; color: #1C1C1E; -webkit-tap-highlight-color: transparent; opacity: 0; transition: opacity 0.5s ease; }
+    
+    body { 
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; 
+        background-color: var(--ios-bg); 
+        margin: 0; padding: 0; 
+        overflow: hidden; height: 100vh; 
+        color: #1C1C1E; 
+        -webkit-tap-highlight-color: transparent; 
+        opacity: 0; transition: opacity 0.5s ease; 
+    }
+    
     .app-shell { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); display: none; }
+    
+    /* --- LANDING PAGE : APPLE MINIMALIST --- */
+    #landing-page {
+        background: #F2F2F7;
+        z-index: 9999;
+    }
+    #landing-page-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 40px 24px;
+        box-sizing: border-box;
+    }
+    .landing-header {
+        text-align: center;
+        margin-bottom: 40px;
+        width: 100%;
+        max-width: 380px;
+    }
+    .landing-title {
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 8px;
+        color: #000;
+    }
+    .landing-subtitle {
+        font-size: 17px;
+        color: #8E8E93;
+        font-weight: 400;
+    }
+
+    /* GRILLE */
+    .landing-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px; /* Espacement précis iOS */
+        width: 100%;
+        max-width: 360px;
+    }
+
+    /* CARTES MINIMALISTES BLANCHES */
+    .landing-card {
+        aspect-ratio: 1;
+        background: white;
+        border-radius: 24px; /* Arrondi standard iOS Widget */
+        display: flex;
+        flex-direction: column; /* Icône au-dessus du texte */
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        
+        /* Ombre très douce et diffuse (Signature Apple) */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0,0,0,0.02); /* Bordure quasi invisible */
+    }
+    
+    .landing-card:active { transform: scale(0.96); }
+
+    /* ICÔNES FINES ET ÉLÉGANTES */
+    .landing-card i {
+        font-size: 32px;
+        margin-bottom: 12px;
+        /* Dégradé subtil sur l'icône uniquement */
+        background: linear-gradient(135deg, #333, #666);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* TEXTE SIMPLE */
+    .landing-card span {
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        color: #1C1C1E;
+    }
+
+    /* COULEURS SUBTILES DES ICÔNES AU SURVOL (Optionnel mais joli) */
+    .landing-card:hover i.fa-film { color: #007AFF; -webkit-text-fill-color: #007AFF; }
+    .landing-card:hover i.fa-tv { color: #5856D6; -webkit-text-fill-color: #5856D6; }
+    .landing-card:hover i.fa-book-open { color: #FF9500; -webkit-text-fill-color: #FF9500; }
+    .landing-card:hover i.fa-music { color: #FF2D55; -webkit-text-fill-color: #FF2D55; }
+    .landing-card:hover i.fa-youtube { color: #FF3B30; -webkit-text-fill-color: #FF3B30; }
+    .landing-card:hover i.fa-dice { color: #34C759; -webkit-text-fill-color: #34C759; }
+
+    /* --- RESTE DU CSS (Inchangé) --- */
+    /* ...Je garde les styles essentiels pour l'appli interne... */
     header { padding: 20px 20px 10px; background: var(--ios-bg); }
     .header-title { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
     .type-tabs { display: flex; gap: 20px; margin-top: 15px; }
@@ -81,11 +183,8 @@
     .nav-plus { width: 52px; height: 52px; background: var(--ios-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; margin-top: -16px; box-shadow: 0 6px 16px rgba(0, 122, 255, 0.45); cursor: pointer; }
     .modal { position: fixed; inset: 0; background: var(--ios-bg); z-index: 100; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
     .modal.open { transform: translateY(0); }
-    
     #preview-modal { background: #111; color: white; z-index: 20000; }
-    
     .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 30000; opacity: 0; pointer-events: none; transition: 0.3s; }
-    
     .sheet-overlay.open { opacity: 1; pointer-events: auto; }
     .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: var(--ios-bg); border-radius: 30px 30px 0 0; transform: translateY(100%); transition: 0.4s cubic-bezier(0.15, 1, 0.3, 1); height: 92vh; color: #000; }
     .sheet-overlay.open .sheet { transform: translateY(0); }
@@ -111,141 +210,39 @@
     .ios-input:focus { background: white; border-color: var(--ios-blue); }
     .ios-btn { width: 100%; background-color: var(--ios-blue); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 10px; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Styles additionnels extensions */
     .filter-dropdown { background: #E5E5EA; border: none; padding: 6px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #000; outline: none; }
     .notif-btn { position: relative; font-size: 20px; color: #000; padding: 5px; cursor: pointer; }
     .notif-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: red; color: white; border-radius: 50%; border: 2px solid white; font-size: 9px; font-weight: 900; display: none; align-items: center; justify-content: center; }
     .notif-badge.active { display: flex; }
     .grid-date-overlay { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 2px; }
-    #public-profile-modal { background: var(--ios-bg); z-index: 9999; }
     .back-btn-float { position: absolute; top: 50px; left: 20px; background: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; cursor: pointer; }
     .stats-toggle { background: #E5E5EA; border-radius: 10px; padding: 2px; display: inline-flex; margin-bottom: 20px; }
     .stats-toggle button { padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; border: none; background: transparent; color: #8E8E93; }
     .stats-toggle button.active { background: white; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .notif-item { background: white; padding: 16px; border-radius: 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center; }
     .notif-icon { width: 40px; height: 40px; border-radius: 50%; background: #E5E5EA; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .up-to-date { text-align: center; padding: 20px; margin: 20px 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8E8E93; }
-    .up-to-date-line { height: 1px; background: #E5E5EA; flex: 1; }
-    .up-to-date-text { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
     .following-dropdown { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: white; border-radius: 16px; margin-top: 10px; }
     .following-dropdown.open { max-height: 300px; padding: 10px 0; overflow-y: auto; }
-    .follow-toggle-btn { background: white; padding: 15px; border-radius: 16px; width: 100%; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; }
-    
-    /* STYLES RESEAU SOCIAL & COMMENTAIRES */
     @keyframes likeBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
     .like-bounce { animation: likeBounce 0.3s ease-in-out; color: #FF2D55 !important; }
     .mention { color: var(--ios-blue); font-weight: 700; }
     .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
     .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
     .suggestion-item:last-child { border-bottom: none; }
-
-    /* --- STYLE DES FAVORIS (PINNED) --- */
-    .pinned-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-top: 20px;
-        margin-bottom: 24px;
-    }
-    .pinned-item {
-        aspect-ratio: 2/3;
-        background-color: #f8f9fa;
-        border-radius: 12px;
-        overflow: hidden;
-        position: relative;
-        border: 2px dashed #e5e7eb;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
+    .pinned-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; margin-bottom: 24px; }
+    .pinned-item { aspect-ratio: 2/3; background-color: #f8f9fa; border-radius: 12px; overflow: hidden; position: relative; border: 2px dashed #e5e7eb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
     .pinned-item:active { transform: scale(0.95); }
     .pinned-item.filled { border: none; background: black; }
     .pinned-item img { width: 100%; height: 100%; object-fit: cover; }
-    .pinned-overlay {
-        position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-        display: flex; align-items: flex-end; justify-content: center; padding: 8px;
-        opacity: 0; transition: opacity 0.2s;
-    }
+    .pinned-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; align-items: flex-end; justify-content: center; padding: 8px; opacity: 0; transition: opacity 0.2s; }
     .pinned-item.filled:hover .pinned-overlay { opacity: 1; }
     .bio-text { font-size: 14px; color: #4b5563; margin-top: 8px; line-height: 1.4; padding: 0 20px; font-style: italic; }
-
-    /* --- PARTIE LANDING PAGE (NOUVEAU) --- */
-    #landing-page-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        padding: 40px 20px;
-        box-sizing: border-box;
-    }
-    .landing-header {
-        text-align: center;
-        margin-bottom: 40px;
-    }
-    .landing-title {
-        font-size: 42px;
-        font-weight: 900;
-        letter-spacing: -1px;
-        margin-bottom: 10px;
-    }
-    .landing-subtitle {
-        font-size: 18px;
-        color: #8E8E93;
-        font-weight: 500;
-    }
-    .landing-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        width: 100%;
-        max-width: 400px;
-    }
-    .landing-card {
-        aspect-ratio: 1;
-        border-radius: 24px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        cursor: pointer;
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        position: relative;
-        overflow: hidden;
-    }
-    .landing-card:active {
-        transform: scale(0.92);
-    }
-    .landing-card i {
-        font-size: 48px;
-        margin-bottom: 12px;
-        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
-    }
-    .landing-card span {
-        font-size: 18px;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Couleurs spécifiques des catégories */
-    .bg-film { background: linear-gradient(135deg, #2c3e50, #000000); }
-    .bg-serie { background: linear-gradient(135deg, #4c1d95, #2e1065); }
-    .bg-livre { background: linear-gradient(135deg, #ea580c, #c2410c); }
-    .bg-album { background: linear-gradient(135deg, #db2777, #be185d); }
-    .bg-youtube { background: linear-gradient(135deg, #dc2626, #991b1b); }
-    .bg-jeu { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .hidden-landing { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
 </style>
-
 
 <body>
 
-    <div id="landing-page" class="bg-gray-100 z-[9999]">
+    <div id="landing-page" class="z-[9999]">
         <div id="landing-page-content">
             <div class="landing-header">
                 <h1 class="landing-title">MaBiblio</h1>
@@ -253,28 +250,22 @@
             </div>
             
             <div class="landing-grid">
-                <div class="landing-card bg-film" onclick="window.selectCategory('Film')">
-                    <i class="fa-solid fa-film"></i>
+                <div class="landing-card glass-film" onclick="window.selectCategory('Film')">
                     <span>Films</span>
                 </div>
-                <div class="landing-card bg-serie" onclick="window.selectCategory('Série')">
-                    <i class="fa-solid fa-tv"></i>
+                <div class="landing-card glass-serie" onclick="window.selectCategory('Série')">
                     <span>Séries</span>
                 </div>
-                <div class="landing-card bg-livre" onclick="window.selectCategory('Livre')">
-                    <i class="fa-solid fa-book-open"></i>
+                <div class="landing-card glass-livre" onclick="window.selectCategory('Livre')">
                     <span>Livres</span>
                 </div>
-                <div class="landing-card bg-album" onclick="window.selectCategory('Album')">
-                    <i class="fa-solid fa-music"></i>
+                <div class="landing-card glass-album" onclick="window.selectCategory('Album')">
                     <span>Albums</span>
                 </div>
-                <div class="landing-card bg-youtube" onclick="window.selectCategory('YouTube')">
-                    <i class="fa-brands fa-youtube"></i>
+                <div class="landing-card glass-youtube" onclick="window.selectCategory('YouTube')">
                     <span>YouTube</span>
                 </div>
-                <div class="landing-card bg-jeu" onclick="window.selectCategory('Jeu')">
-                    <i class="fa-solid fa-dice"></i>
+                <div class="landing-card glass-jeu" onclick="window.selectCategory('Jeu')">
                     <span>Jeux</span>
                 </div>
             </div>
