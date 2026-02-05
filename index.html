@@ -3,162 +3,283 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <title>MaBiblio</title>
-
+    <meta name="apple-mobile-web-app-title" content="MaBiblio">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#F2F2F7">
-
+    
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-   <style>
-    /* 🎨 PARTIE 1 : STYLE CSS (DESIGN FINAL - DASHBOARD & APPLE) */
+    <style>
+        /* --- AJOUTS POUR LA NOUVELLE PAGE D'ACCUEIL & UX --- */
+
+        /* Comportement "App Native" : pas de sélection de texte, pas de highlight au touch */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            overscroll-behavior-y: none; /* Évite le rebond élastique sur iOS */
+        }
+
+        /* Styles de transition pour la Landing Page */
+        #landing-page {
+            position: fixed;
+            inset: 0;
+            z-index: 9999; /* Au-dessus de tout */
+            transition: opacity 0.4s ease-out, visibility 0.4s ease-out;
+        }
+
+        /* Classe pour masquer la landing page après sélection */
+        #landing-page.hidden-landing {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Masquage propre des scrollbars pour les listes horizontales */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+
+    <style>
+    /* 🎨 PARTIE 1 : STYLE CSS */
     @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap');
-
-    :root { --ios-bg: #F2F2F7; }
-
-    body { 
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; 
-        background-color: var(--ios-bg); 
-        margin: 0; padding: 0; 
-        overflow: hidden; 
-        height: 100vh; 
-        color: #1C1C1E; 
-        -webkit-tap-highlight-color: transparent; 
-    }
-
-    /* STRUCTURE PRINCIPALE */
-    .app-shell { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
-    .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 120px; position: relative; }
-
-    /* HEADER */
-    header { 
-        padding: 0 20px; 
-        height: 60px; 
-        background: rgba(255,255,255,0.9); 
-        backdrop-filter: blur(10px); 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        position: relative; 
-        border-bottom: 0.5px solid rgba(0,0,0,0.05); 
-        z-index: 40; 
-    }
-    .header-title { font-size: 20px; font-weight: 800; }
-    .header-back-btn { 
-        position: absolute; left: 16px; top: 50%; transform: translateY(-50%); 
-        width: 36px; height: 36px; 
-        background: #F2F2F7; border-radius: 50%; 
-        display: flex; align-items: center; justify-content: center; 
-        cursor: pointer; font-size: 16px; color: #000; 
-        z-index: 50;
-    }
-
-    /* --- DASHBOARD (LES 6 CARRÉS) --- */
-    .dashboard-grid { 
-        display: grid; 
-        grid-template-columns: repeat(2, 1fr); 
-        gap: 16px; 
-        padding: 20px; 
-        padding-top: 20px;
-        animation: fadeIn 0.4s ease-out; 
-    }
-
-    .dash-card { 
-        aspect-ratio: 1/1; 
-        background: white; 
-        border-radius: 24px; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center; 
-        position: relative; 
-        box-shadow: 0 8px 20px rgba(0,0,0,0.03); 
-        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
-        cursor: pointer; 
-        border: 1px solid rgba(0,0,0,0.02); 
-        overflow: hidden; 
-    }
-    .dash-card:active { transform: scale(0.96); }
-
-    .dash-icon { font-size: 32px; margin-bottom: 12px; }
-    .dash-title { font-weight: 800; font-size: 17px; letter-spacing: -0.5px; margin-bottom: 4px; }
-    .dash-count { font-size: 11px; font-weight: 600; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    /* COULEURS DES CARRÉS */
-    .c-Film { color: #007AFF; background: linear-gradient(135deg, #F0F8FF 0%, #FFFFFF 100%); }
-    .c-Serie { color: #AF52DE; background: linear-gradient(135deg, #FBF5FF 0%, #FFFFFF 100%); }
-    .c-Livre { color: #FF9500; background: linear-gradient(135deg, #FFF8F0 0%, #FFFFFF 100%); }
-    .c-Music { color: #FF2D55; background: linear-gradient(135deg, #FFF0F5 0%, #FFFFFF 100%); }
-    .c-Youtube { color: #FF0000; background: linear-gradient(135deg, #FFF0F0 0%, #FFFFFF 100%); }
-    .c-Game { color: #34C759; background: linear-gradient(135deg, #F0FFF4 0%, #FFFFFF 100%); }
-
-    /* --- LISTE & CONTENU --- */
-    .status-pills { display: flex; gap: 8px; padding: 12px 20px; overflow-x: auto; scrollbar-width: none; }
-    .pill { padding: 8px 16px; border-radius: 18px; font-size: 13px; font-weight: 700; background: #E5E5EA; color: #8E8E93; white-space: nowrap; transition: 0.2s; cursor: pointer; }
+    :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background-color: var(--ios-bg); margin: 0; padding: 0; overflow: hidden; height: 100vh; color: #1C1C1E; -webkit-tap-highlight-color: transparent; opacity: 0; transition: opacity 0.5s ease; }
+    .app-shell { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); display: none; }
+    header { padding: 20px 20px 10px; background: var(--ios-bg); }
+    .header-title { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
+    .type-tabs { display: flex; gap: 20px; margin-top: 15px; }
+    .type-tab { font-size: 17px; font-weight: 700; color: #8E8E93; padding-bottom: 8px; border-bottom: 3px solid transparent; cursor: pointer; }
+    .type-tab.active { color: #000; border-color: #000; }
+    .status-pills { display: flex; gap: 8px; padding: 12px 0; overflow-x: auto; scrollbar-width: none; }
+    .pill { padding: 8px 16px; border-radius: 18px; font-size: 14px; font-weight: 700; background: #E5E5EA; white-space: nowrap; }
     .pill.active { background: #000; color: white; }
-
-    .items-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 16px 24px; }
-    .grid-item { aspect-ratio: 2/3; background: #E5E5EA; border-radius: 12px; overflow: hidden; position: relative; }
+    .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 120px; }
+    .year-divider { padding: 24px 16px 8px; font-size: 20px; font-weight: 900; color: #000; background: var(--ios-bg); position: sticky; top: -1px; z-index: 10; }
+    .items-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 12px 24px; }
+    .grid-item { aspect-ratio: 2/3; background: #DDD; border-radius: 10px; overflow: hidden; position: relative; }
     .grid-item img { width: 100%; height: 100%; object-fit: cover; }
-    .grid-rating { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 900; color: #FFD60A; }
-    .grid-item-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 6px; background: linear-gradient(transparent, rgba(0,0,0,0.9)); }
-    .year-divider { padding: 16px 20px 8px; font-size: 22px; font-weight: 800; color: #1C1C1E; }
-
-    /* BARRE NAVIGATION BAS */
-    .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(60px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding-top: 10px; z-index: 50; }
-    .nav-btn { display: flex; flex-direction: column; align-items: center; color: #999; font-size: 10px; font-weight: 600; flex: 1; }
-    .nav-btn i { font-size: 22px; margin-bottom: 4px; }
-    .nav-btn.active { color: #007AFF; }
-    .nav-plus { width: 48px; height: 48px; background: #007AFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; margin-top: -20px; box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
-
-    /* UTILITAIRES & MODALES */
-    .hidden { display: none !important; } /* INDISPENSABLE POUR LA NAVIGATION */
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .modal { position: fixed; inset: 0; background: var(--ios-bg); z-index: 100; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; }
+    .grid-item-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(transparent, rgba(0,0,0,0.95)); color: white; display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px; }
+    .grid-rating { position: absolute; top: 4px; right: 4px; background: #FF9500; padding: 1px 5px; border-radius: 6px; font-size: 10px; font-weight: 900; color: white; z-index: 2; }
+    .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(75px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 12px; z-index: 50; }
+    .nav-btn { display: flex; flex-direction: column; align-items: center; color: #A2A2A7; font-size: 11px; font-weight: 600; flex: 1; }
+    .nav-btn i { font-size: 24px; margin-bottom: 4px; }
+    .nav-btn.active { color: var(--ios-blue); }
+    .nav-plus { width: 52px; height: 52px; background: var(--ios-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; margin-top: -16px; box-shadow: 0 6px 16px rgba(0, 122, 255, 0.45); cursor: pointer; }
+    .modal { position: fixed; inset: 0; background: var(--ios-bg); z-index: 100; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
     .modal.open { transform: translateY(0); }
-    .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; opacity: 0; pointer-events: none; transition: 0.3s; }
+    
+    #preview-modal { background: #111; color: white; z-index: 20000; }
+    
+    .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 30000; opacity: 0; pointer-events: none; transition: 0.3s; }
+    
     .sheet-overlay.open { opacity: 1; pointer-events: auto; }
-    .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: #F2F2F7; border-radius: 20px 20px 0 0; transform: translateY(100%); transition: 0.4s; height: 85vh; display: flex; flex-direction: column; }
+    .sheet { position: absolute; bottom: 0; left: 0; right: 0; background: var(--ios-bg); border-radius: 30px 30px 0 0; transform: translateY(100%); transition: 0.4s cubic-bezier(0.15, 1, 0.3, 1); height: 92vh; color: #000; }
     .sheet-overlay.open .sheet { transform: translateY(0); }
-
-    /* CONNEXION & INPUTS */
-    #auth-screen { position: fixed; inset: 0; background: #F2F2F7; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .auth-card { background: white; padding: 30px; border-radius: 30px; width: 100%; max-width: 350px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
-    .ios-input { width: 100%; padding: 16px; border: 1px solid #E5E5E5; background: #F9F9F9; border-radius: 16px; margin-bottom: 12px; outline: none; }
-    .ios-btn { width: 100%; background: #000; color: white; padding: 16px; border-radius: 16px; font-weight: 700; margin-top: 10px; }
-    .tab-switcher { background: #E5E5EA; padding: 2px; border-radius: 12px; display: flex; margin-bottom: 24px; position: relative; }
-    .tab-switcher button { flex: 1; padding: 8px; border-radius: 10px; font-weight: 600; font-size: 13px; z-index: 2; position: relative; border: none; }
-    .tab-switcher .slider { position: absolute; top: 2px; left: 2px; width: 50%; height: calc(100% - 4px); background: white; border-radius: 10px; transition: 0.3s; z-index: 1; }
-
-    /* DIVERS */
-    .manual-image-upload { aspect-ratio: 2/3; background: #fff; border: 2px dashed #ccc; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #999; }
-    .ios-group { background: white; border-radius: 12px; margin-bottom: 20px; border: 1px solid #E5E5E5; }
-    .ios-cell { padding: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F2F2F7; }
-    .ios-cell:last-child { border-bottom: none; }
-    .rating-box { background: white; height: 80px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; margin-bottom: 20px; position: relative; overflow: hidden; }
-    .rating-fill { position: absolute; left: 0; height: 100%; background: rgba(0,122,255,0.1); width: 0; pointer-events: none; }
-    .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
-    .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
-    
-    /* Scroll horizontal pour onglets */
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    /* PROFIL & STATS */
+    .rating-box { background: white; height: 90px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; margin: 15px 0; position: relative; overflow: hidden; touch-action: none; border: 1px solid #E5E5EA; cursor: ew-resize; }
+    .rating-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--ios-blue); opacity: 0.15; pointer-events: none; width: 80%; transition: width 0.1s ease-out; }
+    .ios-group { background: white; border-radius: 14px; margin: 0 16px 20px; overflow: hidden; }
+    .ios-cell { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 0.5px solid #F2F2F7; }
+    .activity-card { background: white; border-radius: 28px; padding: 20px; margin-bottom: 20px; }
+    .emoji-btn { padding: 6px 12px; border-radius: 14px; background: #F2F2F7; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+    .emoji-btn.active { background: #E8F2FF; border-color: #007AFF; color: #007AFF; border: 1px solid; }
     .stat-card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 16px; }
     .avatar-container { position: relative; width: 120px; height: 120px; margin: 0 auto; }
     .avatar-img { width: 100%; height: 100%; border-radius: 50%; background: #007AFF; display: flex; align-items: center; justify-content: center; color: white; font-size: 48px; font-weight: 900; overflow: hidden; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .avatar-edit-btn { position: absolute; bottom: 0; right: 0; background: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2); cursor: pointer; }
-    .pinned-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; margin-bottom: 24px; }
-    .pinned-item { aspect-ratio: 2/3; background-color: #f8f9fa; border-radius: 12px; overflow: hidden; position: relative; border: 2px dashed #e5e7eb; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .pinned-item img { width: 100%; height: 100%; object-fit: cover; }
+    .manual-image-upload { aspect-ratio: 2/3; background: #FFF; border: 2px dashed #D1D1D6; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; }
+    #auth-screen { position: fixed; inset: 0; background: var(--ios-bg); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .auth-container { width: 100%; max-width: 400px; animation: fadeIn 0.6s ease-out; }
+    .auth-card { background: white; padding: 30px; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); }
+    .tab-switcher { background-color: #E5E5EA; padding: 3px; border-radius: 12px; display: flex; margin-bottom: 30px; position: relative; }
+    .tab-switcher button { flex: 1; border: none; background: none; padding: 8px 0; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 1; transition: color 0.3s; }
+    .tab-switcher .slider { position: absolute; top: 3px; left: 3px; width: calc(50% - 3px); height: calc(100% - 6px); background: white; border-radius: 9px; box-shadow: 0 3px 8px rgba(0,0,0,0.12); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
+    .ios-input { width: 100%; padding: 16px; border: 1px solid #E5E5E5; background-color: #F9F9F9; border-radius: 15px; font-size: 16px; margin-bottom: 12px; outline: none; transition: 0.2s; }
+    .ios-input:focus { background: white; border-color: var(--ios-blue); }
+    .ios-btn { width: 100%; background-color: var(--ios-blue); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Styles additionnels extensions */
+    .filter-dropdown { background: #E5E5EA; border: none; padding: 6px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #000; outline: none; }
+    .notif-btn { position: relative; font-size: 20px; color: #000; padding: 5px; cursor: pointer; }
+    .notif-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: red; color: white; border-radius: 50%; border: 2px solid white; font-size: 9px; font-weight: 900; display: none; align-items: center; justify-content: center; }
+    .notif-badge.active { display: flex; }
+    .grid-date-overlay { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 2px; }
+    #public-profile-modal { background: var(--ios-bg); z-index: 9999; }
+    .back-btn-float { position: absolute; top: 50px; left: 20px; background: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; cursor: pointer; }
+    .stats-toggle { background: #E5E5EA; border-radius: 10px; padding: 2px; display: inline-flex; margin-bottom: 20px; }
+    .stats-toggle button { padding: 6px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; border: none; background: transparent; color: #8E8E93; }
+    .stats-toggle button.active { background: white; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .notif-item { background: white; padding: 16px; border-radius: 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center; }
+    .notif-icon { width: 40px; height: 40px; border-radius: 50%; background: #E5E5EA; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .up-to-date { text-align: center; padding: 20px; margin: 20px 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8E8E93; }
+    .up-to-date-line { height: 1px; background: #E5E5EA; flex: 1; }
+    .up-to-date-text { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .following-dropdown { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: white; border-radius: 16px; margin-top: 10px; }
+    .following-dropdown.open { max-height: 300px; padding: 10px 0; overflow-y: auto; }
+    .follow-toggle-btn { background: white; padding: 15px; border-radius: 16px; width: 100%; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; }
+    
+    /* STYLES RESEAU SOCIAL & COMMENTAIRES */
+    @keyframes likeBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .like-bounce { animation: likeBounce 0.3s ease-in-out; color: #FF2D55 !important; }
+    .mention { color: var(--ios-blue); font-weight: 700; }
+    .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
+    .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
+    .suggestion-item:last-child { border-bottom: none; }
+
+    /* --- STYLE DES FAVORIS (PINNED) --- */
+    .pinned-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 20px;
+        margin-bottom: 24px;
+    }
+    .pinned-item {
+        aspect-ratio: 2/3;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        border: 2px dashed #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .pinned-item:active { transform: scale(0.95); }
+    .pinned-item.filled { border: none; background: black; }
+    .pinned-item img { width: 100%; height: 100%; object-fit: cover; }
+    .pinned-overlay {
+        position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        display: flex; align-items: flex-end; justify-content: center; padding: 8px;
+        opacity: 0; transition: opacity 0.2s;
+    }
+    .pinned-item.filled:hover .pinned-overlay { opacity: 1; }
+    .bio-text { font-size: 14px; color: #4b5563; margin-top: 8px; line-height: 1.4; padding: 0 20px; font-style: italic; }
+
+    /* --- PARTIE LANDING PAGE (NOUVEAU) --- */
+    #landing-page-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 40px 20px;
+        box-sizing: border-box;
+    }
+    .landing-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    .landing-title {
+        font-size: 42px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        margin-bottom: 10px;
+    }
+    .landing-subtitle {
+        font-size: 18px;
+        color: #8E8E93;
+        font-weight: 500;
+    }
+    .landing-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        width: 100%;
+        max-width: 400px;
+    }
+    .landing-card {
+        aspect-ratio: 1;
+        border-radius: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        position: relative;
+        overflow: hidden;
+    }
+    .landing-card:active {
+        transform: scale(0.92);
+    }
+    .landing-card i {
+        font-size: 48px;
+        margin-bottom: 12px;
+        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+    }
+    .landing-card span {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Couleurs spécifiques des catégories */
+    .bg-film { background: linear-gradient(135deg, #2c3e50, #000000); }
+    .bg-serie { background: linear-gradient(135deg, #4c1d95, #2e1065); }
+    .bg-livre { background: linear-gradient(135deg, #ea580c, #c2410c); }
+    .bg-album { background: linear-gradient(135deg, #db2777, #be185d); }
+    .bg-youtube { background: linear-gradient(135deg, #dc2626, #991b1b); }
+    .bg-jeu { background: linear-gradient(135deg, #16a34a, #15803d); }
 </style>
-        
-</head>
+
+
 <body>
+
+    <div id="landing-page" class="bg-gray-100 z-[9999]">
+        <div id="landing-page-content">
+            <div class="landing-header">
+                <h1 class="landing-title">MaBiblio</h1>
+                <p class="landing-subtitle">Que voulez-vous explorer ?</p>
+            </div>
+            
+            <div class="landing-grid">
+                <div class="landing-card bg-film" onclick="window.selectCategory('Film')">
+                    <i class="fa-solid fa-film"></i>
+                    <span>Films</span>
+                </div>
+                <div class="landing-card bg-serie" onclick="window.selectCategory('Série')">
+                    <i class="fa-solid fa-tv"></i>
+                    <span>Séries</span>
+                </div>
+                <div class="landing-card bg-livre" onclick="window.selectCategory('Livre')">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>Livres</span>
+                </div>
+                <div class="landing-card bg-album" onclick="window.selectCategory('Album')">
+                    <i class="fa-solid fa-music"></i>
+                    <span>Albums</span>
+                </div>
+                <div class="landing-card bg-youtube" onclick="window.selectCategory('YouTube')">
+                    <i class="fa-brands fa-youtube"></i>
+                    <span>YouTube</span>
+                </div>
+                <div class="landing-card bg-jeu" onclick="window.selectCategory('Jeu')">
+                    <i class="fa-solid fa-dice"></i>
+                    <span>Jeux</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="auth-screen">
         <div class="auth-container">
@@ -184,57 +305,36 @@
     </div>
 
     <div class="app-shell">
-        
-        <header id="app-header">
-            <div id="header-back" class="header-back-btn" onclick="window.showDashboard()" style="display: none;">
-                <i class="fa-solid fa-arrow-left"></i>
+        <header id="app-header" class="relative pt-4 pb-2 px-5 bg-[#F2F2F7]">
+            
+            <div class="flex items-center justify-between mb-2">
+                <button onclick="window.goBackToLanding()" class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black shadow-sm active:scale-90 transition-transform z-10">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                
+                <div class="header-title" id="header-main-title" style="font-size: 24px;">Ma Biblio</div>
+                
+                <div class="notif-btn" onclick="window.openNotifications()">
+                     <i class="fa-regular fa-bell text-xl"></i>
+                     <div class="notif-badge" id="notif-badge">0</div>
+                </div>
             </div>
-            
-            <div class="header-title" id="header-title">Ma Biblio</div>
-            
-            <div class="status-pills hidden" id="status-container"></div>
+
+            <div class="flex items-center justify-between mt-4 gap-3">
+                <div class="status-pills flex-1 overflow-x-auto no-scrollbar" id="status-container"></div>
+                
+                <div class="bg-gray-200 rounded-lg px-2 py-1 flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-down-short-wide text-gray-500 text-xs"></i>
+                    <select class="bg-transparent border-none text-xs font-bold outline-none appearance-none pr-4" onchange="window.setSort(this.value)" style="background: transparent;">
+                        <option value="date">Date</option>
+                        <option value="rating">Note</option>
+                        <option value="name">Nom</option>
+                    </select>
+                </div>
+            </div>
         </header>
 
-        <div class="scroll-area" id="main-content">
-            
-            <div id="home-dashboard" class="dashboard-grid">
-                <div class="dash-card c-Film" onclick="window.openCategory('Film')">
-                    <i class="fa-solid fa-film dash-icon"></i>
-                    <span class="dash-title">Films</span>
-                    <span class="dash-count" id="count-Film">Chargement...</span>
-                </div>
-                <div class="dash-card c-Serie" onclick="window.openCategory('Série')">
-                    <i class="fa-solid fa-tv dash-icon"></i>
-                    <span class="dash-title">Séries</span>
-                    <span class="dash-count" id="count-Série">Chargement...</span>
-                </div>
-                <div class="dash-card c-Livre" onclick="window.openCategory('Livre')">
-                    <i class="fa-solid fa-book-open dash-icon"></i>
-                    <span class="dash-title">Livres</span>
-                    <span class="dash-count" id="count-Livre">Chargement...</span>
-                </div>
-                <div class="dash-card c-Music" onclick="window.openCategory('Musique')">
-                    <i class="fa-solid fa-music dash-icon"></i>
-                    <span class="dash-title">Musique</span>
-                    <span class="dash-count" id="count-Musique">Bientôt</span>
-                </div>
-                <div class="dash-card c-Youtube" onclick="window.openCategory('Youtube')">
-                    <i class="fa-brands fa-youtube dash-icon"></i>
-                    <span class="dash-title">YouTube</span>
-                    <span class="dash-count" id="count-Youtube">Bientôt</span>
-                </div>
-                <div class="dash-card c-Game" onclick="window.openCategory('Jeux')">
-                    <i class="fa-solid fa-dice dash-icon"></i>
-                    <span class="dash-title">Jeux</span>
-                    <span class="dash-count" id="count-Jeux">Bientôt</span>
-                </div>
-            </div>
-
-            <div id="category-list-view" class="hidden pt-4 px-2 pb-32">
-                <div id="items-grid-container" class="items-grid"></div>
-            </div>
-
-        </div>
+        <div class="scroll-area" id="main-content"></div>
 
         <nav class="tab-bar">
             <div id="nav-home" class="nav-btn active" onclick="window.switchView('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></div>
@@ -247,23 +347,23 @@
 
     <div id="search-modal" class="modal flex flex-col">
         <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajouter</h2><button onclick="window.closeSearchModal()" class="text-blue-600 font-bold">Fermer</button></div>
-        
-        <div class="p-4 bg-white flex gap-2 overflow-x-auto no-scrollbar">
-            <button id="s-Film" onclick="window.setSearchType('Film')" class="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm whitespace-nowrap shadow-sm">Film</button>
-            <button id="s-Livre" onclick="window.setSearchType('Livre')" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 font-bold text-sm whitespace-nowrap">Livre</button>
-            <button id="s-Série" onclick="window.setSearchType('Série')" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 font-bold text-sm whitespace-nowrap">Série</button>
-            <button id="s-Musique" onclick="window.setSearchType('Musique')" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 font-bold text-sm whitespace-nowrap">Musique</button>
-            <button id="s-Youtube" onclick="window.setSearchType('Youtube')" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 font-bold text-sm whitespace-nowrap">YouTube</button>
-            <button id="s-Jeux" onclick="window.setSearchType('Jeux')" class="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 font-bold text-sm whitespace-nowrap">Jeux</button>
+        <div class="p-4 bg-white overflow-x-auto no-scrollbar">
+            <div class="flex gap-2" style="min-width: max-content;">
+                <button id="s-Film" onclick="window.setSearchType('Film')" class="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm">Film</button>
+                <button id="s-Série" onclick="window.setSearchType('Série')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Série</button>
+                <button id="s-Livre" onclick="window.setSearchType('Livre')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button>
+                <button id="s-Album" onclick="window.setSearchType('Album')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Album</button>
+                <button id="s-YouTube" onclick="window.setSearchType('YouTube')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">YouTube</button>
+                <button id="s-Jeu" onclick="window.setSearchType('Jeu')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Jeu</button>
+            </div>
         </div>
-
         <div class="px-4 pb-4 bg-white flex flex-col gap-3">
             <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" id="search-input" placeholder="Rechercher..." class="w-full p-3.5 pl-11 bg-gray-100 rounded-2xl outline-none font-medium" oninput="window.handleSearch(this.value)"></div>
             <button onclick="window.openManualModal()" class="text-blue-600 font-bold text-sm bg-blue-50 py-3 rounded-xl">Créer manuellement</button>
         </div>
         <div class="flex-1 overflow-y-auto px-4 pb-10" id="search-results"></div>
     </div>
-
+    
     <div id="manual-modal" class="modal flex flex-col">
         <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajout Manuel</h2><button onclick="window.closeManualModal()" class="text-blue-600 font-bold">Annuler</button></div>
         <div class="p-6 overflow-y-auto flex-1">
@@ -276,21 +376,23 @@
                 </div>
                 <div class="flex-1 flex flex-col gap-3">
                     <input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
-                    <input type="text" id="m-author" placeholder="Auteur / Réalisateur" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
+                    <input type="text" id="m-author" placeholder="Auteur / Réalisateur / Artiste" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
                     <select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
                         <option value="Film">Film</option>
-                        <option value="Livre">Livre</option>
                         <option value="Série">Série</option>
-                        <option value="Musique">Musique</option>
-                        <option value="Youtube">YouTube</option>
-                        <option value="Jeux">Jeux</option>
+                        <option value="Livre">Livre</option>
+                        <option value="Album">Album</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Jeu">Jeu</option>
                     </select>
                 </div>
             </div>
+            
             <div class="ios-group !mx-0">
-                <div class="ios-cell"><span class="font-bold text-sm">Valeur</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
+                <div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/durée)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
                 <div class="ios-cell border-t border-gray-100"><span class="font-bold text-sm">Date de parution</span><input type="date" id="m-date" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div>
             </div>
+
             <textarea id="m-desc" placeholder="Résumé" class="w-full bg-white p-4 rounded-xl border border-gray-100 h-24 outline-none mb-6 mt-6 font-medium text-sm"></textarea>
             <button onclick="window.confirmManualAdd()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg">Suivant</button>
         </div>
@@ -305,13 +407,32 @@
         <div class="sheet flex flex-col">
             <div class="flex justify-between items-center px-6 py-5 border-b bg-white"><button onclick="window.closeRatingSheet()" class="text-blue-600 font-medium">Annuler</button><span class="font-black text-lg">Publier</span><button onclick="window.confirmSave()" class="bg-blue-600 text-white px-5 py-2 rounded-full font-bold">Valider</button></div>
             <div class="p-6 overflow-y-auto flex-1">
-                <div class="flex gap-4 mb-4"><img id="sheet-poster" class="w-20 h-28 rounded-xl object-cover shadow-lg bg-gray-200"><div class="flex-1 pt-1"><h3 id="sheet-title" class="font-black text-lg"></h3><p class="text-gray-400 text-[10px] font-bold uppercase">Ma Note</p></div></div>
-                <div class="rating-box" id="rating-interactive" onmousedown="window.handleRatingDrag(event)" onmousemove="event.buttons === 1 && window.handleRatingDrag(event)" ontouchstart="window.handleRatingDrag(event)" ontouchmove="window.handleRatingDrag(event)"><div class="rating-fill" id="rating-fill-ui"></div><div class="flex items-center gap-2" style="position:relative; z-index:10"><span class="text-orange-500"><i class="fa-solid fa-star"></i></span><span class="rating-label" id="rating-val-ui">8</span><span class="text-gray-300 text-2xl">/ 10</span></div></div>
-                <div class="ios-group !mx-0">
-                    <div class="ios-cell"><span class="font-bold">Date de fin</span><input type="date" id="finish-date-input" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div>
-                    <div class="ios-cell border-t border-gray-100"><span class="font-bold">Non daté</span><input type="checkbox" id="no-date-toggle" class="w-6 h-6 rounded-md accent-blue-600" onchange="window.toggleDateInput(this)"></div>
-                    <div class="ios-cell border-t border-gray-100"><span class="font-bold" id="platform-label">Vu sur</span><select id="platform-select" class="flex-1 bg-transparent text-blue-600 font-bold outline-none text-right appearance-none pl-4"></select></div>
+                <div class="flex gap-4 mb-4"><img id="sheet-poster" class="w-20 h-28 rounded-xl object-cover shadow-lg bg-gray-200"><div class="flex-1 pt-1"><h3 id="sheet-title" class="font-black text-lg"></h3><p class="text-gray-400 text-[10px] font-bold uppercase">Ma Note (Glissez pour changer)</p></div></div>
+                
+                <div class="rating-box" id="rating-interactive" 
+                     onmousedown="window.handleRatingDrag(event)" 
+                     onmousemove="event.buttons === 1 && window.handleRatingDrag(event)" 
+                     ontouchstart="window.handleRatingDrag(event)" 
+                     ontouchmove="window.handleRatingDrag(event)">
+                    <div class="rating-fill" id="rating-fill-ui"></div>
+                    <div class="flex items-center gap-2" style="position:relative; z-index:10"><span class="text-orange-500"><i class="fa-solid fa-star"></i></span><span class="rating-label" id="rating-val-ui">8</span><span class="text-gray-300 text-2xl">/ 10</span></div>
                 </div>
+
+                <div class="ios-group !mx-0">
+                    <div class="ios-cell">
+                        <span class="font-bold">Date de fin</span>
+                        <input type="date" id="finish-date-input" class="bg-transparent text-blue-600 font-bold outline-none text-right">
+                    </div>
+                    <div class="ios-cell border-t border-gray-100">
+                        <span class="font-bold">Non daté</span>
+                        <input type="checkbox" id="no-date-toggle" class="w-6 h-6 rounded-md accent-blue-600" onchange="window.toggleDateInput(this)">
+                    </div>
+                    <div class="ios-cell border-t border-gray-100">
+                        <span class="font-bold" id="platform-label">Vu sur</span>
+                        <select id="platform-select" class="flex-1 bg-transparent text-blue-600 font-bold outline-none text-right appearance-none pl-4"></select>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between p-4 bg-white rounded-xl mb-4"><div class="flex items-center gap-3"><i class="fa-solid fa-earth-europe text-blue-500"></i><span class="font-bold">Partager</span></div><input type="checkbox" id="share-toggle" checked class="w-6 h-6"></div>
                 <textarea id="rating-comment" class="w-full bg-white border border-gray-200 rounded-2xl p-4 h-32 outline-none text-base font-medium" placeholder="Qu'en avez-vous pensé ?"></textarea>
             </div>
@@ -320,21 +441,67 @@
     
     <div id="comment-sheet" class="sheet-overlay">
         <div class="sheet flex flex-col" style="height: 80vh;">
-            <div class="flex justify-between items-center px-6 py-4 border-b bg-white"><span class="font-black text-lg">Commentaires</span><button onclick="window.closeCommentSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="flex justify-between items-center px-6 py-4 border-b bg-white">
+                <span class="font-black text-lg">Commentaires</span>
+                <button onclick="window.closeCommentSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="comments-list-container"></div>
-            <div class="p-4 bg-white border-top relative"><div id="mention-suggestions" class="mention-suggestions"></div><div class="flex gap-2"><input type="text" id="comment-modal-input" placeholder="Ajouter un commentaire..." class="flex-1 bg-gray-100 p-3 rounded-xl outline-none font-medium" oninput="window.handleMentionInput(this)"><button onclick="window.postCommentFromModal()" class="bg-blue-600 text-white w-12 rounded-xl font-bold"><i class="fa-solid fa-arrow-up"></i></button></div></div>
+            <div class="p-4 bg-white border-top relative">
+                <div id="mention-suggestions" class="mention-suggestions"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="comment-modal-input" placeholder="Ajouter un commentaire (@ pour mentionner)..." class="flex-1 bg-gray-100 p-3 rounded-xl outline-none font-medium" oninput="window.handleMentionInput(this)">
+                    <button onclick="window.postCommentFromModal()" class="bg-blue-600 text-white w-12 rounded-xl font-bold"><i class="fa-solid fa-arrow-up"></i></button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="public-profile-modal" class="modal overflow-y-auto"><div onclick="window.closePublicProfile()" class="back-btn-float"><i class="fa-solid fa-arrow-left"></i></div><div id="public-profile-content"></div></div>
-    
-    <div id="feedback-modal" class="modal flex flex-col"><div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Contact</h2><button onclick="window.closeFeedbackModal()" class="text-blue-600 font-bold">Annuler</button></div><div class="p-6 flex-1 bg-gray-50"><p class="text-gray-500 text-sm mb-6">Suggestions ou Bugs ?</p><div class="bg-white rounded-2xl p-4 shadow-sm mb-4"><div class="mb-4"><label class="block text-xs font-bold text-gray-400 uppercase mb-2">Objet</label><select id="fb-object" class="w-full bg-gray-50 p-3 rounded-xl font-bold outline-none text-sm"><option value="Suggestion">💡 Suggestion</option><option value="Bug">🪲 Bug</option><option value="Autre">✉️ Autre</option></select></div><div><label class="block text-xs font-bold text-gray-400 uppercase mb-2">Message</label><textarea id="fb-message" class="w-full bg-gray-50 p-3 rounded-xl font-medium outline-none h-32 text-sm" placeholder="Votre message..."></textarea></div></div><button onclick="window.sendFeedback()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg">Envoyer</button></div></div>
+    <div id="public-profile-modal" class="modal overflow-y-auto">
+        <div onclick="window.closePublicProfile()" class="back-btn-float"><i class="fa-solid fa-arrow-left"></i></div>
+        <div id="public-profile-content"></div>
+    </div>
 
-    <div id="pin-selector-modal" class="modal flex flex-col"><div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Favori</h2><button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="text-blue-600 font-bold">Annuler</button></div><div class="p-4 bg-gray-50"><input type="text" id="pin-search" placeholder="Rechercher..." class="w-full p-3 rounded-xl border border-gray-200 outline-none font-bold text-sm" oninput="window.filterPinSelector(this.value)"></div><div class="flex-1 overflow-y-auto p-4" id="pin-selector-list"></div></div>
+    <div id="feedback-modal" class="modal flex flex-col">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
+            <h2 class="text-xl font-black">Contact & Feedback</h2>
+            <button onclick="window.closeFeedbackModal()" class="text-blue-600 font-bold">Annuler</button>
+        </div>
+        <div class="p-6 flex-1 bg-gray-50">
+            <p class="text-gray-500 text-sm mb-6 leading-relaxed">Une idée ? Un bug ? Une suggestion ? Envoyez-moi un message directement ici.</p>
+            
+            <div class="bg-white rounded-2xl p-4 shadow-sm mb-4">
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Objet</label>
+                    <select id="fb-object" class="w-full bg-gray-50 p-3 rounded-xl font-bold outline-none border border-transparent focus:border-blue-500 text-sm">
+                        <option value="Suggestion">💡 Suggestion d'amélioration</option>
+                        <option value="Bug">🪲 Signaler un Bug</option>
+                        <option value="Avis">⭐️ Avis sur l'app</option>
+                        <option value="Autre">✉️ Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Message</label>
+                    <textarea id="fb-message" class="w-full bg-gray-50 p-3 rounded-xl font-medium outline-none border border-transparent focus:border-blue-500 h-32 text-sm" placeholder="Décrivez votre idée..."></textarea>
+                </div>
+            </div>
+
+            <button onclick="window.sendFeedback()" id="fb-send-btn" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-200">Envoyer</button>
+            <div id="fb-status" class="text-center mt-4 text-sm font-bold text-gray-400 hidden">Envoi en cours...</div>
+        </div>
+    </div>
+    
+    <div id="pin-selector-modal" class="modal flex flex-col">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
+            <h2 class="text-xl font-black">Choisir un favori</h2>
+            <button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="text-blue-600 font-bold">Annuler</button>
+        </div>
+        <div class="p-4 bg-gray-50">
+            <input type="text" id="pin-search" placeholder="Rechercher dans ma collection..." class="w-full p-3 rounded-xl border border-gray-200 outline-none font-bold text-sm" oninput="window.filterPinSelector(this.value)">
+        </div>
+        <div class="flex-1 overflow-y-auto p-4" id="pin-selector-list"></div>
+    </div>
 
 </body>
-</html>
-
 
     <script type="module">
         
@@ -371,7 +538,7 @@
         /* --- B.1 VARIABLES DE SESSION & NAVIGATION --- */
         window.currentUser = null;
         window.currentView = 'home';
-        window.currentType = 'Film'; 
+        window.currentType = 'Film'; // Type par défaut (sera écrasé par la Landing Page)
         window.currentStatus = 'Vu'; 
         window.authMode = 'login';
 
@@ -381,13 +548,25 @@
         window.following = [];
         window.followingData = [];
         window.followersData = [];
-        window.userProfile = { name: '', avatar: '', goalLivre: 12, goalFilm: 50, goalSerie: 10, following: [] };
+        
+        // Mise à jour du profil pour inclure les nouveaux objectifs
+        window.userProfile = { 
+            name: '', 
+            avatar: '', 
+            goalLivre: 12, 
+            goalFilm: 50, 
+            goalSerie: 10,
+            goalAlbum: 20,    // Nouvel objectif par défaut
+            goalYoutube: 100, // Nouvel objectif par défaut
+            goalJeu: 10,      // Nouvel objectif par défaut
+            following: [] 
+        };
 
         /* --- B.3 ÉTAT DE L'INTERFACE (UI) --- */
         window.tempManualImage = ''; 
         window.followFeedback = null;
-        window.currentCommentActId = null; // Pour la modale commentaires
-        let currentRating = 8; // Variable locale pour le slider
+        window.currentCommentActId = null; 
+        let currentRating = 8; 
 
         /* --- B.4 ÉTAT ÉTENDU (EXTENSIONS) --- */
         window.extState = {
@@ -395,7 +574,7 @@
             statsMode: 'year',
             notifications: [],
             currentPublicUser: null
-        }; 
+        };
 
        // -----------------------------------------------------------
         // C. UTILITAIRES & AUTHENTIFICATION
@@ -492,20 +671,39 @@
             document.body.style.opacity = "1";
             
             if (user) {
+                // UTILISATEUR CONNECTÉ
                 window.currentUser = user;
+                
+                // 1. Cacher l'authentification
                 document.getElementById('auth-screen').style.display = 'none';
-                document.querySelector('.app-shell').style.display = 'flex';
-                window.renderPills();
+                
+                // 2. Afficher la Landing Page (Grille des catégories)
+                // L'interface principale (.app-shell) reste cachée par défaut via CSS/HTML
+                const landingPage = document.getElementById('landing-page');
+                if (landingPage) {
+                    landingPage.style.display = 'block'; 
+                    landingPage.classList.remove('hidden-landing');
+                }
+
+                // 3. Charger les données en arrière-plan
                 loadUserData();
                 setupSocialListeners();
+                
             } else {
+                // UTILISATEUR DÉCONNECTÉ
                 window.currentUser = null;
+                
+                // 1. Afficher l'authentification
                 document.getElementById('auth-screen').style.display = 'flex';
+                
+                // 2. Cacher l'interface et la Landing Page
                 document.querySelector('.app-shell').style.display = 'none';
+                const landingPage = document.getElementById('landing-page');
+                if (landingPage) landingPage.style.display = 'none';
             }
         });
 
-        /* ==================================================================
+       /* ==================================================================
            D : CHARGEMENT DES DONNÉES (DATA LAYER)
            Écouteurs temps réel pour les collections, profils et le feed
            ================================================================== */
@@ -515,7 +713,7 @@
             if (!window.currentUser) return;
             const userRoot = `artifacts/${appId}/users/${window.currentUser.uid}`;
             
-            // 1. Ma Collection (Films, Livres, Séries)
+            // 1. Ma Collection (Tous types : Films, Livres, Séries, Albums, YouTube, Jeux)
             onSnapshot(collection(db, userRoot, 'items'), (snap) => {
                 window.myCollection = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
                 window.refreshCurrentView();
@@ -525,17 +723,26 @@
             onSnapshot(doc(db, userRoot, 'profile', 'info'), (d) => {
                 if (d.exists()) {
                     const data = d.data();
+                    // Fusion avec les valeurs par défaut définies en Partie B (pour gérer les nouveaux champs sur les anciens profils)
                     window.userProfile = { ...window.userProfile, ...data };
                     window.following = [...new Set(window.userProfile.following || [])];
                     // Une fois mon profil chargé, je charge ceux de mes amis
                     loadFollowingProfiles();
                     loadFollowersProfiles(); 
                 } else {
-                    // Création du profil par défaut si inexistant
+                    // Création du profil par défaut si inexistant (NOUVEAU : Ajout des objectifs Album/YT/Jeu)
                     const defName = "Utilisateur_" + window.currentUser.uid.slice(-4);
                     setDoc(doc(db, userRoot, 'profile', 'info'), { 
-                        uid: window.currentUser.uid, name: defName, avatar: '', following: [],
-                        goalLivre: 12, goalFilm: 50, goalSerie: 10 
+                        uid: window.currentUser.uid, 
+                        name: defName, 
+                        avatar: '', 
+                        following: [],
+                        goalLivre: 12, 
+                        goalFilm: 50, 
+                        goalSerie: 10,
+                        goalAlbum: 20,    // Defaut
+                        goalYoutube: 100, // Defaut
+                        goalJeu: 10       // Defaut
                     });
                 }
                 window.refreshCurrentView();
@@ -593,7 +800,7 @@
             });
         }
         
-       // -----------------------------------------------------------
+      // -----------------------------------------------------------
         // E. ACTIONS UTILISATEUR
         // -----------------------------------------------------------
         
@@ -756,11 +963,11 @@
         window.updateGoal = async (type, val) => { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { [`goal${type}`]: parseInt(val) }); };
         window.logout = () => signOut(auth).then(() => location.reload());
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // F. NAVIGATION & INTERFACE (UI)
         // -----------------------------------------------------------
 
-       /* --- F.1 RAFRAÎCHISSEMENT & CONFIGURATION --- */
+        /* --- F.1 RAFRAÎCHISSEMENT & CONFIGURATION --- */
         window.refreshCurrentView = () => {
             if (window.currentView === 'home') window.renderList();
             if (window.currentView === 'profile') window.renderProfile();
@@ -771,148 +978,99 @@
         const TMDB_KEY = "fa1123067cae30eea6420cfaef569bc2";
         let searchType = 'Film'; 
         
+        // CONFIGURATION DES 6 CATÉGORIES
         const CONFIG = {
-            // Catégories existantes
             'Film': { statuses: ['Vu', 'Wishlist'], action: 'Vu !', icon: 'fa-film', metric: 'min', color: '#AF52DE' },
-            'Livre': { statuses: ['Lu', 'Wishlist', 'En cours'], action: 'Terminé !', icon: 'fa-book-open', metric: 'pages', color: '#FF9500' },
             'Série': { statuses: ['Vu', 'Wishlist', 'En cours'], action: 'Saison Finie !', icon: 'fa-tv', metric: 'saisons', color: '#34C759' },
-            
-            // Nouvelles catégories
-            'Musique': { statuses: ['Écouté', 'Wishlist'], action: 'Écouté !', icon: 'fa-music', metric: 'titres', color: '#FF2D55' },
-            'Youtube': { statuses: ['Vu', 'Wishlist'], action: 'Vu !', icon: 'fa-brands fa-youtube', metric: 'min', color: '#FF0000' },
-            'Jeux': { statuses: ['Joué', 'Wishlist'], action: 'Joué !', icon: 'fa-dice', metric: 'parties', color: '#007AFF' }
+            'Livre': { statuses: ['Lu', 'Wishlist', 'En cours'], action: 'Terminé !', icon: 'fa-book-open', metric: 'pages', color: '#FF9500' },
+            'Album': { statuses: ['Écouté', 'Wishlist'], action: 'Écouté !', icon: 'fa-music', metric: 'titres', color: '#E91E63' },
+            'YouTube': { statuses: ['Vu', 'Wishlist'], action: 'Regardé !', icon: 'fa-brands fa-youtube', metric: 'min', color: '#FF0000' },
+            'Jeu': { statuses: ['Joué', 'Wishlist', 'En cours'], action: 'Terminé !', icon: 'fa-dice', metric: 'heures', color: '#10B981' }
         };
 
-        /* --- F.2 GESTION DES CATÉGORIES (TYPES) --- */
+        /* --- F.2 GESTION DE LA LANDING PAGE & CATÉGORIES --- */
+        
+        // 1. SÉLECTIONNER UNE CATÉGORIE (ENTRER DANS L'APP)
+        window.selectCategory = (type) => {
+            // A. Définir le type actuel
+            window.currentType = type;
+            
+            // B. Mettre à jour le Titre du Header (ex: écrire "Films" au lieu de "MaBiblio")
+            const titleEl = document.getElementById('header-main-title');
+            if(titleEl) titleEl.innerText = type; 
+
+            // C. Masquer la Landing Page
+            const landingPage = document.getElementById('landing-page');
+            if (landingPage) {
+                landingPage.style.display = 'none'; // On cache l'accueil
+                landingPage.classList.add('hidden-landing');
+            }
+
+            // D. Afficher l'interface principale
+            document.querySelector('.app-shell').style.display = 'flex';
+            
+            // E. Charger la vue
+            window.switchType(type);
+        };
+
+        // 2. RETOUR À L'ACCUEIL (C'EST CETTE FONCTION QUI TE MANQUAIT)
+        window.goBackToLanding = () => {
+            // A. Cacher l'interface principale
+            document.querySelector('.app-shell').style.display = 'none';
+            
+            // B. Réafficher la Landing Page
+            const landingPage = document.getElementById('landing-page');
+            if (landingPage) {
+                landingPage.style.display = 'block'; // On réaffiche l'accueil
+                landingPage.classList.remove('hidden-landing');
+            }
+        };
+
+        // 3. CHANGEMENT DE TYPE (INTERNE)
         window.switchType = (type) => {
             window.currentType = type;
-            document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.id === 'tab-'+(type==='Série'?'Serie':type)));
+            
+            // On remet le statut par défaut (ex: 'Vu' ou 'Lu')
             window.currentStatus = CONFIG[type].statuses[0];
-            window.renderPills(); window.renderList();
+            
+            // On met à jour l'affichage
+            window.renderPills(); 
+            window.renderList();
         };
 
         /* --- F.3 GESTION DES FILTRES (STATUTS) --- */
         window.renderPills = () => {
             const container = document.getElementById('status-container');
-            if (container) container.innerHTML = CONFIG[window.currentType].statuses.map(s => `<div class="pill ${s === window.currentStatus ? 'active' : ''}" onclick="window.switchStatus('${s}')">${s}</div>`).join('');
-        };
-
-        window.switchStatus = (s) => { window.currentStatus = s; window.renderPills(); window.renderList(); };
-
-        /* --- F.4 NAVIGATION PRINCIPALE (DASHBOARD & VUES) --- */
-
-        // 1. FONCTION POUR RECONSTRUIRE LE HTML SI NÉCESSAIRE
-        window.restoreDashboardStructure = () => {
-            const container = document.getElementById('main-content');
-            // Si le dashboard n'existe plus (car effacé par le profil), on le recrée
-            if (!document.getElementById('home-dashboard')) {
-                container.innerHTML = `
-                <div id="home-dashboard" class="dashboard-grid">
-                    <div class="dash-card c-Film" onclick="window.openCategory('Film')"><i class="fa-solid fa-film dash-icon"></i><span class="dash-title">Films</span><span class="dash-count" id="count-Film">...</span></div>
-                    <div class="dash-card c-Serie" onclick="window.openCategory('Série')"><i class="fa-solid fa-tv dash-icon"></i><span class="dash-title">Séries</span><span class="dash-count" id="count-Série">...</span></div>
-                    <div class="dash-card c-Livre" onclick="window.openCategory('Livre')"><i class="fa-solid fa-book-open dash-icon"></i><span class="dash-title">Livres</span><span class="dash-count" id="count-Livre">...</span></div>
-                    <div class="dash-card c-Music" onclick="window.openCategory('Musique')"><i class="fa-solid fa-music dash-icon"></i><span class="dash-title">Musique</span><span class="dash-count" id="count-Musique">Bientôt</span></div>
-                    <div class="dash-card c-Youtube" onclick="window.openCategory('Youtube')"><i class="fa-brands fa-youtube dash-icon"></i><span class="dash-title">YouTube</span><span class="dash-count" id="count-Youtube">Bientôt</span></div>
-                    <div class="dash-card c-Game" onclick="window.openCategory('Jeux')"><i class="fa-solid fa-dice dash-icon"></i><span class="dash-title">Jeux</span><span class="dash-count" id="count-Jeux">Bientôt</span></div>
-                </div>
-                <div id="category-list-view" class="hidden pt-4 px-2 pb-32"><div id="items-grid-container" class="items-grid"></div></div>
-                `;
+            if (container && CONFIG[window.currentType]) {
+                container.innerHTML = CONFIG[window.currentType].statuses.map(s => 
+                    `<div class="pill ${s === window.currentStatus ? 'active' : ''}" onclick="window.switchStatus('${s}')">${s}</div>`
+                ).join('');
             }
         };
 
-        // 2. AFFICHER L'ACCUEIL (LES 6 CARRÉS)
-        window.showDashboard = () => {
-            // On s'assure que le HTML est là
-            window.restoreDashboardStructure();
-
-            // Gestion de l'affichage
-            document.getElementById('home-dashboard').classList.remove('hidden');
-            document.getElementById('category-list-view').classList.add('hidden');
-
-            // Reset du Header
-            const backBtn = document.getElementById('header-back');
-            if(backBtn) backBtn.style.display = 'none';
-            
-            const title = document.getElementById('header-title');
-            if(title) title.innerText = "Ma Biblio";
-            
-            const pills = document.getElementById('status-container');
-            if(pills) pills.classList.add('hidden');
-            
-            const header = document.getElementById('app-header');
-            if(header) header.style.display = 'flex';
-
-            // Mise à jour des compteurs
-            if(window.updateDashboardCounts) window.updateDashboardCounts();
+        window.switchStatus = (s) => { 
+            window.currentStatus = s; 
+            window.renderPills(); 
+            window.renderList(); 
         };
 
-        // 3. OUVRIR UNE CATÉGORIE
-        window.openCategory = (type) => {
-            // Sécurité pour les sections "Bientôt"
-            if(['Musique', 'Youtube', 'Jeux'].includes(type)) {
-                alert("Cette section arrive bientôt !");
-                return;
-            }
-
-            // Bascule d'affichage
-            document.getElementById('home-dashboard').classList.add('hidden');
-            document.getElementById('category-list-view').classList.remove('hidden');
-
-            // Header
-            document.getElementById('header-back').style.display = 'flex';
-            document.getElementById('header-title').innerText = type + 's';
-            document.getElementById('status-container').classList.remove('hidden');
-
-            // Configuration
-            window.currentType = type;
-            // On sélectionne le premier statut par défaut
-            window.currentStatus = CONFIG[type] ? CONFIG[type].statuses[0] : 'Vu';
-
-            // Rendu
-            if(window.renderStatusPills) window.renderStatusPills();
-            if(window.renderMainList) window.renderMainList();
-        };
-
-        // 4. NAVIGATION BASSE (ONGLETS) - C'EST ICI QUE CA SE JOUE
+        /* --- F.4 NAVIGATION PRINCIPALE (BAS DE PAGE) --- */
         window.switchView = (view) => {
             window.currentView = view;
             
-            // Active le bon bouton en bas
+            // Mise à jour visuelle de la barre du bas
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
             
-            // Gestion du Header
+            // Le header du haut (Retour/Titre) ne s'affiche que sur la vue 'home'
             const header = document.getElementById('app-header');
-            if(header) header.style.display = (view === 'home' ? 'flex' : 'none');
-
-            const container = document.getElementById('main-content');
-
-            if (view === 'home') {
-                window.showDashboard();
-            } else {
-                // Pour les autres vues, on nettoie le conteneur pour laisser la place
-                container.innerHTML = '';
-                
-                if (view === 'friends' && window.renderSocialFeed) window.renderSocialFeed();
-                if (view === 'stats' && window.renderStats) window.renderStats();
-                if (view === 'profile' && window.renderProfile) window.renderProfile();
-            }
-        };
-
-        // 5. COMPTEURS DES CARRÉS
-        window.updateDashboardCounts = () => {
-            if (!window.myCollection) return;
-            const counts = {};
-            window.myCollection.forEach(item => { counts[item.type] = (counts[item.type] || 0) + 1; });
+            if(header) header.style.display = (view === 'home' ? 'block' : 'none');
             
-            ['Film', 'Série', 'Livre', 'Musique', 'Youtube', 'Jeux'].forEach(type => {
-                const el = document.getElementById(`count-${type}`);
-                if(el) el.innerText = (counts[type] || 0) + ' éléments';
-            });
-        };
-
-        // 6. INITIALISATION
-        window.initNavigation = () => {
-            window.showDashboard();
+            if (view !== 'friends') {
+                localStorage.setItem('mabiblio_last_check', Date.now());
+                if (window.updateNotifBadge) window.updateNotifBadge(); 
+            }
+            
+            window.refreshCurrentView();
         };
 
        // -----------------------------------------------------------
@@ -922,12 +1080,35 @@
         /* --- G.1 MOTEUR DE RECHERCHE (API) --- */
         window.openSearchModal = () => document.getElementById('search-modal').classList.add('open');
         window.closeSearchModal = () => { document.getElementById('search-modal').classList.remove('open'); document.getElementById('search-input').value = ""; document.getElementById('search-results').innerHTML = ""; };
-        window.setSearchType = (t) => { searchType = t; ['Livre', 'Film', 'Série'].forEach(x => { const b = document.getElementById('s-'+x); if (b) b.className = x === t ? "flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm" : "flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm"; }); };
+        
+        window.setSearchType = (t) => { 
+            searchType = t; 
+            // Mise à jour visuelle des 6 boutons
+            ['Livre', 'Film', 'Série', 'Album', 'YouTube', 'Jeu'].forEach(x => { 
+                const b = document.getElementById('s-'+x); 
+                if (b) b.className = x === t ? "px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm" : "px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm"; 
+            }); 
+            // Reset des résultats pour éviter la confusion
+            document.getElementById('search-results').innerHTML = "";
+            document.getElementById('search-input').value = "";
+        };
 
         window.handleSearch = async (val) => { 
             if (val.length < 3) return; 
             let results = []; 
             
+            // LOGIQUE DE RECHERCHE PAR TYPE
+            if (['Album', 'YouTube', 'Jeu'].includes(searchType)) {
+                // Pas d'API publique simple configurée pour ces types -> Proposition manuelle directe
+                document.getElementById('search-results').innerHTML = `
+                    <div class="text-center mt-10 p-6 bg-gray-50 rounded-2xl">
+                        <i class="fa-solid fa-pen-to-square text-4xl text-gray-300 mb-4"></i>
+                        <p class="font-bold text-gray-500 mb-4">La recherche automatique pour "${searchType}" n'est pas encore connectée.</p>
+                        <button onclick="window.openManualModal()" class="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold">Ajouter manuellement</button>
+                    </div>`;
+                return;
+            }
+
             if (searchType === 'Livre') { 
                 const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10`); 
                 const d = await r.json(); 
@@ -941,7 +1122,7 @@
                     metricValue: b.volumeInfo.pageCount || 0,
                     author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
                 })); 
-            } else { 
+            } else if (searchType === 'Film' || searchType === 'Série') { 
                 const ep = searchType === 'Film' ? 'movie' : 'tv'; 
                 const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
                 const d = await r.json(); 
@@ -993,7 +1174,16 @@
 
             const showDelete = (item.docId && !isReadOnly) ? true : false;
             
-            // 2. Commentaire
+            // 2. Préparation des libellés selon le Type
+            let authorLabel = 'De';
+            let iconClass = 'fa-video';
+            
+            if (item.type === 'Livre') { authorLabel = 'Auteur'; iconClass = 'fa-pen-nib'; }
+            if (item.type === 'Album') { authorLabel = 'Artiste'; iconClass = 'fa-microphone'; }
+            if (item.type === 'YouTube') { authorLabel = 'Chaîne'; iconClass = 'fa-youtube'; }
+            if (item.type === 'Jeu') { authorLabel = 'Créateur'; iconClass = 'fa-chess-pawn'; }
+
+            // 3. Commentaire Existant
             let commentHtml = '';
             if (item.comment && item.comment.trim() !== '') {
                 commentHtml = `
@@ -1009,14 +1199,14 @@
             const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${item.platform}</span>` : '';
             const year = item.releaseDate ? item.releaseDate.split('-')[0] : 'Inconnue';
             
-            // 3. Méta-Infos
+            // 4. Méta-Infos
             let metaInfos = '';
             if (item.author || item.cast) {
                 metaInfos = `
                 <div class="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10 flex flex-col gap-3 text-left">
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex-1">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid ${item.type === 'Livre' ? 'fa-pen-nib' : 'fa-video'} mr-1"></i> ${item.type === 'Livre' ? 'Auteur' : 'De'}</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid ${iconClass} mr-1"></i> ${authorLabel}</div>
                             <div class="text-sm font-bold text-white leading-tight">${item.author || 'Inconnu'}</div>
                         </div>
                         <div class="text-right">
@@ -1030,43 +1220,37 @@
                 metaInfos = `<div class="mb-6 text-gray-400 font-bold text-xs uppercase">Sortie en ${year}</div>`;
             }
 
-            // 4. BOUTONS D'ACTION (LOGIQUE HYBRIDE)
+            // 5. BOUTONS D'ACTION
             let actionButtonsHtml = '';
-            
+            const actionLabel = CONFIG[item.type] ? CONFIG[item.type].action : 'Terminé !';
+
             if (isReadOnly) {
-                // --- CAS 1 : PROFIL AMI (Lecture + Import) ---
                 actionButtonsHtml = `
                     <div class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 flex flex-col items-center justify-center">
                         <div class="text-orange-500 text-4xl mb-2 drop-shadow-lg"><i class="fa-solid fa-star"></i></div>
                         <div class="text-4xl font-black text-white tracking-tight">${item.rating || '-'} <span class="text-lg text-gray-500 font-bold">/ 10</span></div>
                         <div class="text-gray-400 text-[10px] font-bold uppercase mt-2 tracking-widest">Note de l'utilisateur</div>
                     </div>
-
                     <div class="w-full pt-6 border-t border-white/10 mb-6">
                         <p class="text-center text-gray-500 text-[10px] font-bold uppercase mb-4 tracking-widest">Ajouter à ma bibliothèque</p>
                         <div class="space-y-3">
                             <button onclick="window.tempItem.docId = null; window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">
-                                ${CONFIG[item.type].action} </button>
-                            
+                                ${actionLabel} </button>
                             ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">En cours</button>` : ''}
-                            
                             <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Wishlist</button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             } else {
-                // --- CAS 2 : MON PROFIL (Édition) ---
-                const isEdited = item.rating || item.status === 'Vu' || item.status === 'Lu';
-                const actionText = isEdited ? "Modifier ma note" : CONFIG[item.type].action;
+                const isEdited = item.rating || (CONFIG[item.type] && CONFIG[item.type].statuses.includes(item.status) && item.status !== 'Wishlist' && item.status !== 'En cours');
+                const mainBtnText = isEdited ? "Modifier ma note" : actionLabel;
                 
                 actionButtonsHtml = `
                     <div class="w-full space-y-3 mb-8">
-                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${actionText}</button>
+                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${mainBtnText}</button>
                         ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}
                         <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>
                         ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}
-                    </div>
-                `;
+                    </div>`;
             }
 
             document.getElementById('preview-content').innerHTML = `
@@ -1074,13 +1258,11 @@
                     <img src="${item.img || ''}" class="w-44 h-64 rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
                     <h2 class="text-2xl font-black mb-2 text-center text-white leading-tight">${item.title}</h2>
                     <p class="text-blue-400 font-bold mb-6 text-sm uppercase">
-                        ${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric} ${platformBadge}
+                        ${item.type} • ${item.metricValue || 0} ${CONFIG[item.type] ? CONFIG[item.type].metric : ''} ${platformBadge}
                     </p>
-                    
                     ${metaInfos}
                     ${actionButtonsHtml}
                     ${commentHtml}
-
                     <div class="w-full text-gray-400 text-sm leading-relaxed text-justify opacity-80">${item.desc || "Aucun résumé."}</div>
                 </div>`; 
         };
@@ -1096,18 +1278,36 @@
             const platformLabel = document.getElementById('platform-label');
             const platformSelect = document.getElementById('platform-select');
             let options = [];
-            
-            if (window.tempItem.type === 'Livre') {
-                if(platformLabel) platformLabel.innerText = "Lu sur";
-                options = ['Physique', 'Liseuse', 'Audio', 'Tablette', 'Autre'];
-            } else {
-                if(platformLabel) platformLabel.innerText = "Vu sur";
-                options = ['Netflix', 'Prime Video', 'Disney+', 'Canal+', 'Apple TV+', 'Cinéma', 'Physique (DVD/BR)', 'Streaming', 'TV', 'Autre'];
+            let label = "Vu sur";
+
+            // Définition des options selon le type
+            switch(window.tempItem.type) {
+                case 'Livre':
+                    label = "Lu sur";
+                    options = ['Physique', 'Liseuse', 'Audio', 'Tablette', 'Autre'];
+                    break;
+                case 'Album':
+                    label = "Écouté sur";
+                    options = ['Spotify', 'Apple Music', 'Deezer', 'Vinyle', 'CD', 'YouTube Music', 'Autre'];
+                    break;
+                case 'YouTube':
+                    label = "Vu sur";
+                    options = ['YouTube', 'YouTube TV', 'Mobile', 'Autre'];
+                    break;
+                case 'Jeu':
+                    label = "Joué sur";
+                    options = ['Plateau', 'Cartes', 'PC', 'PlayStation', 'Xbox', 'Switch', 'Mobile', 'Autre'];
+                    break;
+                default: // Film et Série
+                    label = "Vu sur";
+                    options = ['Netflix', 'Prime Video', 'Disney+', 'Canal+', 'Apple TV+', 'Cinéma', 'Physique (DVD/BR)', 'Streaming', 'TV', 'Autre'];
             }
             
+            if(platformLabel) platformLabel.innerText = label;
             platformSelect.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
             if(window.tempItem.platform) platformSelect.value = window.tempItem.platform;
 
+            // Gestion de la date
             const dateInput = document.getElementById('finish-date-input');
             const noDateToggle = document.getElementById('no-date-toggle');
             const shareToggle = document.getElementById('share-toggle');
@@ -1135,9 +1335,12 @@
             const isNoDate = document.getElementById('no-date-toggle').checked;
             const dateValue = isNoDate ? "" : document.getElementById('finish-date-input').value;
             const platformValue = document.getElementById('platform-select').value;
+            
+            // Sécurité si CONFIG[type] n'existe pas (cas très rare)
+            const status = CONFIG[window.tempItem.type] ? CONFIG[window.tempItem.type].statuses[0] : 'Vu';
 
             window.saveItem(
-                CONFIG[window.tempItem.type].statuses[0], 
+                status, 
                 currentRating, 
                 document.getElementById('rating-comment').value, 
                 dateValue, 
@@ -1376,11 +1579,11 @@
         // --- A. MOTEUR DE RECHERCHE "FUZZY" (INTELLIGENT) ---
         
         window.handleUserSearch = async (val) => {
-            // On cible le conteneur de résultats (qu'il soit dans une modale ou dans la page)
+            // On cible le conteneur de résultats
             const container = document.getElementById('user-search-results');
             if (!container) return;
 
-            val = val.trim().toLowerCase(); // On met tout en minuscule pour comparer
+            val = val.trim().toLowerCase(); 
             
             if (!val) {
                 container.innerHTML = '<div class="text-center text-gray-400 mt-4 text-sm">Cherchez un ami...</div>';
@@ -1392,14 +1595,13 @@
 
             try {
                 // STRATÉGIE "FUZZY" : 
-                // 1. On récupère les 100 derniers profils actifs (ou tout le monde si petite app)
-                // 2. On filtre en JavaScript pour être souple (insensible à la casse, partie du mot...)
+                // 1. On récupère les 100 derniers profils actifs
                 const q = query(collectionGroup(db, 'profile'), limit(100));
                 const snapshot = await getDocs(q);
                 
                 const allUsers = snapshot.docs.map(doc => doc.data());
                 
-                // Le filtre magique : convertit les deux en minuscules et vérifie si ça "contient" le texte
+                // 2. Le filtre JavaScript
                 const matches = allUsers.filter(u => 
                     u.name && 
                     u.name.toLowerCase().includes(val) && 
@@ -1414,7 +1616,6 @@
                 // Rendu des résultats
                 container.innerHTML = matches.map(u => {
                     const isFollowing = (window.following || []).includes(u.uid);
-                    // On échappe les caractères pour éviter les bugs d'affichage
                     const safeName = u.name.replace(/'/g, "&apos;");
                     const safeUid = u.uid;
 
@@ -1442,9 +1643,6 @@
         };
 
         // --- B. UTILITAIRES ---
-        // (Note: Les fonctions de modale open/closeUserSearchModal sont supprimées 
-        // car nous allons intégrer la recherche directement dans la page ci-dessous)
-
         window.updateNotifBadge = () => {
             const badge = document.getElementById('notif-badge');
             if (!badge) return;
@@ -1468,9 +1666,6 @@
                 }
             }, 600); 
         };
-        
-        // Ancienne fonction conservée pour éviter les erreurs si appelée ailleurs
-        window.followUser = async () => {};
 
         /* ==================================================================
            H.2 : SOCIAL - FEED & NOTIFICATIONS
@@ -1504,9 +1699,13 @@
                     const isLiked = likes.includes(window.currentUser.uid);
                     const commentsCount = (act.comments || []).length;
                     
+                    // Gestion des icônes par type
                     let typeIcon = 'fa-film';
-                    if (act.type === 'Livre') typeIcon = 'fa-book';
+                    if (act.type === 'Livre') typeIcon = 'fa-book-open';
                     if (act.type === 'Série') typeIcon = 'fa-tv';
+                    if (act.type === 'Album') typeIcon = 'fa-music';
+                    if (act.type === 'YouTube') typeIcon = 'fa-youtube';
+                    if (act.type === 'Jeu') typeIcon = 'fa-dice';
 
                     // Texte des likes
                     let likesText = likes.length > 0 ? (likes.length === 1 ? `1 J'aime` : `${likes.length} J'aime`) : 'J\'aime';
@@ -1528,13 +1727,19 @@
                     }
 
                     const previewData = {
-                        id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: act.metricValue || 0,
-                        desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`, platform: act.platform, releaseDate: null 
+                        id: act.id + '_public', 
+                        title: act.itemTitle, 
+                        img: act.itemImg, 
+                        type: act.type, 
+                        metricValue: act.metricValue || 0,
+                        desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`, 
+                        platform: act.platform, 
+                        releaseDate: null 
                     };
                     const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
                     const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${act.platform}</span>` : '';
 
-                    // --- STRUCTURE CARTE BLANCHE UNIQUE ---
+                    // --- STRUCTURE CARTE ---
                     feedHtml += `
                     <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-50" id="act-${act.id}">
                         <div class="flex justify-between items-start mb-4">
@@ -1601,7 +1806,7 @@
             if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
         };
 
-        // --- NOUVELLE FONCTION : PETIT POPUP DES LIKES (INCHANGÉE) ---
+        // --- FONCTION POPUP DES LIKES ---
         window.showLikesList = (actId) => {
             const act = window.socialFeed.find(a => a.id === actId);
             if(!act || !act.likes || act.likes.length === 0) return;
@@ -1640,20 +1845,18 @@
             window.currentView = 'notifications';
             document.getElementById('app-header').style.display = 'none'; 
             
-            // A. Reset visuel immédiat (Badge)
+            // A. Reset visuel immédiat
             const badge = document.getElementById('notif-badge');
             if(badge) {
                 badge.innerText = '0';
                 badge.classList.remove('active');
             }
 
-            // B. Reset Base de Données (Marquer comme lu)
-            // On prend toutes les notifs non lues qui ont un ID valide
+            // B. Reset Base de Données
             const unreadNotifs = window.extState.notifications.filter(n => !n.read && n.id);
             if(unreadNotifs.length > 0) {
                 const batch = writeBatch(db);
                 unreadNotifs.forEach(n => {
-                    // Attention au chemin : users -> uid -> notifications -> id
                     const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id);
                     batch.update(ref, { read: true });
                 });
@@ -1661,7 +1864,6 @@
             }
 
             const container = document.getElementById('main-content');
-            // On trie pour avoir les plus récentes en haut
             const notifs = (window.extState.notifications || []).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
 
             container.innerHTML = `
@@ -1674,22 +1876,20 @@
                     ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
                     
                     ${notifs.map(n => {
-                        // LOGIQUE D'AFFICHAGE SELON LE TYPE
                         const isFollow = n.type === 'follow';
                         
-                        // 1. L'action au clic : Profil (si abonnement) OU Activité (si like/com)
-                        // Note: pour le follow, l'ID de l'envoyeur est stocké dans 'fromUid'
+                        // L'action au clic : Profil (si abonnement) OU Activité (si like/com)
                         const action = isFollow 
                             ? `window.openPublicProfile('${n.fromUid}')` 
                             : `window.goToActivity('${n.actId}')`;
 
-                        // 2. L'icône et la couleur
+                        // L'icône et la couleur
                         let icon = '';
                         let color = '';
                         
                         if (isFollow) {
                             icon = '<i class="fa-solid fa-user-plus"></i>';
-                            color = 'text-green-500'; // Vert pour les abonnements
+                            color = 'text-green-500'; 
                         } else if (n.type && n.type.includes('like')) {
                             icon = '<i class="fa-solid fa-heart"></i>';
                             color = 'text-red-500';
@@ -1701,8 +1901,6 @@
                             color = 'text-blue-600';
                         }
 
-                        // 3. Le texte
-                        // Pour un follow, le message est déjà complet dans n.message
                         const content = isFollow 
                             ? `<span class="font-bold text-gray-800">${n.message}</span>`
                             : `<span class="font-black">${n.user}</span> ${n.text}`;
@@ -1781,105 +1979,111 @@
              } catch(e) { console.error(e); }
         };
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
         
         /* --- I.1 INJECTION UI DYNAMIQUE (HEADER & NOTIFS) --- */
-        // Injection UI dynamique pour Header et Tabs
+        // On attend que le DOM soit prêt pour réorganiser le Header
+        // (Ajout du bouton notification et du filtre de tri à côté des onglets)
+        
         const headerTitle = document.querySelector('.header-title');
         const headerTabs = document.querySelector('.type-tabs');
         
-        const titleRow = document.createElement('div');
-        titleRow.style.display = 'flex'; titleRow.style.justifyContent = 'space-between'; titleRow.style.alignItems = 'center'; titleRow.style.width = '100%';
-        headerTitle.parentNode.insertBefore(titleRow, headerTitle);
-        titleRow.appendChild(headerTitle);
+        if (headerTitle && headerTabs) {
+            // 1. CRÉATION DE LA LIGNE SUPÉRIEURE (Titre + Notif)
+            const titleRow = document.createElement('div');
+            titleRow.style.display = 'flex'; 
+            titleRow.style.justifyContent = 'space-between'; 
+            titleRow.style.alignItems = 'center'; 
+            titleRow.style.width = '100%';
+            
+            // On insère le conteneur avant le titre existant
+            headerTitle.parentNode.insertBefore(titleRow, headerTitle);
+            // On déplace le titre dedans
+            titleRow.appendChild(headerTitle);
 
-        const notifBtn = document.createElement('div');
-        notifBtn.className = 'notif-btn';
-        notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
-        notifBtn.onclick = () => window.openNotifications();
-        titleRow.appendChild(notifBtn);
+            // On crée le bouton de notification
+            const notifBtn = document.createElement('div');
+            notifBtn.className = 'notif-btn';
+            notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
+            notifBtn.onclick = () => window.openNotifications();
+            titleRow.appendChild(notifBtn);
 
-        /* --- I.2 SYSTÈME DE TRI & FILTRES --- */
-        const tabsContainer = document.createElement('div');
-        tabsContainer.style.display = 'flex'; tabsContainer.style.justifyContent = 'space-between'; tabsContainer.style.alignItems = 'center'; tabsContainer.style.marginTop = '15px';
-        headerTabs.parentNode.insertBefore(tabsContainer, headerTabs);
-        tabsContainer.appendChild(headerTabs); 
-        headerTabs.style.marginTop = '0'; 
+            /* --- I.2 SYSTÈME DE TRI & FILTRES --- */
+            // 2. CRÉATION DE LA LIGNE DES ONGLETS (Tabs + Filtre)
+            const tabsContainer = document.createElement('div');
+            tabsContainer.style.display = 'flex'; 
+            tabsContainer.style.justifyContent = 'space-between'; 
+            tabsContainer.style.alignItems = 'center'; 
+            tabsContainer.style.marginTop = '15px';
+            tabsContainer.style.gap = '8px'; // Espace entre la liste et le filtre
 
-        const filterContainer = document.createElement('div');
-        filterContainer.innerHTML = `<select class="filter-dropdown" onchange="window.setSort(this.value)"><option value="date">Date</option><option value="rating">Note</option><option value="name">Nom</option></select>`;
-        tabsContainer.appendChild(filterContainer); 
+            // On insère le conteneur avant les tabs
+            headerTabs.parentNode.insertBefore(tabsContainer, headerTabs);
+            // On déplace les tabs dedans
+            tabsContainer.appendChild(headerTabs); 
+            
+            // --- CORRECTIF RESPONSIVE POUR LES 6 CATÉGORIES ---
+            headerTabs.style.marginTop = '0'; 
+            headerTabs.style.flex = '1';       // Prend tout l'espace disponible
+            headerTabs.style.minWidth = '0';   // Permet le scroll horizontal dans un conteneur Flex
+            
+            // Création du menu déroulant de tri
+            const filterContainer = document.createElement('div');
+            filterContainer.innerHTML = `
+                <select class="filter-dropdown" onchange="window.setSort(this.value)">
+                    <option value="date">Date</option>
+                    <option value="rating">Note</option>
+                    <option value="name">Nom</option>
+                </select>`;
+            tabsContainer.appendChild(filterContainer); 
+        }
 
-        window.setSort = (val) => { window.extState.sort = val; window.renderList(); };
+        // Fonction de tri globale mise à jour de l'état
+        window.setSort = (val) => { 
+            window.extState.sort = val; 
+            window.renderList(); 
+        };
 
-        // -----------------------------------------------------------
+       // -----------------------------------------------------------
         // J. FONCTIONS DE RENDU PRINCIPALES (OVERRIDDEN)
         // -----------------------------------------------------------
 
         /* --- J.1 RENDU DE LA LISTE PRINCIPALE (GRILLE) --- */
-        window.renderMainList = () => {
-            // Si pas de données, on arrête tout de suite pour éviter les erreurs
+        window.renderList = () => {
             if (!window.myCollection) return;
-            
-            // 1. CIBLE : On vise le conteneur spécifique caché sous le dashboard
-            const container = document.getElementById('items-grid-container');
-            if(!container) {
-                console.error("ERREUR CRITIQUE : 'items-grid-container' est introuvable dans le HTML.");
-                return;
-            }
-
-            // Initialisation des variables si elles manquent
-            if(!window.currentStatus) window.currentStatus = 'Vu';
-            if(!window.currentType) window.currentType = 'Film';
-
-            // Filtrage : On ne garde que le type (ex: Film) et le statut (ex: Vu) demandés
+            // Filtrage par type (Film/Livre/Jeu...) et statut (Vu/Wishlist...)
             let filtered = window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
             
-            // Tri
-            const sortMode = (window.extState && window.extState.sort) ? window.extState.sort : 'date';
-
-            if (sortMode === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
-            else if (sortMode === 'name') { filtered.sort((a, b) => (a.title || '').localeCompare(b.title || '')); } 
+            // Logique de Tri
+            if (window.extState.sort === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
+            else if (window.extState.sort === 'name') { filtered.sort((a, b) => a.title.localeCompare(b.title)); } 
             else {
-                // Par défaut : Tri par date (le plus récent en haut)
+                // Tri par date par défaut (Date de fin ou mise à jour)
                 filtered.sort((a, b) => {
-                    const dateA = a.finishDate || a.lastUpdate || '0';
-                    const dateB = b.finishDate || b.lastUpdate || '0';
+                    const dateA = a.finishDate || a.lastUpdate || 0;
+                    const dateB = b.finishDate || b.lastUpdate || 0;
                     return dateB > dateA ? 1 : -1;
                 });
             }
 
-            // Affichage si la liste est vide
+            const container = document.getElementById('main-content');
             if (!filtered.length) { 
-                container.className = ''; 
-                container.innerHTML = `
-                    <div class="py-24 opacity-30 text-center">
-                        <i class="fa-solid fa-layer-group text-6xl mb-6"></i>
-                        <div class="font-black text-xl">Rien ici pour l'instant</div>
-                    </div>`; 
+                container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; 
                 return; 
             }
 
             let html = '';
-            
-            // Construction du HTML : Soit grille simple, soit divisé par années
-            if (sortMode !== 'date') {
-                container.className = 'items-grid'; 
+            // Affichage : Soit grille simple, soit groupé par année (si tri par date)
+            if (window.extState.sort !== 'date') {
+                html += `<div class="items-grid mt-4">`;
                 filtered.forEach(item => html += window.generateGridItemHTML(item));
+                html += `</div>`;
             } else {
-                container.className = ''; // On enlève la grille du parent pour gérer les titres d'années
                 const groups = {};
-                filtered.forEach(item => { 
-                    const year = (item.finishDate || 'Non daté').split('-')[0]; 
-                    if (!groups[year]) groups[year] = []; 
-                    groups[year].push(item); 
-                });
-                
-                // Tri des années (décroissant)
+                filtered.forEach(item => { const year = (item.finishDate || 'Non daté').split('-')[0]; if (!groups[year]) groups[year] = []; groups[year].push(item); });
                 const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
-                
                 years.forEach(year => {
                     html += `<div class="year-divider">${year}</div><div class="items-grid">`;
                     groups[year].forEach(item => html += window.generateGridItemHTML(item));
@@ -1889,74 +2093,43 @@
             container.innerHTML = html;
         };
 
-        // Générateur de la petite carte (Sécurisé contre les bugs de guillemets)
         window.generateGridItemHTML = (item) => {
-            // PROTECTION CONTRE L'ECRAN BLANC : On échappe les guillemets simples ET doubles
-            const itemData = JSON.stringify(item).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-            
+            const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
             let dateDisplay = '';
             if (item.finishDate) {
                 const d = new Date(item.finishDate);
-                // Affichage jour/mois
                 dateDisplay = `<div class="grid-date-overlay"><i class="fa-regular fa-calendar-check mr-1"></i>${d.getDate()}/${d.getMonth()+1}</div>`;
             }
-            
-            return `
-            <div class="grid-item" onclick='window.openPreview(${itemData})'>
-                <img src="${item.img || ''}" loading="lazy" class="w-full h-full object-cover">
-                ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
-                <div class="grid-item-overlay">
-                    <div class="flex justify-between items-start">
-                        <div class="text-[10px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div>
-                    </div>
-                    <div class="flex flex-col mt-1">
-                        ${dateDisplay}
-                        <div class="flex justify-between items-center">
-                            <span class="text-[9px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span>
-                            <span class="text-[8px] font-black text-white px-1.5 py-0.5 rounded bg-white/20 backdrop-blur-sm">${item.metricValue || 0}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
+            return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
         };
 
-     /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ & NETTOYÉ) --- */
+      /* --- J.2 RENDU DU PROFIL PRIVÉ --- */
         window.renderProfile = async () => {
             const container = document.getElementById('main-content');
-            
-            // SÉCURITÉ : Si le profil n'est pas chargé, on met des valeurs par défaut pour éviter l'écran blanc
-            if (!window.userProfile) window.userProfile = {};
-            const user = window.userProfile;
             const following = window.followingData || [];
             
-            // 1. Récupération des abonnés (Try/Catch pour ne pas bloquer l'affichage si ça échoue)
+            // 1. Récupération des données followers
             let followers = [];
             try {
-                // On vérifie que la base de données est accessible
-                if(typeof db !== 'undefined' && typeof collectionGroup !== 'undefined') {
-                    const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
-                    const snap = await getDocs(q);
-                    followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id }));
-                }
-            } catch (e) {
-                console.warn("Erreur chargement abonnés (pas grave):", e);
-            }
+                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
+                const snap = await getDocs(q);
+                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id })); 
+            } catch (e) {}
 
             // Données utilisateur
-            const bio = user.bio || "Ajouter une biographie...";
-            const pinned = user.pinned || [null, null, null]; 
+            const bio = window.userProfile.bio || "Ajouter une biographie...";
+            const pinned = window.userProfile.pinned || [null, null, null]; 
 
-            // RENDU HTML
             container.innerHTML = `
                 <div class="pt-28 px-6 pb-32 text-center">
                     
                     <div class="avatar-container">
-                        <div class="avatar-img">${user.avatar ? `<img src="${user.avatar}" class="w-full h-full object-cover">` : (user.name ? user.name[0] : '?')}</div>
+                        <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
                         <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
                     </div>
                     
                     <div class="mt-4 flex items-center justify-center gap-2">
-                        <h2 class="text-3xl font-black">${user.name || 'Utilisateur'}</h2>
+                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
                         <button onclick="window.updateProfileName()" class="text-blue-600 text-lg"><i class="fa-solid fa-pen-to-square"></i></button>
                     </div>
                     <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${bio} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
@@ -1966,8 +2139,6 @@
                         ${[0, 1, 2].map(i => {
                             const item = pinned[i];
                             if (item) {
-                                // Item existant
-                                const itemJson = JSON.stringify(item).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                                 return `
                                 <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
                                     <img src="${item.img}">
@@ -1975,7 +2146,6 @@
                                     <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
                                 </div>`;
                             } else {
-                                // Slot vide
                                 return `
                                 <div class="pinned-item" onclick="window.openPinSelector(${i})">
                                     <i class="fa-solid fa-plus text-gray-300 text-2xl"></i>
@@ -2024,8 +2194,7 @@
                 </div>`;
         };
 
-        // --- FONCTIONS DE GESTION (BIO, PINS) ---
-        
+        // --- FONCTIONS DE GESTION DU PROFIL ---
         window.updateBio = async () => {
             const current = window.userProfile.bio || "";
             const newBio = prompt("Entrez votre biographie (courte phrase) :", current);
@@ -2044,28 +2213,24 @@
             const modal = document.getElementById('pin-selector-modal');
             const list = document.getElementById('pin-selector-list');
             modal.classList.add('open');
-            // On ne propose que les items "Vu" ou "Lu"
-            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
+            const candidates = window.myCollection.filter(i => CONFIG[i.type].statuses.includes(i.status)); // Modifié pour accepter tous les types finis
             
             window.renderPinList = (items) => {
-                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des films vus d\'abord !</div>'; return; }
+                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des œuvres terminées d\'abord !</div>'; return; }
                 list.innerHTML = items.map(item => {
                     const safeItem = { id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type };
-                    const json = JSON.stringify(safeItem).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
                     return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'><img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${item.title}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div></div></div>`;
                 }).join('');
-                
-                // Ajouter bouton de suppression si un item est déjà là
-                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { 
-                    list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML; 
-                }
+                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML; }
             };
             window.renderPinList(candidates);
         };
 
         window.filterPinSelector = (query) => {
             const term = query.toLowerCase();
-            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu') && i.title.toLowerCase().includes(term));
+            const candidates = window.myCollection.filter(i => CONFIG[i.type].statuses.includes(i.status));
+            const filtered = candidates.filter(i => i.title.toLowerCase().includes(term));
             window.renderPinList(filtered);
         };
 
@@ -2081,8 +2246,6 @@
             } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
         };
 
-        // --- FONCTIONS BLOQUER / RETIRER (ABONNÉS) ---
-
         window.removeFollower = async (targetUid) => {
             if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
             try {
@@ -2096,63 +2259,44 @@
         window.blockUser = async (targetUid) => {
             if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
             try {
-                // 1. Force Unfollow (Kick)
                 try {
                     const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
                     await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
                 } catch(e) {}
-                
-                // 2. Add to blocked list (Ban)
                 const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
                 await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
-                
                 alert("Utilisateur bloqué.");
                 window.renderProfile();
             } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
         };
         
-    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - SÉCURISÉ --- */
-        
-        // Variables globales pour le profil ami
+    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MISE A JOUR (6 CATÉGORIES) --- */
         window.friendData = [];
         window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
 
         window.openPublicProfile = async (uid) => {
-            // 1. Sécurités de base
-            if (!uid || uid === 'undefined') { console.error("ID Ami manquant"); return; }
-            // Si on clique sur son propre profil, on redirige vers "Moi"
-            if (window.currentUser && uid === window.currentUser.uid) { window.switchView('profile'); return; }
+            if (!uid || uid === 'undefined') { console.error("ID manquant"); return; }
+            if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
             
-            // 2. Ouverture de la modale (au-dessus du Dashboard)
-            const modal = document.getElementById('public-profile-modal');
+            document.getElementById('public-profile-modal').classList.add('open');
             const container = document.getElementById('public-profile-content');
-            modal.classList.add('open');
-            
-            // Spinner de chargement
             container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
 
             try {
-                // 3. Chargement des données (Profil + Items)
                 const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
-                if (!profSnap.exists()) throw new Error("Utilisateur introuvable");
+                if (!profSnap.exists()) throw new Error("User not found");
                 const prof = profSnap.data();
                 
                 const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
                 window.friendData = itemsSnap.docs.map(d => d.data());
 
-                // 4. Vérifications (Bloqué ? Abonné ?)
-                const myUid = window.currentUser.uid;
-                const iAmBlocked = (prof.blocked || []).includes(myUid);
-                
-                // On cherche dans les différentes sources possibles d'abonnements pour être sûr
-                const myFollowing = window.userProfile?.following || window.following || [];
-                const isFollowing = myFollowing.includes(uid);
+                const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
+                const isFollowing = (window.following || []).includes(uid);
                 
                 const bio = prof.bio || "";
                 const pinned = prof.pinned || [null, null, null];
                 const hasPinned = pinned.some(p => p !== null);
 
-                // 5. Bouton d'action (S'abonner / Bloqué)
                 let buttonHTML = '';
                 if (iAmBlocked) {
                     buttonHTML = `<button disabled class="bg-gray-200 text-gray-400 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed"><i class="fa-solid fa-ban mr-1"></i> Bloqué</button>`;
@@ -2160,16 +2304,13 @@
                     buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
                 }
 
-                // 6. Construction du HTML
                 let html = `
                     <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
 
                     <div class="pt-24 bg-white relative z-10">
                         <div class="text-center px-6 pb-6 border-b border-gray-50">
-                            <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
-                            
                             <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
-                                 ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
+                                ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
                             </div>
                             <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
                             ${bio ? `<p class="bio-text mt-2">"${bio}"</p>` : ''}
@@ -2189,17 +2330,20 @@
                         </div>
                 `;
 
-                // Si je ne suis pas bloqué, j'affiche la collection
                 if (!iAmBlocked) {
+                    // BARRE DES ONGLETS DÉFILANTE POUR LES 6 TYPES
                     html += `
                         <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-2 shadow-sm">
-                            <div class="flex gap-6 px-6 border-b border-gray-100">
-                                <button onclick="window.switchFriendTab('Film')" id="f-tab-Film" class="pb-3 text-sm font-bold border-b-2 border-black">Films</button>
-                                <button onclick="window.switchFriendTab('Livre')" id="f-tab-Livre" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent">Livres</button>
-                                <button onclick="window.switchFriendTab('Série')" id="f-tab-Serie" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent">Séries</button>
+                            <div class="flex gap-6 px-6 border-b border-gray-100 overflow-x-auto no-scrollbar">
+                                <button onclick="window.switchFriendTab('Film')" id="f-tab-Film" class="pb-3 text-sm font-bold border-b-2 border-black whitespace-nowrap">Films</button>
+                                <button onclick="window.switchFriendTab('Série')" id="f-tab-Serie" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">Séries</button>
+                                <button onclick="window.switchFriendTab('Livre')" id="f-tab-Livre" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">Livres</button>
+                                <button onclick="window.switchFriendTab('Album')" id="f-tab-Album" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">Albums</button>
+                                <button onclick="window.switchFriendTab('YouTube')" id="f-tab-YouTube" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">YouTube</button>
+                                <button onclick="window.switchFriendTab('Jeu')" id="f-tab-Jeu" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent whitespace-nowrap">Jeux</button>
                             </div>
                             <div class="flex gap-2 px-6 py-3 overflow-x-auto no-scrollbar">
-                                <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap">Vu / Lu</button>
+                                <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap">Terminé (Vu/Lu/Joué)</button>
                                 <button onclick="window.switchFriendStatus('Wishlist')" id="f-stat-Wishlist" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap">Wishlist</button>
                             </div>
                             <div class="flex justify-between items-center px-6 py-2 bg-gray-50/50 border-b border-gray-100">
@@ -2212,39 +2356,22 @@
                 }
 
                 container.innerHTML = html;
-                
-                // Initialisation de la grille
-                if (!iAmBlocked) {
-                    // On force les onglets par défaut
-                    window.friendState.type = 'Film'; 
-                    window.friendState.status = 'Vu';
-                    window.renderFriendGrid();
-                }
+                if (!iAmBlocked) window.renderFriendGrid();
 
             } catch (e) { 
                 console.error(e);
-                container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Impossible de charger ce profil.<br><span class="text-xs font-normal">Vérifiez votre connexion</span></div>`; 
+                container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur de chargement.</div>`; 
             }
         };
 
-        // --- FONCTIONS DE NAVIGATION INTERNE AU PROFIL AMI ---
-
         window.switchFriendTab = (type) => {
             window.friendState.type = type;
-            // Gestion visuelle des onglets (Série vs Serie)
-            const map = { 'Film': 'Film', 'Livre': 'Livre', 'Série': 'Serie', 'Serie': 'Serie' };
-            const targetId = `f-tab-${map[type]}`;
-
-            ['Film', 'Livre', 'Serie'].forEach(t => {
+            ['Film', 'Livre', 'Serie', 'Album', 'YouTube', 'Jeu'].forEach(t => {
                 const el = document.getElementById(`f-tab-${t}`);
                 if(el) {
-                    if (`f-tab-${t}` === targetId) {
-                        el.classList.remove('text-gray-400', 'border-transparent'); 
-                        el.classList.add('text-black', 'border-black');
-                    } else { 
-                        el.classList.add('text-gray-400', 'border-transparent'); 
-                        el.classList.remove('text-black', 'border-black'); 
-                    }
+                    if (t === type || (t === 'Serie' && type === 'Série')) {
+                        el.classList.remove('text-gray-400', 'border-transparent'); el.classList.add('text-black', 'border-black');
+                    } else { el.classList.add('text-gray-400', 'border-transparent'); el.classList.remove('text-black', 'border-black'); }
                 }
             });
             window.renderFriendGrid();
@@ -2273,22 +2400,21 @@
         window.renderFriendGrid = () => {
             const container = document.getElementById('friend-grid-content');
             if(!container) return;
-            
-            // Mise à jour labels
             const sortLabel = document.getElementById('friend-sort-label');
-            const mapSort = { 'date': 'Date', 'rating': 'Note', 'name': 'Nom' };
-            if(sortLabel) sortLabel.innerText = mapSort[window.friendState.sort];
+            const map = { 'date': 'Date', 'rating': 'Note', 'name': 'Nom' };
+            if(sortLabel) sortLabel.innerText = map[window.friendState.sort];
 
-            // Filtrage (Gestion "Lu" pour les livres quand on est sur "Vu")
-            let filtered = window.friendData.filter(i => 
-                i.type === window.friendState.type && 
-                (i.status === window.friendState.status || (window.friendState.status === 'Vu' && i.status === 'Lu'))
-            );
-            
+            // Filtre flexible pour tous les statuts "Terminé" (Vu, Lu, Écouté, Joué)
+            let filtered = window.friendData.filter(i => {
+                if (i.type !== window.friendState.type) return false;
+                if (window.friendState.status === 'Wishlist') return i.status === 'Wishlist';
+                // Si on cherche "Terminé" (Vu), on accepte tout ce qui n'est pas Wishlist ni En cours
+                return i.status !== 'Wishlist' && i.status !== 'En cours';
+            });
+
             const label = document.getElementById('friend-count-label');
             if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
 
-            // Tri
             const sortMode = window.friendState.sort;
             filtered.sort((a, b) => {
                 if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
@@ -2296,165 +2422,95 @@
                 return (b.finishDate || b.lastUpdate || '0') > (a.finishDate || a.lastUpdate || '0') ? 1 : -1;
             });
 
-            // Affichage
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="py-20 text-center opacity-40"><div class="font-bold text-sm text-gray-400">Aucun élément dans cette catégorie</div></div>`;
+                container.innerHTML = `<div class="py-20 text-center opacity-40"><div class="font-bold text-sm text-gray-400">Aucun élément ici</div></div>`;
                 return;
             }
 
-            // Utilisation de la fonction globale sécurisée pour générer les cartes
             container.innerHTML = `<div class="items-grid">${filtered.map(item => window.generateGridItemHTML(item)).join('')}</div>`;
         };
 
         window.toggleFollowFromProfile = async (uid) => {
-            if(!window.currentUser) return;
             const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-            
-            // On récupère la liste la plus à jour
-            const currentList = window.userProfile?.following || window.following || [];
-            const isFollowing = currentList.includes(uid);
-            
+            const isFollowing = window.following.includes(uid);
             try {
                 if (isFollowing) {
-                    if(confirm("Ne plus suivre cette personne ?")) { 
-                        await updateDoc(myRef, { following: arrayRemove(uid) }); 
-                        // Mise à jour locale
-                        if(window.userProfile) window.userProfile.following = currentList.filter(id => id !== uid);
-                        window.openPublicProfile(uid); // Rafraîchir l'affichage
-                    }
+                    if(confirm("Ne plus suivre ?")) { await updateDoc(myRef, { following: arrayRemove(uid) }); window.openPublicProfile(uid); }
                 } else {
                     await updateDoc(myRef, { following: arrayUnion(uid) });
-                    // Mise à jour locale
-                    if(window.userProfile) {
-                        if(!window.userProfile.following) window.userProfile.following = [];
-                        window.userProfile.following.push(uid);
-                    }
-                    
-                    // Notification
-                    try { 
-                        await addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), { 
-                            type: 'follow', 
-                            title: 'Nouvel abonné', 
-                            message: `${window.userProfile.name || 'Quelqu\'un'} vous suit !`, 
-                            timestamp: Date.now(), 
-                            read: false, 
-                            fromUid: window.currentUser.uid, 
-                            img: window.userProfile.avatar || null 
-                        }); 
-                    } catch(e) {}
-                    
-                    window.openPublicProfile(uid); // Rafraîchir l'affichage
+                    try { await addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), { type: 'follow', title: 'Nouvel abonné', message: `${window.userProfile.name} vous suit !`, timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null }); } catch(e) {}
+                    window.openPublicProfile(uid);
                 }
-            } catch (e) { 
-                console.error(e); 
-                alert("Erreur de connexion lors de l'abonnement.");
-            }
+            } catch (e) { console.error(e); }
         };
 
         window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
 
-       /* --- J.4 RENDU DES STATISTIQUES (CORRIGÉ) --- */
+        /* --- J.4 RENDU DES STATISTIQUES (MISE A JOUR COMPLÈTE) --- */
+        window.toggleStatsMode = (mode) => { window.extState.statsMode = mode; window.renderStatsView(); };
 
-        // 1. Fonction pour mettre à jour les objectifs (Celle qui manquait)
-        window.updateGoal = async (type, value) => {
-            try {
-                const val = parseInt(value);
-                if(isNaN(val)) return;
-                
-                // Mise à jour locale immédiate
-                if(!window.userProfile) window.userProfile = {};
-                window.userProfile[`goal${type}`] = val;
-                
-                // Mise à jour base de données
-                if(window.currentUser) {
-                    const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                    await updateDoc(ref, { [`goal${type}`]: val });
-                }
-                
-                // On rafraîchit l'affichage
-                window.renderStats();
-            } catch(e) { console.error("Erreur sauvegarde objectif", e); }
-        };
-
-        // 2. Bascule Année / Global
-        window.toggleStatsMode = (mode) => { 
-            if(!window.extState) window.extState = {};
-            window.extState.statsMode = mode; 
-            window.renderStats(); 
-        };
-
-        // 3. Fonction principale d'affichage (Renommée renderStats pour correspondre au menu)
-        window.renderStats = () => {
-            const container = document.getElementById('main-content');
-            if (!window.myCollection) return;
-
-            // Sécurité pour l'état étendu
-            if(!window.extState) window.extState = {};
-            const isYear = window.extState.statsMode === 'year'; // Par défaut 'all' si undefined
-            
-            // Filtrage des éléments terminés
-            const finished = window.myCollection.filter(i => (i.status === 'Lu' || i.status === 'Vu'));
+        window.renderStatsView = () => {
+            const isYear = window.extState.statsMode === 'year';
+            // On filtre tout ce qui est terminé (Vu, Lu, Écouté, Joué...)
+            const finished = window.myCollection.filter(i => i.status !== 'Wishlist' && i.status !== 'En cours');
             let filteredItems = finished;
-            
             const curYear = new Date().getFullYear().toString();
             if (isYear) { filteredItems = finished.filter(i => i.finishDate?.startsWith(curYear)); }
 
-            // Calculs (avec sécurité sur metricValue qui est parfois une string)
-            const totalPages = filteredItems.filter(i => i.type === 'Livre').reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
-            const totalMinutes = filteredItems.filter(i => i.type === 'Film').reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
-            const totalSeasons = filteredItems.filter(i => i.type === 'Série').reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
+            // Calculs des métriques
+            const totalPages = filteredItems.filter(i => i.type === 'Livre').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalMinutes = filteredItems.filter(i => i.type === 'Film').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalSeasons = filteredItems.filter(i => i.type === 'Série').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalTracks = filteredItems.filter(i => i.type === 'Album').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalHoursJeu = filteredItems.filter(i => i.type === 'Jeu').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const totalMinutesYT = filteredItems.filter(i => i.type === 'YouTube').reduce((acc, i) => acc + (i.metricValue || 0), 0);
             
-            // Configuration des cartes
+            // Configuration des 6 cartes de stats
             const stats = [
                 { type: 'Film', icon: 'fa-film', color: '#AF52DE', done: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
+                { type: 'Série', icon: 'fa-tv', color: '#34C759', done: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` },
                 { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', done: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${totalPages} pages` },
-                { type: 'Série', icon: 'fa-tv', color: '#34C759', done: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` }
+                { type: 'Album', icon: 'fa-music', color: '#E91E63', done: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 20, sub: `${totalTracks} titres` },
+                { type: 'YouTube', icon: 'fa-youtube', color: '#FF0000', done: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYoutube || 100, sub: `${Math.floor(totalMinutesYT/60)}h ${totalMinutesYT%60}m` },
+                { type: 'Jeu', icon: 'fa-dice', color: '#10B981', done: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHoursJeu} heures` }
             ];
 
-            // Rendu HTML
-            container.innerHTML = `
+            document.getElementById('main-content').innerHTML = `
                 <div class="pt-20 px-6 pb-32">
                     <h1 class="text-4xl font-black mb-4">Stats</h1>
                     <div class="text-center mb-6">
-                        <div class="stats-toggle">
-                            <button onclick="window.toggleStatsMode('year')" class="${isYear?'active':''}">Cette Année</button>
-                            <button onclick="window.toggleStatsMode('all')" class="${!isYear?'active':''}">Depuis toujours</button>
-                        </div>
+                        <div class="stats-toggle"><button onclick="window.toggleStatsMode('year')" class="${isYear?'active':''}">Cette Année</button><button onclick="window.toggleStatsMode('all')" class="${!isYear?'active':''}">Depuis toujours</button></div>
                     </div>
+                    <div class="stat-card mb-8"><div class="font-black text-[10px] uppercase text-gray-400 mb-2">Total ${isYear ? curYear : 'Global'}</div><div class="text-2xl font-black text-blue-600">${filteredItems.length} œuvres terminées</div></div>
                     
-                    <div class="stat-card mb-8">
-                        <div class="font-black text-[10px] uppercase text-gray-400 mb-2">Total ${isYear ? curYear : 'Global'}</div>
-                        <div class="text-2xl font-black text-blue-600">${filteredItems.length} terminés</div>
-                    </div>
-                    
-                    ${stats.map(s => { 
-                        const showGoal = isYear; 
-                        const prog = Math.min(100, (s.done / (s.goal || 1)) * 100); 
-                        return `
-                        <div class="stat-card">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div>
-                                    <div>
-                                        <div class="font-black text-sm">${s.type}s</div>
-                                        <div class="text-[10px] text-gray-400 font-bold uppercase">${s.done} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div>
+                    <div class="grid grid-cols-1 gap-4">
+                        ${stats.map(s => { 
+                            const showGoal = isYear; 
+                            const prog = Math.min(100, (s.done / (s.goal || 1)) * 100); 
+                            return `
+                            <div class="stat-card">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div>
+                                        <div>
+                                            <div class="font-black text-sm">${s.type}s</div>
+                                            <div class="text-[10px] text-gray-400 font-bold uppercase">${s.done} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div>
+                                        </div>
                                     </div>
+                                    ${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('${s.type}', this.value)" class="w-12 text-right bg-gray-50 text-black font-black rounded p-1 outline-none text-xs focus:bg-white focus:ring-1 focus:ring-blue-500">` : ''}
                                 </div>
-                                ${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs">` : ''}
-                            </div>
-                            ${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}
-                            <div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase">
-                                <span>${s.sub}</span>
-                                ${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}
-                            </div>
-                        </div>`; 
-                    }).join('')}
+                                ${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-500 ease-out" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}
+                                <div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase">
+                                    <span>${s.sub}</span>
+                                    ${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}
+                                </div>
+                            </div>`; 
+                        }).join('')}
+                    </div>
                 </div>`;
         };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        
-        // Gestion des likes de commentaires (Utilitaire)
         window.handleCommentLike = async (actId, commentTimestamp) => {
             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
             try {
@@ -2477,14 +2533,11 @@
             } catch (e) { console.error("Erreur like commentaire", e); }
         };
 
-        console.log("MaBiblio Dashboard Ready v3.0");
-        
-        // POINT DE DÉPART DE L'APPLICATION
-        // Si l'utilisateur est déjà connecté (ex: rechargement de page), on lance le Dashboard
+        console.log("MaBiblio v2.5 - 6 Categories - Ready");
+        // Si l'utilisateur est déjà chargé (cas du reload), on lance le rendu
         if(window.currentUser) {
-            setTimeout(() => {
-                if(window.showDashboard) window.showDashboard();
-            }, 100);
+            window.renderPills();
+            window.renderList();
         }
     </script>
 </body>
