@@ -53,8 +53,8 @@
     </style>
 </head>
 
-  <style>
-    /* 🎨 PARTIE 1 : STYLE CSS - APPLE MINIMALIST */
+<style>
+    /* 🎨 PARTIE 1 : STYLE CSS - APPLE MINIMALIST (STRICT + NAV & CLOCHE) */
     @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap');
     
     :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
@@ -71,10 +71,12 @@
     
     .app-shell { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); display: none; }
     
-    /* --- LANDING PAGE : APPLE MINIMALIST --- */
+    /* --- LANDING PAGE --- */
     #landing-page {
         background: #F2F2F7;
-        z-index: 9999;
+        /* Z-Index baissé pour laisser passer la barre du bas */
+        z-index: 5000; 
+        position: absolute; inset: 0;
     }
     #landing-page-content {
         display: flex;
@@ -82,7 +84,8 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        padding: 40px 24px;
+        /* MODIF ICI : Haut passé à 70px (pour descendre le titre) et Bas à 180px (modifié précédemment) */
+        padding: 70px 24px 180px; 
         box-sizing: border-box;
     }
     .landing-header {
@@ -90,7 +93,29 @@
         margin-bottom: 40px;
         width: 100%;
         max-width: 380px;
+        position: relative; /* Pour la cloche */
     }
+
+    /* --- STYLE CLOCHE --- */
+    .landing-notif-btn {
+        position: absolute;
+        top: -5px;
+        right: 0;
+        width: 40px;
+        height: 40px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        z-index: 10;
+    }
+    .landing-notif-btn:active { transform: scale(0.9); }
+
     .landing-title {
         font-size: 34px;
         font-weight: 800;
@@ -108,7 +133,7 @@
     .landing-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 16px; /* Espacement précis iOS */
+        gap: 16px;
         width: 100%;
         max-width: 360px;
     }
@@ -117,31 +142,18 @@
     .landing-card {
         aspect-ratio: 1;
         background: white;
-        border-radius: 24px; /* Arrondi standard iOS Widget */
+        border-radius: 24px;
         display: flex;
-        flex-direction: column; /* Icône au-dessus du texte */
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         position: relative;
         transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-        
-        /* Ombre très douce et diffuse (Signature Apple) */
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-        border: 1px solid rgba(0,0,0,0.02); /* Bordure quasi invisible */
+        border: 1px solid rgba(0,0,0,0.02);
     }
-    
     .landing-card:active { transform: scale(0.96); }
-
-    /* ICÔNES FINES ET ÉLÉGANTES */
-    .landing-card i {
-        font-size: 32px;
-        margin-bottom: 12px;
-        /* Dégradé subtil sur l'icône uniquement */
-        background: linear-gradient(135deg, #333, #666);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
 
     /* TEXTE SIMPLE */
     .landing-card span {
@@ -151,16 +163,7 @@
         color: #1C1C1E;
     }
 
-    /* COULEURS SUBTILES DES ICÔNES AU SURVOL (Optionnel mais joli) */
-    .landing-card:hover i.fa-film { color: #007AFF; -webkit-text-fill-color: #007AFF; }
-    .landing-card:hover i.fa-tv { color: #5856D6; -webkit-text-fill-color: #5856D6; }
-    .landing-card:hover i.fa-book-open { color: #FF9500; -webkit-text-fill-color: #FF9500; }
-    .landing-card:hover i.fa-music { color: #FF2D55; -webkit-text-fill-color: #FF2D55; }
-    .landing-card:hover i.fa-youtube { color: #FF3B30; -webkit-text-fill-color: #FF3B30; }
-    .landing-card:hover i.fa-dice { color: #34C759; -webkit-text-fill-color: #34C759; }
-
-    /* --- RESTE DU CSS (Inchangé) --- */
-    /* ...Je garde les styles essentiels pour l'appli interne... */
+    /* RESTE DU CSS (Standard) */
     header { padding: 20px 20px 10px; background: var(--ios-bg); }
     .header-title { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
     .type-tabs { display: flex; gap: 20px; margin-top: 15px; }
@@ -176,7 +179,10 @@
     .grid-item img { width: 100%; height: 100%; object-fit: cover; }
     .grid-item-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 6px; background: linear-gradient(transparent, rgba(0,0,0,0.95)); color: white; display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px; }
     .grid-rating { position: absolute; top: 4px; right: 4px; background: #FF9500; padding: 1px 5px; border-radius: 6px; font-size: 10px; font-weight: 900; color: white; z-index: 2; }
-    .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(75px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 12px; z-index: 50; }
+    
+    /* BARRE NAVIGATION (Z-Index très haut) */
+    .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: calc(75px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 12px; z-index: 10000; }
+    
     .nav-btn { display: flex; flex-direction: column; align-items: center; color: #A2A2A7; font-size: 11px; font-weight: 600; flex: 1; }
     .nav-btn i { font-size: 24px; margin-bottom: 4px; }
     .nav-btn.active { color: var(--ios-blue); }
@@ -242,30 +248,36 @@
 
 <body>
 
-    <div id="landing-page" class="z-[9999]">
+    <div id="landing-page" class="z-[5000]">
         <div id="landing-page-content">
             <div class="landing-header">
+                
+                <div class="landing-notif-btn" onclick="window.openNotifications()">
+                    <i class="fa-regular fa-bell"></i>
+                    <div class="notif-badge" id="landing-notif-badge">0</div>
+                </div>
+
                 <h1 class="landing-title">MaBiblio</h1>
                 <p class="landing-subtitle">Que voulez-vous explorer ?</p>
             </div>
             
             <div class="landing-grid">
-                <div class="landing-card glass-film" onclick="window.selectCategory('Film')">
+                <div class="landing-card" onclick="window.selectCategory('Film')">
                     <span>Films</span>
                 </div>
-                <div class="landing-card glass-serie" onclick="window.selectCategory('Série')">
+                <div class="landing-card" onclick="window.selectCategory('Série')">
                     <span>Séries</span>
                 </div>
-                <div class="landing-card glass-livre" onclick="window.selectCategory('Livre')">
+                <div class="landing-card" onclick="window.selectCategory('Livre')">
                     <span>Livres</span>
                 </div>
-                <div class="landing-card glass-album" onclick="window.selectCategory('Album')">
+                <div class="landing-card" onclick="window.selectCategory('Album')">
                     <span>Albums</span>
                 </div>
-                <div class="landing-card glass-youtube" onclick="window.selectCategory('YouTube')">
+                <div class="landing-card" onclick="window.selectCategory('YouTube')">
                     <span>YouTube</span>
                 </div>
-                <div class="landing-card glass-jeu" onclick="window.selectCategory('Jeu')">
+                <div class="landing-card" onclick="window.selectCategory('Jeu')">
                     <span>Jeux</span>
                 </div>
             </div>
@@ -297,23 +309,18 @@
 
     <div class="app-shell">
         <header id="app-header" class="relative pt-4 pb-2 px-5 bg-[#F2F2F7]">
-            
             <div class="flex items-center justify-between mb-2">
                 <button onclick="window.goBackToLanding()" class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black shadow-sm active:scale-90 transition-transform z-10">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                
                 <div class="header-title" id="header-main-title" style="font-size: 24px;">Ma Biblio</div>
-                
                 <div class="notif-btn" onclick="window.openNotifications()">
                      <i class="fa-regular fa-bell text-xl"></i>
                      <div class="notif-badge" id="notif-badge">0</div>
                 </div>
             </div>
-
             <div class="flex items-center justify-between mt-4 gap-3">
                 <div class="status-pills flex-1 overflow-x-auto no-scrollbar" id="status-container"></div>
-                
                 <div class="bg-gray-200 rounded-lg px-2 py-1 flex items-center gap-1">
                     <i class="fa-solid fa-arrow-down-short-wide text-gray-500 text-xs"></i>
                     <select class="bg-transparent border-none text-xs font-bold outline-none appearance-none pr-4" onchange="window.setSort(this.value)" style="background: transparent;">
@@ -324,17 +331,16 @@
                 </div>
             </div>
         </header>
-
         <div class="scroll-area" id="main-content"></div>
-
-        <nav class="tab-bar">
-            <div id="nav-home" class="nav-btn active" onclick="window.switchView('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></div>
-            <div id="nav-friends" class="nav-btn" onclick="window.switchView('friends')"><i class="fa-solid fa-user-group"></i><span>Amis</span></div>
-            <div class="nav-plus" onclick="window.openSearchModal()"><i class="fa-solid fa-plus"></i></div>
-            <div id="nav-stats" class="nav-btn" onclick="window.switchView('stats')"><i class="fa-solid fa-chart-simple"></i><span>Stats</span></div>
-            <div id="nav-profile" class="nav-btn" onclick="window.switchView('profile')"><i class="fa-solid fa-circle-user"></i><span>Moi</span></div>
-        </nav>
     </div>
+
+    <nav class="tab-bar">
+        <div id="nav-home" class="nav-btn active" onclick="window.goBackToLanding()"><i class="fa-solid fa-house"></i><span>Accueil</span></div>
+        <div id="nav-friends" class="nav-btn" onclick="window.switchView('friends')"><i class="fa-solid fa-user-group"></i><span>Amis</span></div>
+        <div class="nav-plus" onclick="window.openSearchModal()"><i class="fa-solid fa-plus"></i></div>
+        <div id="nav-stats" class="nav-btn" onclick="window.switchView('stats')"><i class="fa-solid fa-chart-simple"></i><span>Stats</span></div>
+        <div id="nav-profile" class="nav-btn" onclick="window.switchView('profile')"><i class="fa-solid fa-circle-user"></i><span>Moi</span></div>
+    </nav>
 
     <div id="search-modal" class="modal flex flex-col">
         <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajouter</h2><button onclick="window.closeSearchModal()" class="text-blue-600 font-bold">Fermer</button></div>
@@ -955,7 +961,7 @@
         window.logout = () => signOut(auth).then(() => location.reload());
 
        // -----------------------------------------------------------
-        // F. NAVIGATION & INTERFACE (UI)
+        // F. NAVIGATION & INTERFACE (CORRIGÉE)
         // -----------------------------------------------------------
 
         /* --- F.1 RAFRAÎCHISSEMENT & CONFIGURATION --- */
@@ -983,48 +989,46 @@
         
         // 1. SÉLECTIONNER UNE CATÉGORIE (ENTRER DANS L'APP)
         window.selectCategory = (type) => {
-            // A. Définir le type actuel
             window.currentType = type;
             
-            // B. Mettre à jour le Titre du Header (ex: écrire "Films" au lieu de "MaBiblio")
+            // Titre du header
             const titleEl = document.getElementById('header-main-title');
             if(titleEl) titleEl.innerText = type; 
 
-            // C. Masquer la Landing Page
-            const landingPage = document.getElementById('landing-page');
-            if (landingPage) {
-                landingPage.style.display = 'none'; // On cache l'accueil
-                landingPage.classList.add('hidden-landing');
-            }
-
-            // D. Afficher l'interface principale
-            document.querySelector('.app-shell').style.display = 'flex';
+            // Cacher Landing Page
+            document.getElementById('landing-page').style.display = 'none';
             
-            // E. Charger la vue
+            // Afficher App Shell (interface liste)
+            const appShell = document.querySelector('.app-shell');
+            appShell.style.display = 'flex';
+            
+            // Afficher le Header de la liste
+            const appHeader = document.getElementById('app-header');
+            if(appHeader) appHeader.style.display = 'block';
+
+            // Charger la vue liste
             window.switchType(type);
         };
 
-        // 2. RETOUR À L'ACCUEIL (C'EST CETTE FONCTION QUI TE MANQUAIT)
+        // 2. RETOUR À L'ACCUEIL (Landing Page)
         window.goBackToLanding = () => {
-            // A. Cacher l'interface principale
+            window.currentView = 'home';
+            
+            // Cacher App Shell (tout le contenu interne)
             document.querySelector('.app-shell').style.display = 'none';
             
-            // B. Réafficher la Landing Page
+            // Réafficher Landing Page
             const landingPage = document.getElementById('landing-page');
-            if (landingPage) {
-                landingPage.style.display = 'block'; // On réaffiche l'accueil
-                landingPage.classList.remove('hidden-landing');
-            }
+            landingPage.style.display = 'block';
+            
+            // Mettre à jour la barre du bas (Activer l'icône Accueil)
+            window.updateNavActive('home');
         };
 
         // 3. CHANGEMENT DE TYPE (INTERNE)
         window.switchType = (type) => {
             window.currentType = type;
-            
-            // On remet le statut par défaut (ex: 'Vu' ou 'Lu')
             window.currentStatus = CONFIG[type].statuses[0];
-            
-            // On met à jour l'affichage
             window.renderPills(); 
             window.renderList();
         };
@@ -1045,23 +1049,53 @@
             window.renderList(); 
         };
 
-        /* --- F.4 NAVIGATION PRINCIPALE (BAS DE PAGE) --- */
+        /* --- F.4 NAVIGATION PRINCIPALE (BARRE DU BAS) --- */
+        
+        // Helper pour changer la couleur des icônes
+        window.updateNavActive = (viewName) => {
+             document.querySelectorAll('.nav-btn').forEach(b => {
+                 b.classList.toggle('active', b.id === 'nav-' + viewName);
+             });
+        };
+
         window.switchView = (view) => {
+            // 1. Mise à jour de la variable et des icônes
             window.currentView = view;
+            window.updateNavActive(view);
             
-            // Mise à jour visuelle de la barre du bas
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
+            const landingPage = document.getElementById('landing-page');
+            const appShell = document.querySelector('.app-shell');
+            const appHeader = document.getElementById('app-header');
+            const mainContent = document.getElementById('main-content');
+
+            // 2. CAS SPÉCIAL : Retour Accueil
+            if (view === 'home') {
+                window.goBackToLanding();
+                return; // On arrête là
+            }
+
+            // 3. CAS STANDARD (Amis, Stats, Moi)
+            // Il faut cacher la landing page si on est dessus
+            if (landingPage) landingPage.style.display = 'none';
             
-            // Le header du haut (Retour/Titre) ne s'affiche que sur la vue 'home'
-            const header = document.getElementById('app-header');
-            if(header) header.style.display = (view === 'home' ? 'block' : 'none');
+            // Il faut afficher le shell principal
+            if (appShell) appShell.style.display = 'flex';
             
+            // Il faut cacher le header "Liste" (car Amis/Stats/Moi ont leur propre titre ou header)
+            if (appHeader) appHeader.style.display = 'none';
+
+            // 4. Charger le contenu
+            if (mainContent) mainContent.innerHTML = ''; // Nettoyage
+
+            if (view === 'friends') window.renderSocialFeed();
+            if (view === 'stats') window.renderStatsView();
+            if (view === 'profile') window.renderProfile();
+            
+            // 5. Gestion des notifications et timestamps
             if (view !== 'friends') {
                 localStorage.setItem('mabiblio_last_check', Date.now());
                 if (window.updateNotifBadge) window.updateNotifBadge(); 
             }
-            
-            window.refreshCurrentView();
         };
 
        // -----------------------------------------------------------
