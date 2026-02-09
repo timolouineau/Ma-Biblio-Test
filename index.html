@@ -17,16 +17,31 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* 🎨 PARTIE 1 : STYLE CSS */
+        /* 🎨 PARTIE 1 : STYLE CSS (Modifié : Menu Déroulant) */
         @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700;800;900&display=swap');
         :root { --ios-blue: #007AFF; --ios-bg: #F2F2F7; }
+        
         body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background-color: var(--ios-bg); margin: 0; padding: 0; overflow: hidden; height: 100vh; color: #1C1C1E; -webkit-tap-highlight-color: transparent; opacity: 0; transition: opacity 0.5s ease; }
         .app-shell { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); display: none; }
+        
         header { padding: 20px 20px 10px; background: var(--ios-bg); }
-        .header-title { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; }
-        .type-tabs { display: flex; gap: 20px; margin-top: 15px; }
+        
+        /* --- NOUVEAU : MENU DÉROULANT TITRE --- */
+        .header-select-wrapper { position: relative; display: inline-flex; align-items: center; margin-bottom: 5px; }
+        .header-title-select { 
+            appearance: none; -webkit-appearance: none; 
+            background: transparent; border: none; 
+            font-size: 34px; font-weight: 800; letter-spacing: -0.5px; 
+            color: #000; padding-right: 30px; margin: 0; 
+            outline: none; font-family: inherit; width: 100%;
+        }
+        .header-chevron { position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--ios-blue); font-size: 20px; pointer-events: none; }
+
+        /* On cache l'ancienne barre d'onglets car remplacée par le menu déroulant */
+        .type-tabs { display: none; gap: 20px; margin-top: 15px; }
         .type-tab { font-size: 17px; font-weight: 700; color: #8E8E93; padding-bottom: 8px; border-bottom: 3px solid transparent; cursor: pointer; }
         .type-tab.active { color: #000; border-color: #000; }
+
         .status-pills { display: flex; gap: 8px; padding: 12px 0; overflow-x: auto; scrollbar-width: none; }
         .pill { padding: 8px 16px; border-radius: 18px; font-size: 14px; font-weight: 700; background: #E5E5EA; white-space: nowrap; }
         .pill.active { background: #000; color: white; }
@@ -75,7 +90,6 @@
         .ios-btn { width: 100%; background-color: var(--ios-blue); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 10px; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Styles additionnels extensions */
         .filter-dropdown { background: #E5E5EA; border: none; padding: 6px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #000; outline: none; }
         .notif-btn { position: relative; font-size: 20px; color: #000; padding: 5px; cursor: pointer; }
         .notif-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: red; color: white; border-radius: 50%; border: 2px solid white; font-size: 9px; font-weight: 900; display: none; align-items: center; justify-content: center; }
@@ -94,51 +108,23 @@
         .following-dropdown { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; background: white; border-radius: 16px; margin-top: 10px; }
         .following-dropdown.open { max-height: 300px; padding: 10px 0; overflow-y: auto; }
         .follow-toggle-btn { background: white; padding: 15px; border-radius: 16px; width: 100%; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; }
-        
-        /* STYLES RESEAU SOCIAL & COMMENTAIRES */
         @keyframes likeBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .like-bounce { animation: likeBounce 0.3s ease-in-out; color: #FF2D55 !important; }
         .mention { color: var(--ios-blue); font-weight: 700; }
         .mention-suggestions { position: absolute; bottom: 60px; left: 10px; right: 10px; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
         .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F2F2F7; }
         .suggestion-item:last-child { border-bottom: none; }
-
-        /* --- STYLE DES FAVORIS (PINNED) --- */
-.pinned-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-top: 20px;
-    margin-bottom: 24px;
-}
-.pinned-item {
-    aspect-ratio: 2/3;
-    background-color: #f8f9fa;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    border: 2px dashed #e5e7eb;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.pinned-item:active { transform: scale(0.95); }
-.pinned-item.filled { border: none; background: black; }
-.pinned-item img { width: 100%; height: 100%; object-fit: cover; }
-.pinned-overlay {
-    position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-    display: flex; align-items: flex-end; justify-content: center; padding: 8px;
-    opacity: 0; transition: opacity 0.2s;
-}
-.pinned-item.filled:hover .pinned-overlay { opacity: 1; }
-.bio-text { font-size: 14px; color: #4b5563; margin-top: 8px; line-height: 1.4; padding: 0 20px; font-style: italic; }
+        .pinned-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; margin-bottom: 24px; }
+        .pinned-item { aspect-ratio: 2/3; background-color: #f8f9fa; border-radius: 12px; overflow: hidden; position: relative; border: 2px dashed #e5e7eb; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+        .pinned-item:active { transform: scale(0.95); }
+        .pinned-item.filled { border: none; background: black; }
+        .pinned-item img { width: 100%; height: 100%; object-fit: cover; }
+        .pinned-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; align-items: flex-end; justify-content: center; padding: 8px; opacity: 0; transition: opacity 0.2s; }
+        .pinned-item.filled:hover .pinned-overlay { opacity: 1; }
+        .bio-text { font-size: 14px; color: #4b5563; margin-top: 8px; line-height: 1.4; padding: 0 20px; font-style: italic; }
     </style>
 
 
-</head>
 <body>
 
     <div id="auth-screen">
@@ -170,13 +156,18 @@
 
     <div class="app-shell">
         <header id="app-header" class="relative">
-            <div class="header-title">Ma Biblio</div>
-            
-            <div class="type-tabs">
-                <div class="type-tab active" id="tab-Film" onclick="window.switchType('Film')">Films</div>
-                <div class="type-tab" id="tab-Livre" onclick="window.switchType('Livre')">Livres</div>
-                <div class="type-tab" id="tab-Serie" onclick="window.switchType('Série')">Séries</div>
+            <div class="header-select-wrapper">
+                <select class="header-title-select" id="header-type-select" onchange="window.switchType(this.value)">
+                    <option value="Film">Films</option>
+                    <option value="Série">Séries</option>
+                    <option value="Livre">Livres</option>
+                    <option value="Album">Albums</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="Jeu">Jeux</option>
+                </select>
+                <i class="fa-solid fa-chevron-down header-chevron"></i>
             </div>
+            
             <div class="status-pills" id="status-container"></div>
         </header>
 
@@ -193,10 +184,15 @@
 
     <div id="search-modal" class="modal flex flex-col">
         <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajouter</h2><button onclick="window.closeSearchModal()" class="text-blue-600 font-bold">Fermer</button></div>
-        <div class="p-4 bg-white flex gap-2">
-            <button id="s-Film" onclick="window.setSearchType('Film')" class="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm">Film</button>
-            <button id="s-Livre" onclick="window.setSearchType('Livre')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button>
-            <button id="s-Série" onclick="window.setSearchType('Série')" class="flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Série</button>
+        <div class="p-4 bg-white overflow-x-auto no-scrollbar">
+            <div class="flex gap-2" style="min-width: max-content;">
+                <button id="s-Film" onclick="window.setSearchType('Film')" class="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm">Film</button>
+                <button id="s-Série" onclick="window.setSearchType('Série')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Série</button>
+                <button id="s-Livre" onclick="window.setSearchType('Livre')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button>
+                <button id="s-Album" onclick="window.setSearchType('Album')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Album</button>
+                <button id="s-YouTube" onclick="window.setSearchType('YouTube')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">YouTube</button>
+                <button id="s-Jeu" onclick="window.setSearchType('Jeu')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Jeu</button>
+            </div>
         </div>
         <div class="px-4 pb-4 bg-white flex flex-col gap-3">
             <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="text" id="search-input" placeholder="Rechercher..." class="w-full p-3.5 pl-11 bg-gray-100 rounded-2xl outline-none font-medium" oninput="window.handleSearch(this.value)"></div>
@@ -217,17 +213,20 @@
                 </div>
                 <div class="flex-1 flex flex-col gap-3">
                     <input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
-                    <input type="text" id="m-author" placeholder="Auteur / Réalisateur" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
+                    <input type="text" id="m-author" placeholder="Auteur / Réalisateur / Artiste" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
                     <select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
                         <option value="Film">Film</option>
-                        <option value="Livre">Livre</option>
                         <option value="Série">Série</option>
+                        <option value="Livre">Livre</option>
+                        <option value="Album">Album</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="Jeu">Jeu</option>
                     </select>
                 </div>
             </div>
             
             <div class="ios-group !mx-0">
-                <div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/saisons)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
+                <div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/durée)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
                 <div class="ios-cell border-t border-gray-100"><span class="font-bold text-sm">Date de parution</span><input type="date" id="m-date" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div>
             </div>
 
@@ -339,7 +338,7 @@
         <div class="flex-1 overflow-y-auto p-4" id="pin-selector-list"></div>
     </div>
 
-    </body>
+</body>
 
     <script type="module">
         
@@ -510,229 +509,196 @@
             }
         });
 
-        /* ==================================================================
-           D : CHARGEMENT DES DONNÉES (DATA LAYER)
-           Écouteurs temps réel pour les collections, profils et le feed
-           ================================================================== */
+       // -----------------------------------------------------------
+        // D. CHARGEMENT DES DONNÉES (USER & COLLECTION) - VERSION FIXÉE (ARTIFACTS)
+        // -----------------------------------------------------------
 
-        /* --- 3.3.1 CHARGEMENT DONNÉES UTILISATEUR & NOTIFICATIONS --- */
-        async function loadUserData() {
+        /* --- D.1 PROFIL UTILISATEUR & COLLECTION --- */
+        window.loadUserData = async () => {
             if (!window.currentUser) return;
+            const appId = 'mabiblio-dc595'; // Ton ID spécifique
             const userRoot = `artifacts/${appId}/users/${window.currentUser.uid}`;
-            
-            // 1. Ma Collection (Films, Livres, Séries)
-            onSnapshot(collection(db, userRoot, 'items'), (snap) => {
-                window.myCollection = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
-                window.refreshCurrentView();
-            });
 
-            // 2. Mon Profil & Objectifs
-            onSnapshot(doc(db, userRoot, 'profile', 'info'), (d) => {
-                if (d.exists()) {
-                    const data = d.data();
-                    window.userProfile = { ...window.userProfile, ...data };
-                    window.following = [...new Set(window.userProfile.following || [])];
-                    // Une fois mon profil chargé, je charge ceux de mes amis
-                    loadFollowingProfiles();
-                    loadFollowersProfiles(); 
+            // 1. Charger le Profil
+            const profileRef = doc(db, userRoot, 'profile', 'info');
+            onSnapshot(profileRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    window.userProfile = docSnap.data();
+                    window.following = window.userProfile.following || [];
                 } else {
-                    // Création du profil par défaut si inexistant
-                    const defName = "Utilisateur_" + window.currentUser.uid.slice(-4);
-                    setDoc(doc(db, userRoot, 'profile', 'info'), { 
-                        uid: window.currentUser.uid, name: defName, avatar: '', following: [],
-                        goalLivre: 12, goalFilm: 50, goalSerie: 10 
-                    });
+                    // CRÉATION PROFIL PAR DÉFAUT (AVEC LES 6 TYPES)
+                    window.userProfile = {
+                        name: window.currentUser.email.split('@')[0],
+                        avatar: '',
+                        goalLivre: 12,
+                        goalFilm: 50,
+                        goalSerie: 10,
+                        goalAlbum: 50,    // Nouveau
+                        goalYouTube: 100, // Nouveau
+                        goalJeu: 10,      // Nouveau
+                        following: []
+                    };
+                    setDoc(profileRef, window.userProfile);
                 }
+                // Lancer les autres écoutes
+                window.listenToMyCollection(userRoot);
+                window.setupSocialListeners();
+            });
+        };
+
+        /* --- D.2 ÉCOUTE DE MA COLLECTION (TEMPS RÉEL) --- */
+        window.listenToMyCollection = (userRoot) => {
+            // C'est ici qu'on remet le bon chemin 'items'
+            const q = query(collection(db, userRoot, 'items'));
+            
+            onSnapshot(q, (snapshot) => {
+                window.myCollection = snapshot.docs.map(doc => ({
+                    docId: doc.id,
+                    ...doc.data()
+                }));
                 window.refreshCurrentView();
             });
-            
-            // 3. Mes Notifications
-            onSnapshot(collection(db, userRoot, 'notifications'), (snap) => {
-                window.extState.notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.time - a.time);
-                if (window.updateNotifBadge) window.updateNotifBadge();
-            });
-        }
+        };
 
-        /* --- 3.3.2 CHARGEMENT DU GRAPHE SOCIAL (ABONNEMENTS/ABONNÉS) --- */
-        async function loadFollowingProfiles() {
-            if (!window.following.length) { window.followingData = []; window.refreshCurrentView(); return; }
+        /* --- D.3 ÉCOUTE SOCIALE (FOLLOWING) --- */
+        window.setupSocialListeners = () => {
+            const appId = 'mabiblio-dc595';
+            
+            // 1. Récupérer les infos des profils suivis
+            if (window.userProfile.following && window.userProfile.following.length > 0) {
+                // On doit faire une requête spéciale car tes profils sont sous 'artifacts'
+                // Pour simplifier, on boucle (ou on utilise un index spécifique si tu en as un)
+                // Ici, on va recharger manuellement les profils suivis comme dans ton ancien code
+                window.loadFollowingProfiles();
+            } else {
+                window.followingData = [];
+            }
+
+            // 2. Écouter l'activité publique (Feed)
+            // Chemin: artifacts/{appId}/public/data/activity
+            const qActivity = query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), orderBy('timestamp', 'desc'), limit(50));
+            onSnapshot(qActivity, (snap) => {
+                const allActivity = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                window.socialFeed = allActivity.filter(act => 
+                    act.userId === window.currentUser.uid || 
+                    (window.userProfile.following && window.userProfile.following.includes(act.userId))
+                );
+                
+                window.refreshCurrentView();
+            });
+        };
+
+        // Helper pour charger les profils amis (structure complexe artifacts)
+        window.loadFollowingProfiles = async () => {
+            const appId = 'mabiblio-dc595';
             const profiles = [];
-            for (const uid of window.following) {
+            for (const uid of window.userProfile.following) {
                 try {
                     const d = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
-                    if (d.exists()) profiles.push({ ...d.data(), uid: uid });
+                    if (d.exists()) profiles.push({ ...d.data(), id: uid, uid: uid });
                 } catch (e) { console.error(e); }
             }
             window.followingData = profiles;
             window.refreshCurrentView();
-        }
+        };
 
-        async function loadFollowersProfiles() {
-            if (!window.currentUser) return;
-            try {
-                // Requête : Qui a mon ID dans sa liste "following" ?
-                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
-                const snap = await getDocs(q);
-                window.followersData = snap.docs.map(d => d.data());
-                window.refreshCurrentView();
-            } catch (e) { console.error("Err Followers:", e); }
-        }
-
-        /* --- 3.3.3 ÉCOUTEUR DU FIL D'ACTUALITÉ (FEED) --- */
-        function setupSocialListeners() {
-            if (!window.currentUser) return;
-            // On écoute TOUTE l'activité publique
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), (snap) => {
-                const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                
-                // On filtre pour ne garder que MOI et MES AMIS
-                window.socialFeed = all.filter(a => a.userId === window.currentUser.uid || window.following.includes(a.userId))
-                                      .sort((a,b) => b.timestamp - a.timestamp);
-                
-                if (window.updateNotifBadge) window.updateNotifBadge();
-                
-                if (window.currentView === 'friends') window.renderSocialFeed();
-                
-                // Mise à jour temps réel de la modale commentaire si elle est ouverte
-                if (window.currentCommentActId) window.openCommentModal(window.currentCommentActId);
-            });
-        }
-        
        // -----------------------------------------------------------
-        // E. ACTIONS UTILISATEUR
+        // E. LOGIQUE MÉTIER (CRUD - ACTIONS) - VERSION FIXÉE (ARTIFACTS)
         // -----------------------------------------------------------
-        
-        /* --- E.1 NOTIFICATIONS & INTERACTIONS SOCIALES --- */
-        window.sendNotification = async (targetUid, type, message, itemTitle, actId) => {
-            if (targetUid === window.currentUser.uid) return;
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'), {
-                    type: type, 
-                    text: message,
-                    user: window.userProfile.name,
-                    uid: window.currentUser.uid,
-                    itemTitle: itemTitle,
-                    actId: actId, 
-                    time: Date.now(),
-                    read: false
-                });
-            } catch (e) { console.error("Erreur envoi notif", e); }
-        };
 
-        window.toggleLike = async (actId) => {
-             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
-             const actData = window.socialFeed.find(a => a.id === actId);
-             if (!actData) return;
-             
-             const likes = actData.likes || [];
-             const isLiked = likes.includes(window.currentUser.uid);
-             
-             if (isLiked) {
-                 await updateDoc(actRef, { likes: arrayRemove(window.currentUser.uid) });
-             } else {
-                 await updateDoc(actRef, { likes: arrayUnion(window.currentUser.uid) });
-                 window.sendNotification(actData.userId, 'like', 'a aimé votre publication', actData.itemTitle, actData.id);
-             }
-        };
+        /* --- E.1 SAUVEGARDE D'UN ITEM --- */
+        window.saveItem = async (status, rating, comment, finishDate, metricValue, share, platform) => {
+            if (!window.currentUser || !window.tempItem) return;
+            const appId = 'mabiblio-dc595';
 
-        /* --- E.2 GESTION DU PROFIL (NOM & AVATAR) --- */
-        window.updateProfileName = async () => {
-            if (!window.currentUser) return;
-            const newName = prompt("Changer votre nom d'utilisateur (Lettres et chiffres uniquement) :", window.userProfile.name);
+            // 1. Préparation de l'objet
+            const itemToSave = {
+                ...window.tempItem, 
+                status: status,
+                rating: rating || null,
+                comment: comment || "",
+                finishDate: finishDate || "",
+                date: new Date().toISOString(),
+                metricValue: metricValue || 0,
+                platform: platform || "",
+                lastUpdate: Date.now()
+            };
             
-            if (newName && newName.trim() !== "") {
-                const cleanName = newName.replace(/[^a-zA-Z0-9 àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]/g, "").trim();
+            delete itemToSave.docId; 
+
+            try {
+                // 2. Sauvegarde dans artifacts/.../items
+                // ID Unique basé sur le type et l'ID API
+                const customDocId = `${itemToSave.type}_${itemToSave.id}`;
+                const docRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', customDocId);
                 
-                if (cleanName.length < 3) {
-                    alert("Le nom doit contenir au moins 3 caractères valides (sans émojis).");
-                    return;
+                await setDoc(docRef, itemToSave);
+                
+                // 3. Partage Public (Feed)
+                if (share && status !== 'Wishlist' && status !== 'En cours') {
+                    const activityData = {
+                        userId: window.currentUser.uid,
+                        userName: window.userProfile.name,
+                        userAvatar: window.userProfile.avatar || '',
+                        itemTitle: itemToSave.title,
+                        itemImg: itemToSave.img,
+                        itemDesc: itemToSave.desc || '', // Important pour le feed
+                        type: itemToSave.type,
+                        rating: rating,
+                        metricValue: metricValue,
+                        platform: platform || '',
+                        comment: comment || '',
+                        timestamp: Date.now(),
+                        likes: [],
+                        comments: []
+                    };
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), activityData);
                 }
 
-                window.userProfile.name = cleanName;
-                window.renderProfile(); 
+                // 4. Fermeture UI
+                window.closeRatingSheet();
+                window.closePreview();
+                window.closeSearchModal();
+                window.closeManualModal();
                 
-                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { name: cleanName }, { merge: true });
+                if(window.currentView === 'home') {
+                    if(window.currentType !== itemToSave.type) {
+                        window.switchType(itemToSave.type);
+                        document.getElementById('header-type-select').value = itemToSave.type;
+                    } else {
+                        window.renderList();
+                    }
+                }
+
+            } catch (error) {
+                console.error("Erreur sauvegarde:", error);
+                alert("Erreur lors de la sauvegarde.");
             }
         };
-        
-        window.handleAvatarUpload = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const compressed = await compressImage(e.target.result, 200, 200);
-                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { avatar: compressed }, { merge: true });
-            };
-            reader.readAsDataURL(file);
-        };
 
-        /* --- E.3 GESTION DE LA COLLECTION (SAUVEGARDE & SUPPRESSION) --- */
-        window.saveItem = async (status, rating, comment, finishDate, metricValue, shouldShare, platform) => {
-            if (!window.currentUser || !window.tempItem) return;
-            try {
-                const finalDate = finishDate || ''; 
-
-                const item = { 
-                    ...window.tempItem, 
-                    status, 
-                    rating: rating || null, 
-                    comment: comment || '', 
-                    finishDate: finalDate, 
-                    metricValue: parseInt(metricValue) || 0,
-                    platform: platform || '', 
-                    lastUpdate: Date.now() 
-                };
-
-                const docId = item.docId || ((item.id || 'manual_' + Date.now()) + '_' + item.type);
-                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId), item);
-                
-                if (shouldShare && status !== 'Wishlist' && status !== 'En cours') {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), {
-                        userId: window.currentUser.uid, 
-                        userName: window.userProfile.name, 
-                        userAvatar: window.userProfile.avatar,
-                        itemTitle: item.title, 
-                        itemImg: item.img, 
-                        itemDesc: item.desc || '',
-                        type: item.type, 
-                        rating, 
-                        metricValue: item.metricValue, 
-                        platform: platform || '', 
-                        comment: comment || '', 
-                        timestamp: Date.now(), 
-                        comments: [], 
-                        reactions: {}, 
-                        likes: []
-                    });
-                }
-                window.closeRatingSheet(); window.closePreview(); window.closeSearchModal(); window.closeManualModal(); window.switchView('home');
-            } catch (error) { console.error("Save Error:", error); }
-        };
-
+        /* --- E.2 SUPPRESSION --- */
         window.deleteItem = async () => {
-            if (!confirm("Supprimer cet élément de votre bibliothèque ?")) return;
-            const docId = window.tempItem?.docId;
-            if (!docId) { alert("Erreur: Impossible de trouver l'identifiant."); return; }
+            if (!confirm("Supprimer de votre collection ?")) return;
+            const appId = 'mabiblio-dc595';
+            
             try {
+                const docIdToDelete = window.tempItem.docId || `${window.tempItem.type}_${window.tempItem.id}`;
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docIdToDelete));
                 window.closePreview();
-                window.myCollection = window.myCollection.filter(i => i.docId !== docId);
-                window.renderList(); 
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId));
-            } catch (e) { console.error("Erreur suppression:", e); alert("Erreur lors de la suppression."); loadUserData(); }
+            } catch (e) {
+                console.error(e);
+                alert("Erreur suppression");
+            }
         };
 
-        window.deleteActivity = async (actId) => {
-            if (!confirm("Supprimer cette publication ?")) return;
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
-            } catch (e) { console.error(e); }
-        };
-
-        /* --- E.4 INTERACTIONS UI (NOTATION & DATES) --- */
+        /* --- E.3 INTERACTIONS UI (RATING, DATES) --- */
         window.handleRatingDrag = (e) => {
             const container = document.getElementById('rating-interactive');
+            if(!container) return;
             const rect = container.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const x = clientX - rect.left;
             let percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
             let val = Math.round(percent / 10);
             window.updateRatingUI(val);
@@ -756,9 +722,7 @@
             }
         };
 
-        /* --- E.5 DIVERS & DÉCONNEXION --- */
-        window.unfollowUser = async (id) => { if (confirm("Ne plus suivre ?")) await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { following: arrayRemove(id) }); };
-        window.updateGoal = async (type, val) => { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { [`goal${type}`]: parseInt(val) }); };
+        /* --- E.4 DECONNEXION --- */
         window.logout = () => signOut(auth).then(() => location.reload());
 
         // -----------------------------------------------------------
@@ -775,33 +739,52 @@
 
         const TMDB_KEY = "fa1123067cae30eea6420cfaef569bc2";
         let searchType = 'Film'; 
+        
+        // CONFIGURATION DES 6 CATÉGORIES (Types)
         const CONFIG = {
             'Film': { statuses: ['Vu', 'Wishlist'], action: 'Vu !', icon: 'fa-film', metric: 'min', color: '#AF52DE' },
+            'Série': { statuses: ['Vu', 'Wishlist', 'En cours'], action: 'Saison Finie !', icon: 'fa-tv', metric: 'saisons', color: '#34C759' },
             'Livre': { statuses: ['Lu', 'Wishlist', 'En cours'], action: 'Terminé !', icon: 'fa-book-open', metric: 'pages', color: '#FF9500' },
-            'Série': { statuses: ['Vu', 'Wishlist', 'En cours'], action: 'Saison Finie !', icon: 'fa-tv', metric: 'saisons', color: '#34C759' }
+            'Album': { statuses: ['Écouté', 'Wishlist'], action: 'Écouté !', icon: 'fa-music', metric: 'titres', color: '#E91E63' },
+            'YouTube': { statuses: ['Vu', 'Wishlist'], action: 'Regardé !', icon: 'fa-brands fa-youtube', metric: 'min', color: '#FF0000' },
+            'Jeu': { statuses: ['Joué', 'Wishlist', 'En cours'], action: 'Terminé !', icon: 'fa-dice', metric: 'heures', color: '#10B981' }
         };
 
         /* --- F.2 GESTION DES CATÉGORIES (TYPES) --- */
         window.switchType = (type) => {
             window.currentType = type;
-            document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.id === 'tab-'+(type==='Série'?'Serie':type)));
+            // On met à jour le statut par défaut quand on change de type
             window.currentStatus = CONFIG[type].statuses[0];
-            window.renderPills(); window.renderList();
+            window.renderPills(); 
+            window.renderList();
         };
 
         /* --- F.3 GESTION DES FILTRES (STATUTS) --- */
         window.renderPills = () => {
             const container = document.getElementById('status-container');
-            if (container) container.innerHTML = CONFIG[window.currentType].statuses.map(s => `<div class="pill ${s === window.currentStatus ? 'active' : ''}" onclick="window.switchStatus('${s}')">${s}</div>`).join('');
+            if (container && CONFIG[window.currentType]) {
+                container.innerHTML = CONFIG[window.currentType].statuses.map(s => 
+                    `<div class="pill ${s === window.currentStatus ? 'active' : ''}" onclick="window.switchStatus('${s}')">${s}</div>`
+                ).join('');
+            }
         };
 
-        window.switchStatus = (s) => { window.currentStatus = s; window.renderPills(); window.renderList(); };
+        window.switchStatus = (s) => { 
+            window.currentStatus = s; 
+            window.renderPills(); 
+            window.renderList(); 
+        };
 
         /* --- F.4 NAVIGATION PRINCIPALE (VUES) --- */
         window.switchView = (view) => {
             window.currentView = view;
+            
+            // Mise à jour visuelle de la barre du bas
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
-            document.getElementById('app-header').style.display = (view === 'home' ? 'block' : 'none');
+            
+            // Affichage conditionnel du header (seulement sur l'accueil)
+            const appHeader = document.getElementById('app-header');
+            if(appHeader) appHeader.style.display = (view === 'home' ? 'block' : 'none');
             
             if (view !== 'friends') {
                 localStorage.setItem('mabiblio_last_check', Date.now());
@@ -810,108 +793,230 @@
             window.refreshCurrentView();
         };
 
-       // -----------------------------------------------------------
+      // -----------------------------------------------------------
         // G. GESTION DES MODALES (RECHERCHE, MANUAL, PREVIEW, FEEDBACK)
         // -----------------------------------------------------------
 
-        /* --- G.1 MOTEUR DE RECHERCHE (API) --- */
-        window.openSearchModal = () => document.getElementById('search-modal').classList.add('open');
-        window.closeSearchModal = () => { document.getElementById('search-modal').classList.remove('open'); document.getElementById('search-input').value = ""; document.getElementById('search-results').innerHTML = ""; };
-        window.setSearchType = (t) => { searchType = t; ['Livre', 'Film', 'Série'].forEach(x => { const b = document.getElementById('s-'+x); if (b) b.className = x === t ? "flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm" : "flex-1 py-2.5 rounded-xl bg-gray-100 font-bold text-sm"; }); };
+      /* --- G.1 MOTEUR DE RECHERCHE (API ITUNES RETOUR) --- */
+        window.openSearchModal = () => {
+            const modal = document.getElementById('search-modal');
+            modal.classList.add('open');
+            
+            // Injection du Menu Déroulant
+            const oldBtn = document.getElementById('s-Film'); 
+            if (oldBtn && oldBtn.parentNode && !document.getElementById('search-type-select')) {
+                const container = oldBtn.parentNode;
+                container.innerHTML = `
+                <div class="relative w-full mb-2">
+                    <select id="search-type-select" onchange="window.setSearchType(this.value)" class="w-full bg-gray-100 text-gray-800 font-bold text-sm rounded-xl p-3 pl-4 outline-none appearance-none border border-transparent focus:bg-white focus:border-blue-500 transition-all">
+                        <option value="Film">🎬 Film</option>
+                        <option value="Série">📺 Série</option>
+                        <option value="Livre">📖 Livre</option>
+                        <option value="Album">🎵 Album</option>
+                        <option value="YouTube">📹 YouTube</option>
+                        <option value="Jeu">🎮 Jeu</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>`;
+                const sel = document.getElementById('search-type-select');
+                if(sel) sel.value = searchType;
+            }
+        };
+
+        window.closeSearchModal = () => { 
+            document.getElementById('search-modal').classList.remove('open'); 
+            document.getElementById('search-input').value = ""; 
+            document.getElementById('search-results').innerHTML = ""; 
+        };
+        
+        window.setSearchType = (t) => { 
+            searchType = t; 
+            const sel = document.getElementById('search-type-select');
+            if(sel && sel.value !== t) sel.value = t;
+            document.getElementById('search-results').innerHTML = "";
+            document.getElementById('search-input').value = "";
+            document.getElementById('search-input').focus();
+        };
+
+        window.formatNumber = (num) => {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+            return num;
+        };
 
         window.handleSearch = async (val) => { 
             if (val.length < 3) return; 
             let results = []; 
             
-            if (searchType === 'Livre') { 
-                const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10`); 
-                const d = await r.json(); 
-                results = (d.items || []).map(b => ({ 
-                    id: b.id, 
-                    title: b.volumeInfo.title, 
-                    img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
-                    desc: b.volumeInfo.description || "", 
-                    type: 'Livre', 
-                    releaseDate: b.volumeInfo.publishedDate, 
-                    metricValue: b.volumeInfo.pageCount || 0,
-                    author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
-                })); 
-            } else { 
-                const ep = searchType === 'Film' ? 'movie' : 'tv'; 
-                const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
-                const d = await r.json(); 
-                
-                results = await Promise.all((d.results || []).map(async m => { 
-                    const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
-                    const details = await dr.json(); 
+            const YOUTUBE_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco"; 
+            
+            if (searchType === 'Jeu') {
+                document.getElementById('search-results').innerHTML = `<div class="text-center mt-10 p-6 bg-gray-50 rounded-2xl"><i class="fa-solid fa-pen-to-square text-4xl text-gray-300 mb-4"></i><p class="font-bold text-gray-500 mb-4">Recherche Jeux non disponible.</p><button onclick="window.openManualModal()" class="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold">Ajouter manuellement</button></div>`;
+                return;
+            }
+
+            try {
+                // --- CAS ALBUM (API ITUNES) ---
+                if (searchType === 'Album') {
+                    // On utilise corsproxy pour éviter les erreurs CORS en ligne
+                    const r = await fetch(`https://corsproxy.io/?` + encodeURIComponent(`https://itunes.apple.com/search?term=${val}&entity=album&limit=10`));
+                    const d = await r.json();
                     
-                    let author = "";
-                    let cast = "";
+                    results = (d.results || []).map(a => ({
+                        id: String(a.collectionId),
+                        title: a.collectionName,
+                        // On demande une image plus grande (600x600) au lieu de 100x100
+                        img: a.artworkUrl100 ? a.artworkUrl100.replace('100x100', '600x600') : '',
+                        desc: `Album • ${a.primaryGenreName}`,
+                        type: 'Album',
+                        releaseDate: a.releaseDate,
+                        metricValue: a.trackCount || 0,
+                        author: a.artistName,
+                        platform: 'Apple Music',
+                        subInfo: `${a.trackCount} titres`
+                    }));
+                }
 
-                    if (details.credits) {
-                        if (details.credits.cast && details.credits.cast.length > 0) {
-                            cast = details.credits.cast.slice(0, 4).map(c => c.name).join(', ');
-                        }
-                        if (searchType === 'Film' && details.credits.crew) {
-                            const director = details.credits.crew.find(x => x.job === 'Director');
-                            if(director) author = director.name;
-                        } else if (searchType === 'Série' && details.created_by && details.created_by.length > 0) {
-                            author = details.created_by.map(c => c.name).join(', ');
-                        }
+                // --- CAS YOUTUBE ---
+                else if (searchType === 'YouTube') {
+                    const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(val)}&key=${YOUTUBE_KEY}&maxResults=10`);
+                    if (!r.ok) throw new Error("Erreur Clé API YouTube");
+                    const d = await r.json();
+                    
+                    if (d.items) {
+                        const videoIds = d.items.map(v => v.id.videoId).join(',');
+                        const rDetails = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_KEY}`);
+                        const dDetails = await rDetails.json();
+                        
+                        results = d.items.map(v => {
+                            const detail = dDetails.items ? dDetails.items.find(x => x.id === v.id.videoId) : null;
+                            let duration = 0;
+                            let views = 0;
+                            
+                            if (detail) {
+                                if (detail.contentDetails && detail.contentDetails.duration) {
+                                    const matches = detail.contentDetails.duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+                                    if (matches) duration = ((Number(matches[1]||0))*60) + (Number(matches[2]||0)) + ((Number(matches[3]||0)>30)?1:0);
+                                }
+                                if (detail.statistics) views = window.formatNumber(detail.statistics.viewCount);
+                            }
+
+                            return {
+                                id: v.id.videoId,
+                                title: v.snippet.title,
+                                img: v.snippet.thumbnails.high ? v.snippet.thumbnails.high.url : v.snippet.thumbnails.medium.url,
+                                desc: v.snippet.description,
+                                type: 'YouTube',
+                                releaseDate: v.snippet.publishedAt,
+                                metricValue: duration || 0,
+                                author: v.snippet.channelTitle,
+                                platform: 'YouTube',
+                                subInfo: `${views} vues`
+                            };
+                        });
                     }
+                }
 
-                    return { 
-                        id: m.id, 
-                        title: m.title || m.name, 
-                        img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
-                        desc: m.overview || "", 
-                        type: searchType, 
-                        releaseDate: m.release_date || m.first_air_date, 
-                        metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0),
-                        author: author,
-                        cast: cast
-                    }; 
-                })); 
-            } 
-            document.getElementById('search-results').innerHTML = results.map(i => `<div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200"><div class="flex-1 font-black text-xs">${i.title}<div class="text-[10px] text-gray-400 font-normal mt-0.5">${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''}</div></div></div>`).join(''); 
+                // --- CAS LIVRE ---
+                else if (searchType === 'Livre') { 
+                    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10`); 
+                    const d = await r.json(); 
+                    results = (d.items || []).map(b => ({ 
+                        id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
+                        desc: b.volumeInfo.description || "", type: 'Livre', releaseDate: b.volumeInfo.publishedDate, 
+                        metricValue: b.volumeInfo.pageCount || 0, author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
+                    })); 
+                } 
+                // --- CAS FILM/SÉRIE ---
+                else { 
+                    const ep = searchType === 'Film' ? 'movie' : 'tv'; 
+                    const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
+                    const d = await r.json(); 
+                    results = await Promise.all((d.results || []).map(async m => { 
+                        const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
+                        const details = await dr.json(); 
+                        let author = "", cast = "";
+                        if (details.credits) {
+                            if (details.credits.cast) cast = details.credits.cast.slice(0, 4).map(c => c.name).join(', ');
+                            if (searchType === 'Film' && details.credits.crew) { const director = details.credits.crew.find(x => x.job === 'Director'); if(director) author = director.name; } 
+                            else if (searchType === 'Série' && details.created_by) author = details.created_by.map(c => c.name).join(', ');
+                        }
+                        return { 
+                            id: String(m.id), title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
+                            desc: m.overview || "", type: searchType, releaseDate: m.release_date || m.first_air_date, 
+                            metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0), author: author, cast: cast
+                        }; 
+                    })); 
+                }
+            } catch (e) { console.error("Erreur Search", e); }
+
+            // Rendu
+            document.getElementById('search-results').innerHTML = results.map(i => {
+                let unit = 'min';
+                if(i.type === 'Album') unit = 'titres';
+                if(i.type === 'Livre') unit = 'p.';
+                if(i.type === 'Série') unit = 'sais.';
+                const sub = i.subInfo ? `• ${i.subInfo}` : '';
+                const safeItem = JSON.stringify(i).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+
+                return `
+                <div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${safeItem})'>
+                    <img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200">
+                    <div class="flex-1 font-black text-xs">
+                        ${i.title}
+                        <div class="text-[10px] text-gray-400 font-normal mt-0.5">
+                            ${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''} • ${i.metricValue || 0} ${unit} ${sub}
+                        </div>
+                    </div>
+                </div>`;
+            }).join(''); 
         };
 
-       /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS & IMPORT) --- */
+       /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS RICHE & ADAPTATIF) --- */
         window.openPreview = (item) => { 
             window.tempItem = item; 
             document.getElementById('preview-modal').classList.add('open'); 
             
-            // 1. DÉTECTION : Mode Lecture (Ami) ou Édition (Moi)
             const isPublicProfileOpen = document.getElementById('public-profile-modal').classList.contains('open');
             const isFeedItem = item.id && typeof item.id === 'string' && item.id.endsWith('_public');
             const isReadOnly = isPublicProfileOpen || isFeedItem;
-
             const showDelete = (item.docId && !isReadOnly) ? true : false;
             
-            // 2. Commentaire
+            // --- 1. LOGIQUE DE FORMAT DE L'IMAGE (DESIGN ADAPTATIF) ---
+            let imageClass = 'w-44 h-64'; // Format Poster par défaut (Film, Livre...)
+            
+            if (item.type === 'Album') {
+                imageClass = 'w-64 h-64'; // Grand Carré pour l'Album
+            } else if (item.type === 'YouTube') {
+                imageClass = 'w-full aspect-video shadow-sm'; // 16:9 Large pour YouTube
+            }
+            // ----------------------------------------------------------
+
+            let authorLabel = 'De', iconClass = 'fa-video';
+            if (item.type === 'Livre') { authorLabel = 'Auteur'; iconClass = 'fa-pen-nib'; }
+            if (item.type === 'Album') { authorLabel = 'Artiste'; iconClass = 'fa-microphone'; }
+            if (item.type === 'YouTube') { authorLabel = 'Chaîne'; iconClass = 'fa-youtube'; }
+            if (item.type === 'Jeu') { authorLabel = 'Créateur'; iconClass = 'fa-chess-pawn'; }
+
             let commentHtml = '';
             if (item.comment && item.comment.trim() !== '') {
-                commentHtml = `
-                    <div class="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl mb-8 text-left border border-white/5">
-                        <div class="flex items-center gap-2 mb-2">
-                            <i class="fa-solid fa-quote-left text-blue-500"></i>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avis</span>
-                        </div>
-                        <p class="text-white font-medium text-sm italic leading-relaxed">"${item.comment}"</p>
-                    </div>`;
+                commentHtml = `<div class="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl mb-8 text-left border border-white/5"><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-quote-left text-blue-500"></i><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avis</span></div><p class="text-white font-medium text-sm italic leading-relaxed">"${item.comment}"</p></div>`;
             }
 
             const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${item.platform}</span>` : '';
             const year = item.releaseDate ? item.releaseDate.split('-')[0] : 'Inconnue';
-            
-            // 3. Méta-Infos
+            let metricDisplay = `${item.metricValue || 0} ${CONFIG[item.type] ? CONFIG[item.type].metric : ''}`;
+
+            // Méta-Infos
             let metaInfos = '';
             if (item.author || item.cast) {
                 metaInfos = `
                 <div class="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10 flex flex-col gap-3 text-left">
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex-1">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid ${item.type === 'Livre' ? 'fa-pen-nib' : 'fa-video'} mr-1"></i> ${item.type === 'Livre' ? 'Auteur' : 'De'}</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid ${iconClass} mr-1"></i> ${authorLabel}</div>
                             <div class="text-sm font-bold text-white leading-tight">${item.author || 'Inconnu'}</div>
                         </div>
                         <div class="text-right">
@@ -925,58 +1030,33 @@
                 metaInfos = `<div class="mb-6 text-gray-400 font-bold text-xs uppercase">Sortie en ${year}</div>`;
             }
 
-            // 4. BOUTONS D'ACTION (LOGIQUE HYBRIDE)
             let actionButtonsHtml = '';
-            
-            if (isReadOnly) {
-                // --- CAS 1 : PROFIL AMI (Lecture + Import) ---
-                actionButtonsHtml = `
-                    <div class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 flex flex-col items-center justify-center">
-                        <div class="text-orange-500 text-4xl mb-2 drop-shadow-lg"><i class="fa-solid fa-star"></i></div>
-                        <div class="text-4xl font-black text-white tracking-tight">${item.rating || '-'} <span class="text-lg text-gray-500 font-bold">/ 10</span></div>
-                        <div class="text-gray-400 text-[10px] font-bold uppercase mt-2 tracking-widest">Note de l'utilisateur</div>
-                    </div>
+            const actionLabel = CONFIG[item.type] ? CONFIG[item.type].action : 'Terminé !';
 
-                    <div class="w-full pt-6 border-t border-white/10 mb-6">
-                        <p class="text-center text-gray-500 text-[10px] font-bold uppercase mb-4 tracking-widest">Ajouter à ma bibliothèque</p>
-                        <div class="space-y-3">
-                            <button onclick="window.tempItem.docId = null; window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">
-                                ${CONFIG[item.type].action} </button>
-                            
-                            ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">En cours</button>` : ''}
-                            
-                            <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Wishlist</button>
-                        </div>
-                    </div>
-                `;
+            if (isReadOnly) {
+                actionButtonsHtml = `<div class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 flex flex-col items-center justify-center"><div class="text-orange-500 text-4xl mb-2 drop-shadow-lg"><i class="fa-solid fa-star"></i></div><div class="text-4xl font-black text-white tracking-tight">${item.rating || '-'} <span class="text-lg text-gray-500 font-bold">/ 10</span></div><div class="text-gray-400 text-[10px] font-bold uppercase mt-2 tracking-widest">Note de l'utilisateur</div></div><div class="w-full pt-6 border-t border-white/10 mb-6"><p class="text-center text-gray-500 text-[10px] font-bold uppercase mb-4 tracking-widest">Ajouter à ma bibliothèque</p><div class="space-y-3"><button onclick="window.tempItem.docId = null; window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${actionLabel} </button>${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">En cours</button>` : ''}<button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Wishlist</button></div></div>`;
             } else {
-                // --- CAS 2 : MON PROFIL (Édition) ---
-                const isEdited = item.rating || item.status === 'Vu' || item.status === 'Lu';
-                const actionText = isEdited ? "Modifier ma note" : CONFIG[item.type].action;
-                
-                actionButtonsHtml = `
-                    <div class="w-full space-y-3 mb-8">
-                        <button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${actionText}</button>
-                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}
-                        <button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>
-                        ${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}
-                    </div>
-                `;
+                const isEdited = item.rating || (CONFIG[item.type] && CONFIG[item.type].statuses.includes(item.status) && item.status !== 'Wishlist' && item.status !== 'En cours');
+                const mainBtnText = isEdited ? "Modifier ma note" : actionLabel;
+                actionButtonsHtml = `<div class="w-full space-y-3 mb-8"><button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${mainBtnText}</button>${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}<button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}</div>`;
+            }
+
+            let contentHtml = item.desc || "Aucun résumé.";
+            if (item.type !== 'Album' && item.type !== 'YouTube') {
+                contentHtml = contentHtml.replace(/\n/g, '<br>');
             }
 
             document.getElementById('preview-content').innerHTML = `
                 <div class="px-6 pt-24 pb-20 flex flex-col items-center">
-                    <img src="${item.img || ''}" class="w-44 h-64 rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
+                    <img src="${item.img || ''}" class="${imageClass} rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
                     <h2 class="text-2xl font-black mb-2 text-center text-white leading-tight">${item.title}</h2>
                     <p class="text-blue-400 font-bold mb-6 text-sm uppercase">
-                        ${item.type} • ${item.metricValue || 0} ${CONFIG[item.type].metric} ${platformBadge}
+                        ${item.type} • ${metricDisplay} ${platformBadge}
                     </p>
-                    
                     ${metaInfos}
                     ${actionButtonsHtml}
                     ${commentHtml}
-
-                    <div class="w-full text-gray-400 text-sm leading-relaxed text-justify opacity-80">${item.desc || "Aucun résumé."}</div>
+                    <div class="w-full text-gray-400 text-sm leading-relaxed text-justify opacity-80">${contentHtml}</div>
                 </div>`; 
         };
 
@@ -991,15 +1071,17 @@
             const platformLabel = document.getElementById('platform-label');
             const platformSelect = document.getElementById('platform-select');
             let options = [];
-            
-            if (window.tempItem.type === 'Livre') {
-                if(platformLabel) platformLabel.innerText = "Lu sur";
-                options = ['Physique', 'Liseuse', 'Audio', 'Tablette', 'Autre'];
-            } else {
-                if(platformLabel) platformLabel.innerText = "Vu sur";
-                options = ['Netflix', 'Prime Video', 'Disney+', 'Canal+', 'Apple TV+', 'Cinéma', 'Physique (DVD/BR)', 'Streaming', 'TV', 'Autre'];
+            let label = "Vu sur";
+
+            switch(window.tempItem.type) {
+                case 'Livre': label = "Lu sur"; options = ['Physique', 'Liseuse', 'Audio', 'Tablette', 'Autre']; break;
+                case 'Album': label = "Écouté sur"; options = ['Spotify', 'Apple Music', 'Deezer', 'Vinyle', 'CD', 'YouTube Music', 'Autre']; break;
+                case 'YouTube': label = "Vu sur"; options = ['YouTube', 'YouTube TV', 'Mobile', 'Autre']; break;
+                case 'Jeu': label = "Joué sur"; options = ['Plateau', 'Cartes', 'PC', 'PlayStation', 'Xbox', 'Switch', 'Mobile', 'Autre']; break;
+                default: label = "Vu sur"; options = ['Netflix', 'Prime Video', 'Disney+', 'Canal+', 'Apple TV+', 'Cinéma', 'Physique (DVD/BR)', 'Streaming', 'TV', 'Autre'];
             }
             
+            if(platformLabel) platformLabel.innerText = label;
             platformSelect.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join('');
             if(window.tempItem.platform) platformSelect.value = window.tempItem.platform;
 
@@ -1007,16 +1089,9 @@
             const noDateToggle = document.getElementById('no-date-toggle');
             const shareToggle = document.getElementById('share-toggle');
             
-            if (window.tempItem.finishDate === "") {
-                if(noDateToggle) noDateToggle.checked = true;
-                if(dateInput) { dateInput.value = ""; dateInput.disabled = true; dateInput.style.opacity = '0.3'; }
-            } else if (window.tempItem.finishDate) {
-                if(noDateToggle) noDateToggle.checked = false;
-                if(dateInput) { dateInput.value = window.tempItem.finishDate; dateInput.disabled = false; dateInput.style.opacity = '1'; }
-            } else {
-                if(noDateToggle) noDateToggle.checked = false;
-                if(dateInput) { dateInput.value = new Date().toISOString().split('T')[0]; dateInput.disabled = false; dateInput.style.opacity = '1'; }
-            }
+            if (window.tempItem.finishDate === "") { if(noDateToggle) noDateToggle.checked = true; if(dateInput) { dateInput.value = ""; dateInput.disabled = true; dateInput.style.opacity = '0.3'; } } 
+            else if (window.tempItem.finishDate) { if(noDateToggle) noDateToggle.checked = false; if(dateInput) { dateInput.value = window.tempItem.finishDate; dateInput.disabled = false; dateInput.style.opacity = '1'; } } 
+            else { if(noDateToggle) noDateToggle.checked = false; if(dateInput) { dateInput.value = new Date().toISOString().split('T')[0]; dateInput.disabled = false; dateInput.style.opacity = '1'; } }
 
             const initialRating = window.tempItem.rating || 8;
             window.updateRatingUI(initialRating);
@@ -1030,22 +1105,14 @@
             const isNoDate = document.getElementById('no-date-toggle').checked;
             const dateValue = isNoDate ? "" : document.getElementById('finish-date-input').value;
             const platformValue = document.getElementById('platform-select').value;
+            const status = CONFIG[window.tempItem.type] ? CONFIG[window.tempItem.type].statuses[0] : 'Vu';
 
-            window.saveItem(
-                CONFIG[window.tempItem.type].statuses[0], 
-                currentRating, 
-                document.getElementById('rating-comment').value, 
-                dateValue, 
-                window.tempItem.metricValue || 0, 
-                document.getElementById('share-toggle').checked,
-                platformValue 
-            );
+            window.saveItem(status, currentRating, document.getElementById('rating-comment').value, dateValue, window.tempItem.metricValue || 0, document.getElementById('share-toggle').checked, platformValue);
         };
         
         /* --- G.4 AJOUT MANUEL & FEEDBACK --- */
         window.handleManualImageUpload = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
+            const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = async (e) => {
                 window.tempManualImage = await compressImage(e.target.result);
@@ -1057,70 +1124,23 @@
         window.openManualModal = () => { window.tempManualImage = ''; document.getElementById('manual-modal').classList.add('open'); };
         window.closeManualModal = () => document.getElementById('manual-modal').classList.remove('open');
         window.confirmManualAdd = () => { 
-            const title = document.getElementById('m-title').value; 
-            if (!title) return alert("Saisir un titre."); 
+            const title = document.getElementById('m-title').value; if (!title) return alert("Saisir un titre."); 
             window.openPreview({ id: 'manual_'+Date.now(), title, type: document.getElementById('m-type').value, metricValue: parseInt(document.getElementById('m-metric').value) || 0, img: window.tempManualImage || 'https://via.placeholder.com/300x450?text='+title, desc: document.getElementById('m-desc').value, releaseDate: new Date().toISOString() }); 
         };
 
-        window.openFeedbackModal = () => {
-            document.getElementById('feedback-modal').classList.add('open');
-            document.getElementById('fb-message').value = "";
-            document.getElementById('fb-status').classList.add('hidden');
-        };
-
-        window.closeFeedbackModal = () => {
-            document.getElementById('feedback-modal').classList.remove('open');
-        };
-
+        window.openFeedbackModal = () => { document.getElementById('feedback-modal').classList.add('open'); document.getElementById('fb-message').value = ""; document.getElementById('fb-status').classList.add('hidden'); };
+        window.closeFeedbackModal = () => { document.getElementById('feedback-modal').classList.remove('open'); };
         window.sendFeedback = async () => {
             const object = document.getElementById('fb-object').value;
             const message = document.getElementById('fb-message').value;
             const statusDiv = document.getElementById('fb-status');
             const btn = document.getElementById('fb-send-btn');
-
-            if (!message || message.trim() === "") {
-                alert("Merci d'écrire un message avant d'envoyer.");
-                return;
-            }
-
-            statusDiv.innerText = "Envoi en cours...";
-            statusDiv.classList.remove('hidden');
-            btn.disabled = true;
-            btn.style.opacity = "0.7";
-
+            if (!message || message.trim() === "") return alert("Message vide.");
+            statusDiv.innerText = "Envoi..."; statusDiv.classList.remove('hidden'); btn.disabled = true;
             try {
-                const response = await fetch("https://formsubmit.co/ajax/timo.appstudio@gmail.com", {
-                    method: "POST",
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        _subject: `MaBiblio: ${object} de ${window.userProfile.name}`,
-                        Objet: object,
-                        Utilisateur: window.userProfile.name + " (UID: " + window.currentUser.uid + ")",
-                        Message: message
-                    })
-                });
-
-                if (response.ok) {
-                    statusDiv.innerText = "Message envoyé avec succès ! Merci.";
-                    statusDiv.classList.add('text-green-500');
-                    setTimeout(() => {
-                        window.closeFeedbackModal();
-                        btn.disabled = false;
-                        btn.style.opacity = "1";
-                    }, 2000);
-                } else {
-                    throw new Error("Erreur serveur");
-                }
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerText = "Erreur lors de l'envoi. Réessayez.";
-                statusDiv.classList.add('text-red-500');
-                btn.disabled = false;
-                btn.style.opacity = "1";
-            }
+                await fetch("https://formsubmit.co/ajax/timo.appstudio@gmail.com", { method: "POST", headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ _subject: `MaBiblio: ${object}`, Objet: object, User: window.userProfile.name, Message: message }) });
+                statusDiv.innerText = "Envoyé !"; setTimeout(() => { window.closeFeedbackModal(); btn.disabled = false; }, 2000);
+            } catch (error) { statusDiv.innerText = "Erreur."; btn.disabled = false; }
         };
 
 /* ==================================================================
@@ -1372,13 +1392,13 @@
            Affichage du fil d'actualité et Centre de notifications
            ================================================================== */
 
-      /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
+    /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
         window.renderSocialFeed = () => {
             const focusedId = document.activeElement ? document.activeElement.id : null;
             const focusedVal = focusedId ? document.activeElement.value : null;
             const container = document.getElementById('main-content');
             
-            // Bloc Recherche
+            // Bloc Recherche Ami
             const searchBlock = `
                 <div class="relative mb-8">
                     <div class="bg-white p-3 rounded-2xl shadow-sm flex items-center gap-3 border border-gray-100">
@@ -1399,14 +1419,24 @@
                     const isLiked = likes.includes(window.currentUser.uid);
                     const commentsCount = (act.comments || []).length;
                     
+                    // Icône selon le type
                     let typeIcon = 'fa-film';
                     if (act.type === 'Livre') typeIcon = 'fa-book';
                     if (act.type === 'Série') typeIcon = 'fa-tv';
+                    if (act.type === 'Album') typeIcon = 'fa-music';
+                    if (act.type === 'YouTube') typeIcon = 'fa-youtube';
+                    if (act.type === 'Jeu') typeIcon = 'fa-gamepad';
+
+                    // --- LOGIQUE FORMAT MINIATURE (DESIGN ADAPTATIF) ---
+                    let thumbClass = 'w-16 h-24'; // Format Poster (défaut: Film, Série, Livre)
+                    if (act.type === 'Album') thumbClass = 'w-20 h-20'; // Carré pour Musique
+                    if (act.type === 'YouTube') thumbClass = 'w-32 h-20'; // 16:9 pour Vidéo
+                    // --------------------------------------------------
 
                     // Texte des likes
                     let likesText = likes.length > 0 ? (likes.length === 1 ? `1 J'aime` : `${likes.length} J'aime`) : 'J\'aime';
 
-                    // Têtes des likeurs
+                    // Têtes des likeurs (Avatar ou Initiale)
                     let facesHtml = '';
                     if(likes.length > 0) {
                         const firstLikers = likes.slice(0, 3);
@@ -1429,7 +1459,6 @@
                     const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
                     const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${act.platform}</span>` : '';
 
-                    // --- STRUCTURE CARTE BLANCHE UNIQUE ---
                     feedHtml += `
                     <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-50" id="act-${act.id}">
                         <div class="flex justify-between items-start mb-4">
@@ -1451,12 +1480,12 @@
                         </div>
 
                         <div class="flex gap-4 bg-gray-50 rounded-xl p-3 mb-4 cursor-pointer group hover:bg-gray-100 transition-colors" onclick='window.openPreview(${previewJson})'>
-                            <div class="relative w-16 h-24 rounded-lg overflow-hidden shadow-sm group-active:scale-95 transition-transform">
+                            <div class="relative ${thumbClass} shrink-0 rounded-lg overflow-hidden shadow-sm group-active:scale-95 transition-transform">
                                 <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200">
-                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm">${act.rating}</div>
+                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm">${act.rating || '-'}</div>
                             </div>
-                            <div class="flex-1 py-1">
-                                <h3 class="font-black text-sm text-gray-900 leading-tight mb-1">${act.itemTitle}</h3>
+                            <div class="flex-1 py-1 min-w-0">
+                                <h3 class="font-black text-sm text-gray-900 leading-tight mb-1 truncate">${act.itemTitle}</h3>
                                 <p class="text-xs text-gray-500 line-clamp-3 leading-relaxed cursor-pointer hover:text-gray-800 transition-colors" onclick="event.stopPropagation(); this.classList.toggle('line-clamp-3')">
                                     ${act.comment ? `<span class="italic text-gray-600">"${act.comment}"</span>` : '<span class="opacity-50">A noté cette œuvre.</span>'}
                                 </p>
@@ -1496,7 +1525,7 @@
             if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
         };
 
-        // --- NOUVELLE FONCTION : PETIT POPUP DES LIKES (INCHANGÉE) ---
+        /* --- 2. POPUP DES LIKES --- */
         window.showLikesList = (actId) => {
             const act = window.socialFeed.find(a => a.id === actId);
             if(!act || !act.likes || act.likes.length === 0) return;
@@ -1530,7 +1559,7 @@
             document.body.appendChild(overlay);
         };
 
-        /* --- 2. CENTRE DE NOTIFICATIONS --- */
+        /* --- 3. CENTRE DE NOTIFICATIONS --- */
         window.openNotifications = async () => {
             window.currentView = 'notifications';
             document.getElementById('app-header').style.display = 'none'; 
@@ -1544,11 +1573,10 @@
 
             // B. Reset Base de Données (Marquer comme lu)
             // On prend toutes les notifs non lues qui ont un ID valide
-            const unreadNotifs = window.extState.notifications.filter(n => !n.read && n.id);
+            const unreadNotifs = (window.extState.notifications || []).filter(n => !n.read && n.id);
             if(unreadNotifs.length > 0) {
                 const batch = writeBatch(db);
                 unreadNotifs.forEach(n => {
-                    // Attention au chemin : users -> uid -> notifications -> id
                     const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id);
                     batch.update(ref, { read: true });
                 });
@@ -1572,19 +1600,16 @@
                         // LOGIQUE D'AFFICHAGE SELON LE TYPE
                         const isFollow = n.type === 'follow';
                         
-                        // 1. L'action au clic : Profil (si abonnement) OU Activité (si like/com)
-                        // Note: pour le follow, l'ID de l'envoyeur est stocké dans 'fromUid'
                         const action = isFollow 
                             ? `window.openPublicProfile('${n.fromUid}')` 
                             : `window.goToActivity('${n.actId}')`;
 
-                        // 2. L'icône et la couleur
                         let icon = '';
                         let color = '';
                         
                         if (isFollow) {
                             icon = '<i class="fa-solid fa-user-plus"></i>';
-                            color = 'text-green-500'; // Vert pour les abonnements
+                            color = 'text-green-500'; 
                         } else if (n.type && n.type.includes('like')) {
                             icon = '<i class="fa-solid fa-heart"></i>';
                             color = 'text-red-500';
@@ -1596,8 +1621,6 @@
                             color = 'text-blue-600';
                         }
 
-                        // 3. Le texte
-                        // Pour un follow, le message est déjà complet dans n.message
                         const content = isFollow 
                             ? `<span class="font-bold text-gray-800">${n.message}</span>`
                             : `<span class="font-black">${n.user}</span> ${n.text}`;
@@ -1627,7 +1650,7 @@
             `;
         };
         
-        /* --- 3. GESTION DES LIKES DE COMMENTAIRES --- */
+        /* --- 4. GESTION DES LIKES DE COMMENTAIRES --- */
         window.toggleCommentLike = async (actId, commentTimestamp) => {
             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
             try {
@@ -1654,7 +1677,6 @@
                         comments[cIndex] = comment;
                         await updateDoc(actRef, { comments: comments });
 
-                        // Notification si c'est un nouveau like et pas mon propre commentaire
                         if (isNewLike && comment.userId !== window.currentUser.uid) {
                             window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId);
                         }
@@ -1676,221 +1698,211 @@
              } catch(e) { console.error(e); }
         };
 
-        // -----------------------------------------------------------
+        window.deleteActivity = async (actId) => {
+            if(!confirm("Supprimer ce post ?")) return;
+            try {
+                // On utilise la variable appId globale (définie en haut du fichier)
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
+                
+                // On met à jour l'affichage localement sans recharger la page
+                if(window.socialFeed) {
+                    window.socialFeed = window.socialFeed.filter(a => a.id !== actId);
+                    window.renderSocialFeed();
+                }
+            } catch (e) { 
+                console.error("Erreur suppression", e);
+                alert("Impossible de supprimer : " + e.message);
+            }
+        };
+
+       // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
         
         /* --- I.1 INJECTION UI DYNAMIQUE (HEADER & NOTIFS) --- */
-        // Injection UI dynamique pour Header et Tabs
-        const headerTitle = document.querySelector('.header-title');
-        const headerTabs = document.querySelector('.type-tabs');
-        
-        const titleRow = document.createElement('div');
-        titleRow.style.display = 'flex'; titleRow.style.justifyContent = 'space-between'; titleRow.style.alignItems = 'center'; titleRow.style.width = '100%';
-        headerTitle.parentNode.insertBefore(titleRow, headerTitle);
-        titleRow.appendChild(headerTitle);
+        // On adapte l'injection pour le nouveau Header avec Select
+        const header = document.getElementById('app-header');
+        const selectWrapper = document.querySelector('.header-select-wrapper');
 
-        const notifBtn = document.createElement('div');
-        notifBtn.className = 'notif-btn';
-        notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
-        notifBtn.onclick = () => window.openNotifications();
-        titleRow.appendChild(notifBtn);
+        if (header && selectWrapper) {
+            // 1. Création de la ligne du haut (Titre Déroulant + Cloche)
+            const topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.justifyContent = 'space-between';
+            topRow.style.alignItems = 'center';
+            topRow.style.width = '100%';
+            topRow.style.marginBottom = '5px';
+
+            // On déplace le menu déroulant dans cette ligne
+            header.insertBefore(topRow, selectWrapper);
+            topRow.appendChild(selectWrapper);
+            selectWrapper.style.flex = "1"; // Le titre prend toute la place gauche
+
+            // Ajout de la cloche de notification
+            const notifBtn = document.createElement('div');
+            notifBtn.className = 'notif-btn';
+            notifBtn.style.marginLeft = '15px'; // Espace entre titre et cloche
+            notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
+            notifBtn.onclick = () => window.openNotifications();
+            topRow.appendChild(notifBtn);
+        }
 
         /* --- I.2 SYSTÈME DE TRI & FILTRES --- */
-        const tabsContainer = document.createElement('div');
-        tabsContainer.style.display = 'flex'; tabsContainer.style.justifyContent = 'space-between'; tabsContainer.style.alignItems = 'center'; tabsContainer.style.marginTop = '15px';
-        headerTabs.parentNode.insertBefore(tabsContainer, headerTabs);
-        tabsContainer.appendChild(headerTabs); 
-        headerTabs.style.marginTop = '0'; 
+        const statusContainer = document.getElementById('status-container');
+        
+        if (statusContainer) {
+            // 2. Création de la ligne de contrôles (Tri + Status Pills)
+            const controlsRow = document.createElement('div');
+            controlsRow.style.display = 'flex';
+            controlsRow.style.alignItems = 'center';
+            controlsRow.style.gap = '8px';
+            controlsRow.style.marginTop = '10px';
 
-        const filterContainer = document.createElement('div');
-        filterContainer.innerHTML = `<select class="filter-dropdown" onchange="window.setSort(this.value)"><option value="date">Date</option><option value="rating">Note</option><option value="name">Nom</option></select>`;
-        tabsContainer.appendChild(filterContainer); 
+            header.insertBefore(controlsRow, statusContainer);
+
+            // Ajout du Dropdown de Tri (à gauche des pills)
+            const filterContainer = document.createElement('div');
+            filterContainer.innerHTML = `<select class="filter-dropdown" onchange="window.setSort(this.value)"><option value="date">Date</option><option value="rating">Note</option><option value="name">Nom</option></select>`;
+            controlsRow.appendChild(filterContainer);
+
+            // Ajout des Status Pills (qui scrollent à droite)
+            controlsRow.appendChild(statusContainer);
+            statusContainer.style.flex = "1";
+            statusContainer.style.overflowX = "auto"; // Garde le scroll horizontal
+        }
 
         window.setSort = (val) => { window.extState.sort = val; window.renderList(); };
 
-        // -----------------------------------------------------------
-        // J. FONCTIONS DE RENDU PRINCIPALES (OVERRIDDEN)
+      // -----------------------------------------------------------
+        // J. FONCTIONS DE RENDU PRINCIPALES (CORRIGÉE - SANS DOUBLON)
         // -----------------------------------------------------------
 
-        /* --- J.1 RENDU DE LA LISTE PRINCIPALE (GRILLE) --- */
+        /* --- J.1 RENDU DE LA LISTE PRINCIPALE (GRILLE AJUSTÉE) --- */
         window.renderList = () => {
             if (!window.myCollection) return;
-            // Filtrage par type (Film/Livre...) et statut (Vu/Wishlist...)
+            // Filtrage strict
             let filtered = window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
             
-            // Logique de Tri
+            // Tri
             if (window.extState.sort === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
             else if (window.extState.sort === 'name') { filtered.sort((a, b) => a.title.localeCompare(b.title)); } 
             else {
-                // Tri par date par défaut
                 filtered.sort((a, b) => {
-                    const dateA = a.finishDate || a.lastUpdate || 0;
-                    const dateB = b.finishDate || b.lastUpdate || 0;
+                    const dateA = a.finishDate || a.lastUpdate || a.date || '0';
+                    const dateB = b.finishDate || b.lastUpdate || b.date || '0';
                     return dateB > dateA ? 1 : -1;
                 });
             }
 
             const container = document.getElementById('main-content');
-            if (!filtered.length) { container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; return; }
+            if (!filtered.length) { 
+                container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; 
+                return; 
+            }
+
+            // --- LOGIQUE NOMBRE DE COLONNES ---
+            // Si YouTube (format large 16:9) -> 3 par ligne (min 120px)
+            // Sinon (Film, Série, Livre, Album) -> 4 par ligne (min 85px)
+            const isYouTube = (window.currentType === 'YouTube');
+            
+            const gridStyle = isYouTube
+                ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;' // 3 par ligne
+                : 'display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px;';   // 4 par ligne
 
             let html = '';
-            // Affichage : Soit grille simple, soit groupé par année (si tri par date)
+            
+            // Wrapper avec marges latérales (px-4)
+            html += `<div class="px-4 pb-24">`; 
+
             if (window.extState.sort !== 'date') {
-                html += `<div class="items-grid mt-4">`;
+                html += `<div style="${gridStyle}" class="mt-4">`;
                 filtered.forEach(item => html += window.generateGridItemHTML(item));
                 html += `</div>`;
             } else {
                 const groups = {};
-                filtered.forEach(item => { const year = (item.finishDate || 'Non daté').split('-')[0]; if (!groups[year]) groups[year] = []; groups[year].push(item); });
+                filtered.forEach(item => { 
+                    const d = item.finishDate || item.date || 'Non daté';
+                    const year = d.startsWith('20') || d.startsWith('19') ? d.split('-')[0] : 'Non daté';
+                    if (!groups[year]) groups[year] = []; groups[year].push(item); 
+                });
                 const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
                 years.forEach(year => {
-                    html += `<div class="year-divider">${year}</div><div class="items-grid">`;
+                    html += `<div class="year-divider mt-6 mb-4 font-black text-xl">${year}</div><div style="${gridStyle}">`;
                     groups[year].forEach(item => html += window.generateGridItemHTML(item));
                     html += `</div>`;
                 });
             }
+            html += `</div>`;
+            
             container.innerHTML = html;
         };
 
         window.generateGridItemHTML = (item) => {
             const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
+            
+            // --- LOGIQUE VISUELLE ---
+            let aspectClass = 'aspect-[2/3]'; // Par défaut (Film, Série, Livre)
+            if (item.type === 'Album') aspectClass = 'aspect-square'; // Carré
+            if (item.type === 'YouTube') aspectClass = 'aspect-video'; // 16:9
+
             let dateDisplay = '';
             if (item.finishDate) {
                 const d = new Date(item.finishDate);
                 dateDisplay = `<div class="grid-date-overlay"><i class="fa-regular fa-calendar-check mr-1"></i>${d.getDate()}/${d.getMonth()+1}</div>`;
             }
-            return `<div class="grid-item" onclick='window.openPreview(${itemData})'><img src="${item.img || ''}">${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}<div class="grid-item-overlay"><div class="flex justify-between items-start"><div class="text-[8px] font-black truncate text-white uppercase leading-tight pr-1">${item.title}</div></div><div class="flex flex-col mt-1">${dateDisplay}<div class="flex justify-between items-center"><span class="text-[7px] font-bold text-gray-300">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span><span class="text-[7px] font-black text-white px-1 py-0.5 rounded bg-black/50">${item.metricValue || 0}</span></div></div></div></div>`;
-        };
-
-      /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ) --- */
-        window.renderProfile = async () => {
-            const container = document.getElementById('main-content');
-            const following = window.followingData || [];
             
-            // 1. Récupération des données
-            let followers = [];
-            try {
-                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
-                const snap = await getDocs(q);
-                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id })); 
-            } catch (e) {}
+            let unit = '';
+            if(item.type === 'Livre') unit = 'p.';
+            else if(item.type === 'Série') unit = 'sais.';
+            else if(item.type === 'Album') unit = 'titres';
+            else if(item.type === 'Jeu') unit = 'h';
+            else unit = 'min';
 
-            // Données utilisateur
-            const bio = window.userProfile.bio || "Ajouter une biographie...";
-            const pinned = window.userProfile.pinned || [null, null, null]; 
-
-            container.innerHTML = `
-                <div class="pt-28 px-6 pb-32 text-center">
-                    
-                    <div class="avatar-container">
-                        <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
-                        <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
+            return `
+            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm" onclick='window.openPreview(${itemData})'>
+                <img src="${item.img || ''}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
+                
+                <div class="grid-item-overlay">
+                    <div class="flex justify-between items-start">
+                        <div class="text-[10px] font-black truncate text-white uppercase leading-tight pr-1 shadow-black drop-shadow-md">${item.title}</div>
                     </div>
-                    
-                    <div class="mt-4 flex items-center justify-center gap-2">
-                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
-                        <button onclick="window.updateProfileName()" class="text-blue-600 text-lg"><i class="fa-solid fa-pen-to-square"></i></button>
-                    </div>
-                    <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${bio} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
-
-                    <div class="text-left mt-8 mb-2 px-1"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Mes 3 Coups de ❤️</span></div>
-                    <div class="pinned-grid">
-                        ${[0, 1, 2].map(i => {
-                            const item = pinned[i];
-                            if (item) {
-                                return `
-                                <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
-                                    <img src="${item.img}">
-                                    <div class="pinned-overlay"><i class="fa-solid fa-rotate text-white"></i></div>
-                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
-                                </div>`;
-                            } else {
-                                return `
-                                <div class="pinned-item" onclick="window.openPinSelector(${i})">
-                                    <i class="fa-solid fa-plus text-gray-300 text-2xl"></i>
-                                </div>`;
-                            }
-                        }).join('')}
-                    </div>
-
-                    <div class="flex gap-3 mt-6">
-                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open')"><span class="text-xl font-black text-gray-900">${following.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span></button></div>
-                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open')"><span class="text-xl font-black text-blue-600">${followers.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span></button></div>
-                    </div>
-
-                    <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${following.length > 0 ? following.map(p => `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div>
-                                        <span class="font-bold text-sm">${p.name}</span>
-                                    </div>
-                                    <button onclick="event.stopPropagation(); window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
-                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                    <div class="flex flex-col mt-1">
+                        ${dateDisplay}
+                        <div class="flex justify-between items-center">
+                            <span class="text-[8px] font-bold text-gray-200">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span>
+                            <span class="text-[8px] font-black text-white px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md">${item.metricValue || 0} ${unit}</span>
                         </div>
                     </div>
-
-                    <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${followers.length > 0 ? followers.map(f => `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div>
-                                        <span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span>
-                                    </div>
-                                    <div class="flex gap-3 items-center">
-                                        <button onclick="event.stopPropagation(); window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
-                                        <div class="h-3 w-px bg-gray-300"></div>
-                                        <button onclick="event.stopPropagation(); window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button>
-                                    </div>
-                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
-                        </div>
-                    </div>
-
-                    <div class="ios-group !mx-0 mt-8"><div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()"><span class="font-bold text-sm">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i></div></div>
-                    <div class="ios-group !mx-0 mt-4"><div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div></div>
-                </div>`;
+                </div>
+            </div>`;
         };
 
-        // --- FONCTIONS DE GESTION ---
-        
-        window.updateBio = async () => {
-            const current = window.userProfile.bio || "";
-            const newBio = prompt("Entrez votre biographie (courte phrase) :", current);
-            if (newBio !== null && newBio !== current) {
-                try {
-                    const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                    await updateDoc(ref, { bio: newBio });
-                    window.userProfile.bio = newBio;
-                    window.renderProfile();
-                } catch(e) { console.error(e); alert("Erreur sauvegarde bio."); }
-            }
-        };
-
+        /* --- J.2.bis GESTION DES FAVORIS (PINS) --- */
         window.openPinSelector = (slotIndex) => {
             window.currentPinSlot = slotIndex;
             const modal = document.getElementById('pin-selector-modal');
             const list = document.getElementById('pin-selector-list');
             modal.classList.add('open');
-            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
+            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu' || i.status === 'Joué' || i.status === 'Écouté');
             
             window.renderPinList = (items) => {
-                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des films vus d\'abord !</div>'; return; }
+                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Terminez des œuvres d\'abord !</div>'; return; }
                 list.innerHTML = items.map(item => {
                     const safeItem = { id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type };
                     const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
                     return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'><img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${item.title}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div></div></div>`;
                 }).join('');
-                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML; }
+                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { 
+                    list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer</div>` + list.innerHTML; 
+                }
             };
             window.renderPinList(candidates);
         };
 
         window.filterPinSelector = (query) => {
             const term = query.toLowerCase();
-            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu') && i.title.toLowerCase().includes(term));
+            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu' || i.status === 'Joué' || i.status === 'Écouté') && i.title.toLowerCase().includes(term));
             window.renderPinList(filtered);
         };
 
@@ -1906,244 +1918,187 @@
             } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
         };
 
-        // --- FONCTIONS BLOQUER / RETIRER ---
+        window.unfollowUser = async (id) => {
+             if (confirm("Ne plus suivre ?")) {
+                 const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                 await updateDoc(ref, { following: arrayRemove(id) });
+             }
+        };
 
         window.removeFollower = async (targetUid) => {
-            if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
-            try {
-                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
-                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
-                alert("Utilisateur retiré.");
-                window.renderProfile();
-            } catch (e) { console.error(e); alert("Impossible de modifier le profil distant (permissions)."); }
+            if(!confirm("Retirer ?")) return;
+            alert("Action impossible directement.");
         };
 
-        window.blockUser = async (targetUid) => {
-            if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
-            try {
-                // 1. Force Unfollow (Kick)
-                try {
-                    const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
-                    await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
-                } catch(e) {}
-                
-                // 2. Add to blocked list (Ban)
-                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
-                
-                alert("Utilisateur bloqué.");
-                window.renderProfile();
-            } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
-        };
+    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MENU DÉROULANT --- */
+    window.friendData = [];
+    window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
 
-        // 3. Filtrer la recherche dans la modale
-        window.filterPinSelector = (query) => {
-            const term = query.toLowerCase();
-            const all = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
-            const filtered = all.filter(i => i.title.toLowerCase().includes(term));
-            window.renderPinList(filtered);
-        };
-
-        // 4. Sauvegarder le choix
-        window.savePin = async (itemData) => {
-            try {
-                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                let newPinned = window.userProfile.pinned || [null, null, null];
-                newPinned[window.currentPinSlot] = itemData; // itemData est null si on supprime
-                
-                await updateDoc(ref, { pinned: newPinned });
-                window.userProfile.pinned = newPinned; // Update local
-                
-                document.getElementById('pin-selector-modal').classList.remove('open');
-                window.renderProfile(); // Rafraîchir l'interface
-            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
-        };
+    window.openPublicProfile = async (uid) => {
+        if (!uid || uid === 'undefined') return;
+        if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
         
-    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION FIXÉE --- */
-window.friendData = [];
-window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
+        document.getElementById('public-profile-modal').classList.add('open');
+        const container = document.getElementById('public-profile-content');
+        container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
 
-window.openPublicProfile = async (uid) => {
-    if (!uid || uid === 'undefined') { console.error("ID manquant"); return; }
-    if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
-    
-    document.getElementById('public-profile-modal').classList.add('open');
-    const container = document.getElementById('public-profile-content');
-    container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
+        try {
+            // 1. Profil Ami
+            const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
+            if (!profSnap.exists()) throw new Error("User not found");
+            const prof = profSnap.data();
+            
+            // 2. Collection Ami
+            const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
+            window.friendData = itemsSnap.docs.map(d => d.data());
 
-    try {
-        const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
-        if (!profSnap.exists()) throw new Error("User not found");
-        const prof = profSnap.data();
-        
-        const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
-        window.friendData = itemsSnap.docs.map(d => d.data());
+            // 3. Status abonnement
+            const isFollowing = (window.userProfile.following || []).includes(uid);
+            
+            const bio = prof.bio || "";
+            const pinned = prof.pinned || [null, null, null];
+            const hasPinned = pinned.some(p => p !== null);
 
-        const iAmBlocked = (prof.blocked || []).includes(window.currentUser.uid);
-        const isFollowing = (window.following || []).includes(uid);
-        
-        const bio = prof.bio || "";
-        const pinned = prof.pinned || [null, null, null];
-        const hasPinned = pinned.some(p => p !== null);
+            let buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
 
-        let buttonHTML = '';
-        if (iAmBlocked) {
-            buttonHTML = `<button disabled class="bg-gray-200 text-gray-400 px-8 py-2.5 rounded-full font-bold mt-4 text-sm cursor-not-allowed"><i class="fa-solid fa-ban mr-1"></i> Bloqué</button>`;
-        } else {
-            buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
-        }
+            let html = `
+                <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
 
-        let html = `
-            <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
-
-            <div class="pt-24 bg-white relative z-10">
-                <div class="text-center px-6 pb-6 border-b border-gray-50">
-                    <div id="profile-toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-sm font-bold opacity-0 pointer-events-none transition-opacity duration-300 z-50"></div>
-                    <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
-                         ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
-                    </div>
-                    <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
-                    ${bio ? `<p class="bio-text mt-2">"${bio}"</p>` : ''}
-                    ${buttonHTML}
-
-                    ${hasPinned && !iAmBlocked ? `
-                        <div class="mt-8 mb-2 px-1 text-left"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Ses Coups de ❤️</span></div>
-                        <div class="pinned-grid">
-                            ${pinned.map(item => item ? `
-                                <div class="pinned-item filled">
-                                    <img src="${item.img}">
-                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
-                                </div>
-                            ` : `<div class="pinned-item opacity-20"></div>`).join('')}
+                <div class="pt-24 bg-white relative z-10">
+                    <div class="text-center px-6 pb-6 border-b border-gray-50">
+                        <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
+                             ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
                         </div>
-                    ` : ''}
-                </div>
-        `;
+                        <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
+                        ${bio ? `<p class="bio-text mt-2">"${bio}"</p>` : ''}
+                        ${buttonHTML}
 
-        if (!iAmBlocked) {
-            html += `
-                <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-2 shadow-sm">
-                    <div class="flex gap-6 px-6 border-b border-gray-100">
-                        <button onclick="window.switchFriendTab('Film')" id="f-tab-Film" class="pb-3 text-sm font-bold border-b-2 border-black">Films</button>
-                        <button onclick="window.switchFriendTab('Livre')" id="f-tab-Livre" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent">Livres</button>
-                        <button onclick="window.switchFriendTab('Série')" id="f-tab-Serie" class="pb-3 text-sm font-bold text-gray-400 border-b-2 border-transparent">Séries</button>
+                        ${hasPinned ? `
+                            <div class="mt-8 mb-2 px-1 text-left"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Ses Coups de ❤️</span></div>
+                            <div class="pinned-grid">
+                                ${pinned.map(item => item ? `<div class="pinned-item filled"><img src="${item.img}"><div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div></div>` : `<div class="pinned-item opacity-20"></div>`).join('')}
+                            </div>
+                        ` : ''}
                     </div>
-                    <div class="flex gap-2 px-6 py-3 overflow-x-auto no-scrollbar">
-                        <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap">Vu / Lu</button>
+
+                <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-4 pb-2 shadow-sm px-6">
+                    <div class="relative mb-3">
+                        <select id="friend-type-select" onchange="window.switchFriendTab(this.value)" class="w-full bg-gray-100 text-gray-800 font-bold text-sm rounded-xl p-3 pl-4 outline-none appearance-none border border-gray-200 focus:border-blue-500 transition-colors">
+                            <option value="Film">🎬 Films</option>
+                            <option value="Série">📺 Séries</option>
+                            <option value="Livre">📖 Livres</option>
+                            <option value="Album">🎵 Albums</option>
+                            <option value="YouTube">📹 YouTube</option>
+                            <option value="Jeu">🎮 Jeux</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pb-2 overflow-x-auto no-scrollbar">
+                        <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap shadow-sm">Terminé</button>
                         <button onclick="window.switchFriendStatus('Wishlist')" id="f-stat-Wishlist" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap">Wishlist</button>
                     </div>
-                    <div class="flex justify-between items-center px-6 py-2 bg-gray-50/50 border-b border-gray-100">
+                    
+                    <div class="flex justify-between items-center py-2 border-t border-gray-100 mt-1">
                         <span class="text-[10px] font-black uppercase text-gray-400 tracking-widest" id="friend-count-label">...</span>
-                        <button onclick="window.cycleFriendSort()" class="bg-gray-200 text-gray-800 px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"><i class="fa-solid fa-arrow-down-short-wide"></i><span id="friend-sort-label">Date</span></button>
                     </div>
                 </div>
                 <div id="friend-grid-content" class="px-4 py-4 min-h-[300px] pb-32"></div>
             </div>`; 
+
+            container.innerHTML = html;
+            
+            // Force la mise à jour visuelle du select
+            setTimeout(() => {
+                const sel = document.getElementById('friend-type-select');
+                if(sel) sel.value = window.friendState.type;
+                window.renderFriendGrid();
+            }, 50);
+
+        } catch (e) { 
+            console.error(e);
+            container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur de chargement.</div>`; 
         }
+    };
 
-        container.innerHTML = html;
-        if (!iAmBlocked) window.renderFriendGrid();
+    window.switchFriendTab = (type) => {
+        window.friendState.type = type;
+        window.renderFriendGrid();
+    };
 
-    } catch (e) { 
-        console.error(e);
-        container.innerHTML = `<div class="pt-40 text-center font-bold text-gray-400">Erreur de chargement.</div>`; 
-    }
-};
+    window.switchFriendStatus = (status) => {
+        window.friendState.status = status;
+        ['Vu', 'Wishlist'].forEach(s => {
+            const el = document.getElementById(`f-stat-${s}`);
+            if(el) {
+                if (s === status) { el.classList.remove('bg-gray-100', 'text-gray-500'); el.classList.add('bg-black', 'text-white'); }
+                else { el.classList.add('bg-gray-100', 'text-gray-500'); el.classList.remove('bg-black', 'text-white'); }
+            }
+        });
+        window.renderFriendGrid();
+    };
 
-// --- FONCTIONS DE NAVIGATION (INDISPENSABLES) ---
-window.switchFriendTab = (type) => {
-    window.friendState.type = type;
-    ['Film', 'Livre', 'Serie'].forEach(t => {
-        const el = document.getElementById(`f-tab-${t}`);
-        if(el) {
-            if (t === type || (t === 'Serie' && type === 'Série')) {
-                el.classList.remove('text-gray-400', 'border-transparent'); el.classList.add('text-black', 'border-black');
-            } else { el.classList.add('text-gray-400', 'border-transparent'); el.classList.remove('text-black', 'border-black'); }
-        }
-    });
-    window.renderFriendGrid();
-};
+    window.renderFriendGrid = () => {
+        const container = document.getElementById('friend-grid-content');
+        if(!container) return;
+        const targetStatus = window.friendState.status;
+        let filtered = window.friendData.filter(i => {
+            if(i.type !== window.friendState.type) return false;
+            if(targetStatus === 'Wishlist') return i.status === 'Wishlist';
+            return i.status !== 'Wishlist' && i.status !== 'En cours';
+        });
+        const label = document.getElementById('friend-count-label');
+        if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        if (filtered.length === 0) { container.innerHTML = `<div class="py-20 text-center opacity-40"><div class="font-bold text-sm text-gray-400">Aucun élément ici</div></div>`; return; }
+        container.innerHTML = `<div class="items-grid">${filtered.map(item => window.generateGridItemHTML(item)).join('')}</div>`;
+    };
 
-window.switchFriendStatus = (status) => {
-    window.friendState.status = status;
-    ['Vu', 'Wishlist'].forEach(s => {
-        const el = document.getElementById(`f-stat-${s}`);
-        if(el) {
-            if (s === status) { el.classList.remove('bg-gray-100', 'text-gray-500'); el.classList.add('bg-black', 'text-white'); }
-            else { el.classList.add('bg-gray-100', 'text-gray-500'); el.classList.remove('bg-black', 'text-white'); }
-        }
-    });
-    window.renderFriendGrid();
-};
+    window.toggleFollowFromProfile = async (uid) => {
+        const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+        const isFollowing = (window.userProfile.following || []).includes(uid);
+        try {
+            if (isFollowing) {
+                if(confirm("Ne plus suivre ?")) { 
+                    await updateDoc(myRef, { following: arrayRemove(uid) }); 
+                    window.openPublicProfile(uid); 
+                }
+            } else {
+                await updateDoc(myRef, { following: arrayUnion(uid) });
+                window.openPublicProfile(uid);
+            }
+        } catch (e) { console.error(e); }
+    };
 
-window.cycleFriendSort = () => {
-    const current = window.friendState.sort;
-    if (current === 'date') window.friendState.sort = 'rating';
-    else if (current === 'rating') window.friendState.sort = 'name';
-    else window.friendState.sort = 'date';
-    window.renderFriendGrid();
-};
+    window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
 
-window.renderFriendGrid = () => {
-    const container = document.getElementById('friend-grid-content');
-    if(!container) return;
-    const sortLabel = document.getElementById('friend-sort-label');
-    const map = { 'date': 'Date', 'rating': 'Note', 'name': 'Nom' };
-    if(sortLabel) sortLabel.innerText = map[window.friendState.sort];
-
-    let filtered = window.friendData.filter(i => i.type === window.friendState.type && (i.status === window.friendState.status || (window.friendState.status === 'Vu' && i.status === 'Lu')));
-    const label = document.getElementById('friend-count-label');
-    if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
-
-    const sortMode = window.friendState.sort;
-    filtered.sort((a, b) => {
-        if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
-        if (sortMode === 'name') return (a.title || '').localeCompare(b.title || '');
-        return (b.finishDate || b.lastUpdate || '0') > (a.finishDate || a.lastUpdate || '0') ? 1 : -1;
-    });
-
-    if (filtered.length === 0) {
-        container.innerHTML = `<div class="py-20 text-center opacity-40"><div class="font-bold text-sm text-gray-400">Aucun élément ici</div></div>`;
-        return;
-    }
-
-    container.innerHTML = `<div class="items-grid">${filtered.map(item => window.generateGridItemHTML(item)).join('')}</div>`;
-};
-
-window.toggleFollowFromProfile = async (uid) => {
-    const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-    const isFollowing = window.following.includes(uid);
-    try {
-        if (isFollowing) {
-            if(confirm("Ne plus suivre ?")) { await updateDoc(myRef, { following: arrayRemove(uid) }); window.openPublicProfile(uid); }
-        } else {
-            await updateDoc(myRef, { following: arrayUnion(uid) });
-            try { await addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), { type: 'follow', title: 'Nouvel abonné', message: `${window.userProfile.name} vous suit !`, timestamp: Date.now(), read: false, fromUid: window.currentUser.uid, img: window.userProfile.avatar || null }); } catch(e) {}
-            window.openPublicProfile(uid);
-        }
-    } catch (e) { console.error(e); }
-};
-
-window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
-
-        /* --- J.4 RENDU DES STATISTIQUES --- */
+        /* --- J.4 RENDU DES STATISTIQUES (AVEC 6 TYPES) --- */
         window.toggleStatsMode = (mode) => { window.extState.statsMode = mode; window.renderStatsView(); };
 
         window.renderStatsView = () => {
             const isYear = window.extState.statsMode === 'year';
-            const finished = window.myCollection.filter(i => (i.status === 'Lu' || i.status === 'Vu'));
+            const finished = window.myCollection.filter(i => i.status !== 'Wishlist' && i.status !== 'En cours');
             let filteredItems = finished;
             const curYear = new Date().getFullYear().toString();
-            if (isYear) { filteredItems = finished.filter(i => i.finishDate?.startsWith(curYear)); }
+            if (isYear) { filteredItems = finished.filter(i => (i.finishDate || i.date || '').startsWith(curYear)); }
 
-            const totalPages = filteredItems.filter(i => i.type === 'Livre').reduce((acc, i) => acc + (i.metricValue || 0), 0);
-            const totalMinutes = filteredItems.filter(i => i.type === 'Film').reduce((acc, i) => acc + (i.metricValue || 0), 0);
-            const totalSeasons = filteredItems.filter(i => i.type === 'Série').reduce((acc, i) => acc + (i.metricValue || 0), 0);
+            const sumMetric = (type) => filteredItems.filter(i => i.type === type).reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
+            const totalPages = sumMetric('Livre');
+            const totalMinutes = sumMetric('Film');
+            const totalSeasons = sumMetric('Série');
+            const totalTitres = sumMetric('Album');
+            const totalMinutesYT = sumMetric('YouTube');
+            const totalHeuresJeu = sumMetric('Jeu');
             
             const stats = [
-                { type: 'Film', icon: 'fa-film', color: '#AF52DE', done: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
-                { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', done: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${totalPages} pages` },
-                { type: 'Série', icon: 'fa-tv', color: '#34C759', done: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` }
+                { type: 'Film', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
+                { type: 'Série', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` },
+                { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${totalPages} pages` },
+                { type: 'Album', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${totalTitres} titres` },
+                { type: 'YouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
+                { type: 'Jeu', icon: 'fa-gamepad', color: '#10B981', count: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHeuresJeu}h` }
             ];
 
             document.getElementById('main-content').innerHTML = `
@@ -2152,8 +2107,13 @@ window.closePublicProfile = () => document.getElementById('public-profile-modal'
                     <div class="text-center mb-6">
                         <div class="stats-toggle"><button onclick="window.toggleStatsMode('year')" class="${isYear?'active':''}">Cette Année</button><button onclick="window.toggleStatsMode('all')" class="${!isYear?'active':''}">Depuis toujours</button></div>
                     </div>
-                    <div class="stat-card mb-8"><div class="font-black text-[10px] uppercase text-gray-400 mb-2">Total ${isYear ? curYear : 'Global'}</div><div class="text-2xl font-black text-blue-600">${filteredItems.length} terminés</div></div>
-                    ${stats.map(s => { const showGoal = isYear; const prog = Math.min(100, (s.done / (s.goal || 1)) * 100); return `<div class="stat-card"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div><div><div class="font-black text-sm">${s.type}s</div><div class="text-[10px] text-gray-400 font-bold uppercase">${s.done} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div></div></div>${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs">` : ''}</div>${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}<div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase"><span>${s.sub}</span>${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}</div></div>`; }).join('')}</div>`;
+                    <div class="stat-card mb-8"><div class="font-black text-[10px] uppercase text-gray-400 mb-2">Total ${isYear ? curYear : 'Global'}</div><div class="text-2xl font-black text-blue-600">${filteredItems.length} œuvres terminées</div></div>
+                    ${stats.map(s => { const showGoal = isYear; const prog = Math.min(100, (s.count / (s.goal || 1)) * 100); return `<div class="stat-card"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div><div><div class="font-black text-sm">${s.type}s</div><div class="text-[10px] text-gray-400 font-bold uppercase">${s.count} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div></div></div>${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('goal${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs">` : ''}</div>${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}<div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase"><span>${s.sub}</span>${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}</div></div>`; }).join('')}</div>`;
+        };
+
+        window.updateGoal = async (key, val) => {
+            const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+            await updateDoc(ref, { [key]: parseInt(val) });
         };
 
         /* --- J.5 INITIALISATION FINALE --- */
@@ -2165,7 +2125,6 @@ window.closePublicProfile = () => document.getElementById('public-profile-modal'
                     const data = snap.data();
                     const comments = data.comments || [];
                     const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp);
-                    
                     if (cIndex > -1) {
                         const comment = comments[cIndex];
                         let likes = comment.likes || [];
@@ -2179,8 +2138,7 @@ window.closePublicProfile = () => document.getElementById('public-profile-modal'
             } catch (e) { console.error("Erreur like commentaire", e); }
         };
 
-        console.log("MaBiblio Social Network v2.0 Ready");
-        // Si l'utilisateur est déjà chargé (cas du reload), on lance le rendu
+        console.log("MaBiblio v3.1 Fixed");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
