@@ -793,11 +793,27 @@
             window.refreshCurrentView();
         };
 
-      // -----------------------------------------------------------
-        // G. GESTION DES MODALES (RECHERCHE, MANUAL, PREVIEW, FEEDBACK)
-        // -----------------------------------------------------------
+    /* --- G.1 MOTEUR DE RECHERCHE (DEEZER NATIF JSONP - 100% CATALOGUE FR) --- */
+        
+        // Fonction utilitaire pour parler à Deezer en direct sans blocage (JSONP)
+        window.deezerJSONP = (url) => {
+            return new Promise((resolve, reject) => {
+                const callbackName = 'dz_cb_' + Math.round(100000 * Math.random());
+                const script = document.createElement('script');
+                
+                window[callbackName] = (data) => {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    resolve(data);
+                };
 
-      /* --- G.1 MOTEUR DE RECHERCHE (API ITUNES RETOUR) --- */
+                // On ajoute &output=jsonp pour que Deezer accepte la connexion
+                script.src = `${url}&output=jsonp&callback=${callbackName}`;
+                script.onerror = () => reject("Erreur Deezer");
+                document.body.appendChild(script);
+            });
+        };
+
         window.openSearchModal = () => {
             const modal = document.getElementById('search-modal');
             modal.classList.add('open');
@@ -850,6 +866,7 @@
             if (val.length < 3) return; 
             let results = []; 
             
+            // CLÉ YOUTUBE
             const YOUTUBE_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco"; 
             
             if (searchType === 'Jeu') {
@@ -858,24 +875,33 @@
             }
 
             try {
-                // --- CAS ALBUM (API ITUNES) ---
+                // --- CAS ALBUM (DEEZER VIA JSONP - LE VRAI CATALOGUE FR) ---
                 if (searchType === 'Album') {
-                    // On utilise corsproxy pour éviter les erreurs CORS en ligne
-                    const r = await fetch(`https://corsproxy.io/?` + encodeURIComponent(`https://itunes.apple.com/search?term=${val}&entity=album&limit=10`));
-                    const d = await r.json();
+                    // 1. Recherche via JSONP (Direct Deezer)
+                    const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(val)}&limit=10`);
                     
-                    results = (d.results || []).map(a => ({
-                        id: String(a.collectionId),
-                        title: a.collectionName,
-                        // On demande une image plus grande (600x600) au lieu de 100x100
-                        img: a.artworkUrl100 ? a.artworkUrl100.replace('100x100', '600x600') : '',
-                        desc: `Album • ${a.primaryGenreName}`,
-                        type: 'Album',
-                        releaseDate: a.releaseDate,
-                        metricValue: a.trackCount || 0,
-                        author: a.artistName,
-                        platform: 'Apple Music',
-                        subInfo: `${a.trackCount} titres`
+                    // 2. Récupération des détails (Tracklist) pour chaque album
+                    results = await Promise.all((d.data || []).map(async a => {
+                        let trackListHtml = "Titres indisponibles";
+                        try {
+                            const details = await window.deezerJSONP(`https://api.deezer.com/album/${a.id}?`);
+                            if (details && details.tracks && details.tracks.data) {
+                                trackListHtml = details.tracks.data.slice(0, 5).map((t, i) => `${i+1}. ${t.title}`).join('<br>');
+                            }
+                        } catch(e) {}
+
+                        return {
+                            id: String(a.id),
+                            title: a.title,
+                            img: a.cover_xl || a.cover_medium,
+                            desc: trackListHtml, // On stocke la liste des titres ici
+                            type: 'Album',
+                            releaseDate: a.release_date,
+                            metricValue: a.nb_tracks || 0,
+                            author: a.artist ? a.artist.name : 'Inconnu',
+                            platform: 'Deezer',
+                            subInfo: `${a.nb_tracks} titres`
+                        };
                     }));
                 }
 
@@ -921,7 +947,7 @@
 
                 // --- CAS LIVRE ---
                 else if (searchType === 'Livre') { 
-                    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10`); 
+                    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10&langRestrict=fr`); 
                     const d = await r.json(); 
                     results = (d.items || []).map(b => ({ 
                         id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
