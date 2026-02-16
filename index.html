@@ -825,12 +825,12 @@
                 container.innerHTML = `
                 <div class="relative w-full mb-2">
                     <select id="search-type-select" onchange="window.setSearchType(this.value)" class="w-full bg-gray-100 text-gray-800 font-bold text-sm rounded-xl p-3 pl-4 outline-none appearance-none border border-transparent focus:bg-white focus:border-blue-500 transition-all">
-                        <option value="Film">🎬 Film</option>
-                        <option value="Série">📺 Série</option>
-                        <option value="Livre">📖 Livre</option>
-                        <option value="Album">🎵 Album</option>
-                        <option value="YouTube">📹 YouTube</option>
-                        <option value="Jeu">🎮 Jeu</option>
+                        <option value="Film"> Film</option>
+                        <option value="Série"> Série</option>
+                        <option value="Livre"> Livre</option>
+                        <option value="Album"> Album</option>
+                        <option value="YouTube"> YouTube</option>
+                        <option value="Jeu"> Jeu</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
                         <i class="fa-solid fa-chevron-down text-xs"></i>
@@ -1413,102 +1413,96 @@
         // Ancienne fonction conservée pour éviter les erreurs si appelée ailleurs
         window.followUser = async () => {};
 
-        /* ==================================================================
-           H.2 : SOCIAL - FEED & NOTIFICATIONS
-           Affichage du fil d'actualité et Centre de notifications
-           ================================================================== */
+     /* ==================================================================
+   H.2 : SOCIAL - FEED & NOTIFICATIONS (DESIGN IOS ÉPURÉ)
+   ================================================================== */
+
+    /* --- INITIALISATION --- */
+    if (!window.feedFilters) window.feedFilters = ['All']; 
 
     /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
-        window.renderSocialFeed = () => {
-            const focusedId = document.activeElement ? document.activeElement.id : null;
-            const focusedVal = focusedId ? document.activeElement.value : null;
-            const container = document.getElementById('main-content');
-            
-            // Bloc Recherche Ami
-            const searchBlock = `
-                <div class="relative mb-8">
-                    <div class="bg-white p-3 rounded-2xl shadow-sm flex items-center gap-3 border border-gray-100">
-                        <i class="fa-solid fa-magnifying-glass text-gray-400 ml-2"></i>
-                        <input id="user-search-input" type="text" placeholder="Chercher un ami..." class="flex-1 bg-transparent outline-none font-bold text-sm text-gray-800 placeholder-gray-400" oninput="window.handleUserSearch(this.value)">
-                    </div>
-                    <div id="user-search-results" class="mt-2"></div>
+    window.renderSocialFeed = () => {
+        const focusedId = document.activeElement ? document.activeElement.id : null;
+        const focusedVal = focusedId ? document.activeElement.value : null;
+        const container = document.getElementById('main-content');
+        
+        const activeFilterCount = window.feedFilters.includes('All') ? 0 : window.feedFilters.length;
+        
+        const searchBlock = `
+            <div class="flex gap-3 mb-4 items-center relative z-10">
+                <div class="flex-1 bg-white/80 backdrop-blur-md p-3 rounded-2xl shadow-sm flex items-center gap-3 border border-gray-100/50 transition-all focus-within:bg-white focus-within:shadow-md">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400 ml-2"></i>
+                    <input id="user-search-input" type="text" placeholder="Chercher un ami..." class="flex-1 bg-transparent outline-none font-bold text-sm text-gray-800 placeholder-gray-400" oninput="window.handleUserSearch(this.value)">
                 </div>
-            `;
+                
+                <button onclick="window.openFeedFilterModal()" class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border transition-all active:scale-95 ${activeFilterCount > 0 ? 'bg-blue-600 text-white border-blue-600 shadow-blue-200' : 'bg-white/80 backdrop-blur-md text-gray-400 border-gray-100/50 hover:bg-white'}">
+                    <i class="fa-solid fa-filter"></i>
+                    ${activeFilterCount > 0 ? `<div class="absolute top-0 right-0 -mt-1 -mr-1 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center text-white font-bold border-2 border-white">${activeFilterCount}</div>` : ''}
+                </button>
+            </div>
+            <div id="user-search-results" class="mb-4"></div>
+        `;
 
-            let feedHtml = '';
-            
-            if (window.socialFeed && window.socialFeed.length > 0) {
-                const sortedFeed = [...window.socialFeed].sort((a,b) => b.timestamp - a.timestamp);
+        let feedHtml = '';
+        
+        if (window.socialFeed && window.socialFeed.length > 0) {
+            let sortedFeed = [...window.socialFeed].sort((a,b) => b.timestamp - a.timestamp);
+            if (!window.feedFilters.includes('All')) {
+                sortedFeed = sortedFeed.filter(act => window.feedFilters.includes(act.type));
+            }
 
+            if (sortedFeed.length > 0) {
                 sortedFeed.forEach(act => {
                     const likes = act.likes || [];
                     const isLiked = likes.includes(window.currentUser.uid);
                     const commentsCount = (act.comments || []).length;
                     
-                    // Icône selon le type
-                    let typeIcon = 'fa-film';
-                    if (act.type === 'Livre') typeIcon = 'fa-book';
-                    if (act.type === 'Série') typeIcon = 'fa-tv';
-                    if (act.type === 'Album') typeIcon = 'fa-music';
-                    if (act.type === 'YouTube') typeIcon = 'fa-youtube';
-                    if (act.type === 'Jeu') typeIcon = 'fa-gamepad';
-
-                    // --- LOGIQUE FORMAT MINIATURE (DESIGN ADAPTATIF) ---
-                    let thumbClass = 'w-16 h-24'; // Format Poster (défaut: Film, Série, Livre)
-                    if (act.type === 'Album') thumbClass = 'w-20 h-20'; // Carré pour Musique
-                    if (act.type === 'YouTube') thumbClass = 'w-32 h-20'; // 16:9 pour Vidéo
-                    // --------------------------------------------------
-
-                    // Texte des likes
+                    let typeIcon = 'fa-film'; if (act.type === 'Livre') typeIcon = 'fa-book'; if (act.type === 'Série') typeIcon = 'fa-tv'; if (act.type === 'Album') typeIcon = 'fa-music'; if (act.type === 'YouTube') typeIcon = 'fa-youtube'; if (act.type === 'Jeu') typeIcon = 'fa-gamepad';
+                    let thumbClass = 'w-16 h-24'; if (act.type === 'Album') thumbClass = 'w-20 h-20'; if (act.type === 'YouTube') thumbClass = 'w-32 h-20'; 
                     let likesText = likes.length > 0 ? (likes.length === 1 ? `1 J'aime` : `${likes.length} J'aime`) : 'J\'aime';
 
-                    // Têtes des likeurs (Avatar ou Initiale)
                     let facesHtml = '';
                     if(likes.length > 0) {
                         const firstLikers = likes.slice(0, 3);
                         facesHtml = '<div class="flex -space-x-2 mr-2">';
                         firstLikers.forEach(uid => {
-                            let avatarUrl = '';
-                            if(uid === window.currentUser.uid) { avatarUrl = window.userProfile.avatar; } 
-                            else { const friend = (window.followingData || []).find(u => u.uid === uid || u.id === uid); if(friend) avatarUrl = friend.avatar; }
-                            
-                            if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover">`; } 
-                            else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-200 flex items-center justify-center text-[8px] text-gray-500"><i class="fa-solid fa-user"></i></div>`; }
+                            let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
+                            if(uid === window.currentUser.uid) u = window.userProfile;
+                            const avatarUrl = u ? u.avatar : '';
+                            if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover shadow-sm">`; } 
+                            else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 shadow-sm"><i class="fa-solid fa-user"></i></div>`; }
                         });
                         facesHtml += '</div>';
                     }
 
-                    const previewData = {
-                        id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: act.metricValue || 0,
-                        desc: act.itemDesc || `Noté ${act.rating}/10 par ${act.userName}. ${act.comment || ''}`, platform: act.platform, releaseDate: null 
-                    };
+                    const previewData = { id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: act.metricValue || 0, desc: act.itemDesc || '', platform: act.platform, releaseDate: null };
                     const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
                     const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${act.platform}</span>` : '';
 
                     feedHtml += `
-                    <div class="bg-white rounded-2xl p-5 mb-6 shadow-sm border border-gray-50" id="act-${act.id}">
+                    <div class="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-5 mb-6 shadow-sm border border-gray-100/50 transition-all hover:shadow-md" id="act-${act.id}">
                         <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${act.userId}')">
-                                <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-black overflow-hidden border border-white shadow-sm">
+                            <div class="flex items-center gap-3 cursor-pointer group" onclick="window.openPublicProfile('${act.userId}')">
+                                <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center font-black overflow-hidden border border-white shadow-sm group-hover:scale-105 transition-transform">
                                     ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="font-bold text-sm text-gray-900 leading-tight">${act.userName}</span>
+                                    <span class="font-bold text-sm text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">${act.userName}</span>
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="text-[10px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
-                                        <span class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[9px] font-black uppercase flex items-center gap-1">
+                                        <span class="bg-gray-100/80 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-black uppercase flex items-center gap-1 border border-gray-50">
                                             <i class="fa-solid ${typeIcon}"></i> ${act.type} ${platformBadge}
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="text-gray-300 hover:text-red-500 p-2"><i class="fa-solid fa-trash-can text-xs"></i></button>` : ''}
+                            ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>` : ''}
                         </div>
 
-                        <div class="flex gap-4 bg-gray-50 rounded-xl p-3 mb-4 cursor-pointer group hover:bg-gray-100 transition-colors" onclick='window.openPreview(${previewJson})'>
-                            <div class="relative ${thumbClass} shrink-0 rounded-lg overflow-hidden shadow-sm group-active:scale-95 transition-transform">
+                        <div class="flex gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick='window.openPreview(${previewJson})'>
+                            <div class="relative ${thumbClass} shrink-0 rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
                                 <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200">
-                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-sm">${act.rating || '-'}</div>
+                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-md">${act.rating || '-'}</div>
                             </div>
                             <div class="flex-1 py-1 min-w-0">
                                 <h3 class="font-black text-sm text-gray-900 leading-tight mb-1 truncate">${act.itemTitle}</h3>
@@ -1518,12 +1512,12 @@
                             </div>
                         </div>
                         
-                        <div class="flex items-center justify-between pl-1 pr-1 border-t border-gray-50 pt-3">
+                        <div class="flex items-center justify-between pl-1 pr-1 border-t border-gray-50/50 pt-3">
                             <div class="flex items-center gap-4">
-                                <button onclick="window.toggleLike('${act.id}')" class="flex items-center gap-2 transition-all active:scale-90 group">
-                                    <i class="${isLiked ? 'fa-solid text-red-500' : 'fa-regular text-gray-400'} fa-heart text-xl group-hover:text-red-400"></i>
+                                <button onclick="window.toggleLike('${act.id}')" class="flex items-center gap-2 transition-all active:scale-75 group">
+                                    <i class="${isLiked ? 'fa-solid text-red-500 drop-shadow-sm' : 'fa-regular text-gray-400'} fa-heart text-xl group-hover:text-red-400 transition-colors"></i>
                                 </button>
-                                <button onclick="window.openCommentModal('${act.id}')" class="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition-colors">
+                                <button onclick="window.openCommentModal('${act.id}')" class="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition-colors active:scale-90">
                                     <i class="fa-regular fa-comment text-xl"></i>
                                 </button>
                             </div>
@@ -1541,236 +1535,243 @@
                         </div>
                     </div>`
                 });
-                
-                container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="space-y-4">${feedHtml}</div></div>`;
-
             } else {
-                container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="text-center py-20 opacity-50"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl"><i class="fa-solid fa-user-group"></i></div><p class="font-bold text-gray-400 text-sm">Votre fil d'actualité est vide.</p></div></div>`;
+                 feedHtml = `<div class="text-center py-10 opacity-50 text-sm text-gray-400">Aucun post ne correspond à ces filtres.</div>`;
             }
+            container.innerHTML = `<div class="pt-24 px-5 pb-32 relative"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="space-y-4">${feedHtml}</div></div>`;
+        } else {
+            container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="text-center py-20 opacity-50"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl"><i class="fa-solid fa-user-group"></i></div><p class="font-bold text-gray-400 text-sm">Votre fil d'actualité est vide.</p></div></div>`;
+        }
+        if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
+    };
 
-            if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
-        };
+    /* --- LOGIQUE DU POP-UP FILTRE (DESIGN ACTION SHEET IOS) --- */
+    window.openFeedFilterModal = () => {
+        const types = ['Film', 'Série', 'Livre', 'Album', 'YouTube', 'Jeu'];
+        const labels = { 'Film': 'Films', 'Série': 'Séries', 'Livre': 'Livres', 'Album': 'Albums', 'YouTube': 'YouTube', 'Jeu': 'Jeux' };
+        const isAll = window.feedFilters.includes('All');
 
-        /* --- 2. POPUP DES LIKES --- */
-        window.showLikesList = (actId) => {
-            const act = window.socialFeed.find(a => a.id === actId);
-            if(!act || !act.likes || act.likes.length === 0) return;
-
-            const overlay = document.createElement('div');
-            overlay.className = 'fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-6 animate-fade-in';
-            overlay.id = 'likes-popup-overlay';
-            
-            overlay.onclick = (e) => { if (e.target === overlay) document.body.removeChild(overlay); };
-
-            let listHtml = '';
-            act.likes.forEach(uid => {
-                let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
-                if (uid === window.currentUser.uid) u = window.userProfile;
-                const name = u ? u.name : 'Utilisateur';
-                const avatar = u && u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-500 text-xs">${name[0]}</span>`;
-
-                listHtml += `
-                    <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg px-2" onclick="document.body.removeChild(document.getElementById('likes-popup-overlay')); window.openPublicProfile('${uid}')">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-50">
-                                ${avatar}
-                            </div>
-                            <span class="font-bold text-sm text-gray-900">${name}</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            overlay.innerHTML = `<div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100"><div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h3 class="font-black text-sm uppercase text-gray-500 tracking-wider">Aimé par</h3><button onclick="document.body.removeChild(document.getElementById('likes-popup-overlay'))" class="text-gray-400 hover:text-black"><i class="fa-solid fa-xmark"></i></button></div><div class="p-3 max-h-[50vh] overflow-y-auto">${listHtml}</div></div>`;
-            document.body.appendChild(overlay);
-        };
-
-        /* --- 3. CENTRE DE NOTIFICATIONS --- */
-        window.openNotifications = async () => {
-            window.currentView = 'notifications';
-            document.getElementById('app-header').style.display = 'none'; 
-            
-            // A. Reset visuel immédiat (Badge)
-            const badge = document.getElementById('notif-badge');
-            if(badge) {
-                badge.innerText = '0';
-                badge.classList.remove('active');
-            }
-
-            // B. Reset Base de Données (Marquer comme lu)
-            // On prend toutes les notifs non lues qui ont un ID valide
-            const unreadNotifs = (window.extState.notifications || []).filter(n => !n.read && n.id);
-            if(unreadNotifs.length > 0) {
-                const batch = writeBatch(db);
-                unreadNotifs.forEach(n => {
-                    const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id);
-                    batch.update(ref, { read: true });
-                });
-                try { await batch.commit(); } catch(e) { console.error("Err reset notif", e); }
-            }
-
-            const container = document.getElementById('main-content');
-            // On trie pour avoir les plus récentes en haut
-            const notifs = (window.extState.notifications || []).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
-
-            container.innerHTML = `
-                <div class="pt-10 px-6 pb-32">
-                    <div class="flex items-center gap-4 mb-6">
-                        <button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
-                        <h1 class="text-3xl font-black">Activité</h1>
-                    </div>
-                    
-                    ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
-                    
-                    ${notifs.map(n => {
-                        // LOGIQUE D'AFFICHAGE SELON LE TYPE
-                        const isFollow = n.type === 'follow';
-                        
-                        const action = isFollow 
-                            ? `window.openPublicProfile('${n.fromUid}')` 
-                            : `window.goToActivity('${n.actId}')`;
-
-                        let icon = '';
-                        let color = '';
-                        
-                        if (isFollow) {
-                            icon = '<i class="fa-solid fa-user-plus"></i>';
-                            color = 'text-green-500'; 
-                        } else if (n.type && n.type.includes('like')) {
-                            icon = '<i class="fa-solid fa-heart"></i>';
-                            color = 'text-red-500';
-                        } else if (n.type === 'mention') {
-                            icon = '<i class="fa-solid fa-at"></i>';
-                            color = 'text-purple-500';
-                        } else {
-                            icon = '<i class="fa-solid fa-comment"></i>';
-                            color = 'text-blue-600';
-                        }
-
-                        const content = isFollow 
-                            ? `<span class="font-bold text-gray-800">${n.message}</span>`
-                            : `<span class="font-black">${n.user}</span> ${n.text}`;
-
-                        const subText = isFollow
-                            ? 'Voir le profil'
-                            : `Sur ${n.itemTitle || 'un post'}`;
-
-                        const timeDisplay = new Date(n.time || n.timestamp).toLocaleDateString();
-
-                        return `
-                        <div class="notif-item cursor-pointer flex items-start gap-3 py-3 border-b border-gray-50" onclick="${action}">
-                            <div class="notif-icon ${color} text-lg w-8 pt-1">
-                                ${icon}
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-sm leading-tight">${content}</div>
-                                <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">
-                                    ${subText} • ${timeDisplay}
-                                </div>
-                            </div>
-                            ${!n.read ? '<div class="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>' : ''}
-                        </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        };
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[100] flex items-end bg-black/30 backdrop-blur-sm transition-opacity duration-300 opacity-0';
+        overlay.id = 'filter-popup-overlay';
         
-        /* --- 4. GESTION DES LIKES DE COMMENTAIRES --- */
-        window.toggleCommentLike = async (actId, commentTimestamp) => {
-            const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
-            try {
-                const snap = await getDoc(actRef);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const comments = data.comments || [];
-                    const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp);
-                    
-                    if (cIndex > -1) {
-                        const comment = comments[cIndex];
-                        let likes = comment.likes || [];
-                        const uid = window.currentUser.uid;
-                        let isNewLike = false;
+        // Animation d'entrée
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0');
+            overlay.querySelector('.action-sheet').classList.remove('translate-y-full');
+        }, 10);
 
-                        if (likes.includes(uid)) { 
-                            likes = likes.filter(id => id !== uid); 
-                        } else { 
-                            likes.push(uid); 
-                            isNewLike = true;
-                        }
-                        
-                        comment.likes = likes;
-                        comments[cIndex] = comment;
-                        await updateDoc(actRef, { comments: comments });
+        const close = () => {
+            overlay.classList.add('opacity-0');
+            overlay.querySelector('.action-sheet').classList.add('translate-y-full');
+            setTimeout(() => document.body.removeChild(overlay), 300);
+        };
+        overlay.onclick = (e) => { if(e.target === overlay) close(); };
 
-                        if (isNewLike && comment.userId !== window.currentUser.uid) {
-                            window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId);
-                        }
-                    }
-                }
-            } catch (e) { console.error("Erreur like commentaire", e); }
+        const generateButtons = () => {
+            return types.map(t => {
+                const isActive = window.feedFilters.includes(t);
+                return `<button onclick="window.toggleFeedFilterFromModal('${t}')" class="w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}"><span>${labels[t]}</span>${isActive ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}</button>`;
+            }).join('');
         };
 
-        window.deleteComment = async (actId, commentTimestamp) => {
-             if(!confirm("Supprimer ce commentaire ?")) return;
-             const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
-             try {
-                const snap = await getDoc(actRef);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const newComments = (data.comments || []).filter(c => c.timestamp !== commentTimestamp);
-                    await updateDoc(actRef, { comments: newComments });
-                }
-             } catch(e) { console.error(e); }
-        };
-
-        window.deleteActivity = async (actId) => {
-            if(!confirm("Supprimer ce post ?")) return;
-            try {
-                // On utilise la variable appId globale (définie en haut du fichier)
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
+        overlay.innerHTML = `
+            <div class="action-sheet w-full bg-white/90 backdrop-blur-xl rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 transform transition-transform duration-300 translate-y-full pb-safe">
+                <div class="w-12 h-1 bg-gray-300/50 rounded-full mx-auto mb-6"></div>
+                <h3 class="text-center font-black text-xl mb-6">Filtrer le flux</h3>
                 
-                // On met à jour l'affichage localement sans recharger la page
-                if(window.socialFeed) {
-                    window.socialFeed = window.socialFeed.filter(a => a.id !== actId);
-                    window.renderSocialFeed();
-                }
-            } catch (e) { 
-                console.error("Erreur suppression", e);
-                alert("Impossible de supprimer : " + e.message);
+                <div class="space-y-2 mb-6">
+                    <button onclick="window.toggleFeedFilterFromModal('All')" id="btn-filter-all" class="w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isAll ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}"><span>Tout voir</span>${isAll ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}</button>
+                    <div class="space-y-2" id="filter-list">${generateButtons()}</div>
+                </div>
+
+                <button onclick="window.applyFeedFilters()" class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-base shadow-lg shadow-blue-200/50 active:scale-95 transition-transform">
+                    Afficher (${isAll ? 'Tout' : window.feedFilters.length})
+                </button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        window.currentFilterOverlay = overlay; // Référence pour la fermeture
+    };
+
+    window.toggleFeedFilterFromModal = (type) => {
+        if (type === 'All') { window.feedFilters = ['All']; } 
+        else {
+            if (window.feedFilters.includes('All')) window.feedFilters = [];
+            if (window.feedFilters.includes(type)) { window.feedFilters = window.feedFilters.filter(t => t !== type); } 
+            else { window.feedFilters.push(type); }
+            if (window.feedFilters.length === 0) window.feedFilters = ['All'];
+        }
+
+        // Mise à jour visuelle in-place
+        const isAll = window.feedFilters.includes('All');
+        const overlay = window.currentFilterOverlay;
+        if(!overlay) return;
+
+        overlay.querySelector('#btn-filter-all').className = `w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isAll ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}`;
+        overlay.querySelector('#btn-filter-all').innerHTML = `<span>Tout voir</span>${isAll ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}`;
+        
+        const types = ['Film', 'Série', 'Livre', 'Album', 'YouTube', 'Jeu'];
+        const labels = { 'Film': 'Films', 'Série': 'Séries', 'Livre': 'Livres', 'Album': 'Albums', 'YouTube': 'YouTube', 'Jeu': 'Jeux' };
+        overlay.querySelector('#filter-list').innerHTML = types.map(t => {
+            const isActive = window.feedFilters.includes(t);
+            return `<button onclick="window.toggleFeedFilterFromModal('${t}')" class="w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}"><span>${labels[t]}</span>${isActive ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}</button>`;
+        }).join('');
+        
+        overlay.querySelector('button.bg-blue-600').innerHTML = `Afficher (${isAll ? 'Tout' : window.feedFilters.length})`;
+    };
+
+    window.applyFeedFilters = () => {
+        const overlay = window.currentFilterOverlay;
+        if(overlay) {
+             overlay.classList.add('opacity-0');
+             overlay.querySelector('.action-sheet').classList.add('translate-y-full');
+             setTimeout(() => document.body.removeChild(overlay), 300);
+        }
+        window.renderSocialFeed();
+    };
+
+    /* --- 2. FONCTION TOGGLE LIKE --- */
+    window.toggleLike = async (actId) => {
+        if (!window.currentUser) return;
+        const appId = 'mabiblio-dc595'; 
+        const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+        try {
+            const snap = await getDoc(actRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                let likes = data.likes || [];
+                const uid = window.currentUser.uid;
+                if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); if (data.userId !== uid) { window.sendNotification(data.userId, 'like', `a aimé votre activité sur ${data.itemTitle}`, data.itemTitle, actId); } }
+                await updateDoc(actRef, { likes: likes });
             }
-        };
+        } catch (e) { console.error(e); }
+    };
+
+    /* --- 3. POPUP DES LIKES (DESIGN IOS ÉPURÉ) --- */
+    window.showLikesList = (actId) => {
+        const act = window.socialFeed.find(a => a.id === actId);
+        if(!act || !act.likes || act.likes.length === 0) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/30 backdrop-blur-sm transition-opacity duration-300 opacity-0';
+        overlay.id = 'likes-popup-overlay';
+        
+        setTimeout(() => { overlay.classList.remove('opacity-0'); overlay.querySelector('.modal-box').classList.remove('scale-95', 'opacity-0'); }, 10);
+        const close = () => { overlay.classList.add('opacity-0'); overlay.querySelector('.modal-box').classList.add('scale-95', 'opacity-0'); setTimeout(() => document.body.removeChild(overlay), 300); };
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+        let listHtml = act.likes.map(uid => {
+            let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
+            if (uid === window.currentUser.uid) u = window.userProfile;
+            const name = u ? u.name : 'Utilisateur';
+            const avatar = u && u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-400 text-xs">${name[0]}</span>`;
+            return `<div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition-colors active:scale-98" onclick="window.openPublicProfile('${uid}'); close()"><div class="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-50 shadow-sm">${avatar}</div><span class="font-bold text-sm text-gray-900">${name}</span></div>`;
+        }).join('');
+
+        overlay.innerHTML = `
+            <div class="modal-box bg-white/95 backdrop-blur-xl w-full max-w-xs rounded-[2rem] shadow-2xl overflow-hidden transform transition-all duration-300 scale-95 opacity-0">
+                <div class="px-6 py-5 border-b border-gray-100/50 flex justify-between items-center">
+                    <h3 class="font-black text-base">Aimé par</h3>
+                    <button class="w-8 h-8 bg-gray-100/80 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors active:scale-90"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="p-3 max-h-[50vh] overflow-y-auto space-y-1">${listHtml}</div>
+            </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('button').onclick = close;
+    };
+
+    /* --- 4. CENTRE DE NOTIFICATIONS --- */
+    window.openNotifications = async () => {
+        window.currentView = 'notifications';
+        const h = document.getElementById('app-header'); if(h) h.style.display = 'none'; 
+        const badge = document.getElementById('notif-badge'); if(badge) { badge.innerText = '0'; badge.classList.remove('active'); badge.style.opacity = '0'; badge.style.transform = 'scale(0)'; }
+        const unreadNotifs = (window.extState.notifications || []).filter(n => !n.read && n.id);
+        if(unreadNotifs.length > 0) { const batch = writeBatch(db); unreadNotifs.forEach(n => { const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id); batch.update(ref, { read: true }); }); try { await batch.commit(); } catch(e) { console.error(e); } }
+        const container = document.getElementById('main-content');
+        const notifs = (window.extState.notifications || []).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
+        container.innerHTML = `<div class="pt-10 px-6 pb-32"><div class="flex items-center gap-4 mb-6"><button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button><h1 class="text-3xl font-black">Activité</h1></div>${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}${notifs.map(n => { const isFollow = n.type === 'follow'; const action = isFollow ? `window.openPublicProfile('${n.fromUid}')` : `window.openCommentModal('${n.actId}')`; let icon = '<i class="fa-solid fa-comment"></i>'; let color = 'text-blue-600'; if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'text-green-500'; } else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'text-red-500'; } else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'text-purple-500'; } const content = isFollow ? `<span class="font-bold text-gray-800">${n.message}</span>` : `<span class="font-black">${n.user || 'Quelqu\'un'}</span> ${n.text || n.message}`; const subText = isFollow ? 'Voir le profil' : `Sur ${n.itemTitle || 'un post'}`; return `<div class="notif-item cursor-pointer flex items-start gap-3 py-3 border-b border-gray-50" onclick="${action}"><div class="notif-icon ${color} text-lg w-8 pt-1">${icon}</div><div class="flex-1"><div class="text-sm leading-tight">${content}</div><div class="text-[10px] text-gray-400 font-bold uppercase mt-1">${subText} • ${new Date(n.time || n.timestamp).toLocaleDateString()}</div></div>${!n.read ? '<div class="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>' : ''}</div>`; }).join('')}</div>`;
+    };
+    
+    /* --- 5. FONCTIONS UTILITAIRES (LIKES COMMENTAIRES, DELETE, NOTIFS) --- */
+    window.toggleCommentLike = async (actId, commentTimestamp) => {
+        const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+        try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const comments = data.comments || []; const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp); if (cIndex > -1) { const comment = comments[cIndex]; let likes = comment.likes || []; const uid = window.currentUser.uid; let isNewLike = false; if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); isNewLike = true; } comment.likes = likes; comments[cIndex] = comment; await updateDoc(actRef, { comments: comments }); if (isNewLike && comment.userId !== window.currentUser.uid) { window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId); } } } } catch (e) { console.error(e); }
+    };
+    window.deleteComment = async (actId, commentTimestamp) => { if(!confirm("Supprimer ce commentaire ?")) return; const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId); try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const newComments = (data.comments || []).filter(c => c.timestamp !== commentTimestamp); await updateDoc(actRef, { comments: newComments }); } } catch(e) { console.error(e); } };
+    window.deleteActivity = async (actId) => { if(!confirm("Supprimer ce post ?")) return; try { const appId = 'mabiblio-dc595'; await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId)); if(window.socialFeed) { window.socialFeed = window.socialFeed.filter(a => a.id !== actId); window.renderSocialFeed(); } } catch (e) { console.error(e); } };
+    window.sendNotification = async (targetUid, type, text, itemTitle, actId) => { try { const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'); await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null }); } catch(e) { console.error(e); } };
 
        // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
         
-        /* --- I.1 INJECTION UI DYNAMIQUE (HEADER & NOTIFS) --- */
+       /* --- I.1 INJECTION UI DYNAMIQUE (HEADER & NOTIFS + BOUTON GRILLE) --- */
         // On adapte l'injection pour le nouveau Header avec Select
         const header = document.getElementById('app-header');
         const selectWrapper = document.querySelector('.header-select-wrapper');
 
         if (header && selectWrapper) {
-            // 1. Création de la ligne du haut (Titre Déroulant + Cloche)
+            // 1. Création de la ligne du haut (Titre Déroulant + Icons Droite)
             const topRow = document.createElement('div');
             topRow.style.display = 'flex';
-            topRow.style.justifyContent = 'space-between';
+            topRow.style.justifyContent = 'space-between'; // Écarte le titre (gauche) du groupe droite
             topRow.style.alignItems = 'center';
             topRow.style.width = '100%';
             topRow.style.marginBottom = '5px';
 
-            // On déplace le menu déroulant dans cette ligne
+            // On déplace le menu déroulant dans cette ligne (Gauche)
             header.insertBefore(topRow, selectWrapper);
             topRow.appendChild(selectWrapper);
-            selectWrapper.style.flex = "1"; // Le titre prend toute la place gauche
+            
+            // --- CORRECTION FLÈCHE ---
+            selectWrapper.style.flex = "none"; 
+            selectWrapper.style.width = "auto"; 
+            selectWrapper.style.display = "flex";
+            selectWrapper.style.alignItems = "center";
+            // -------------------------
 
-            // Ajout de la cloche de notification
+            // 2. Création d'un groupe pour la Droite (Bouton Grille + Cloche)
+            const rightGroup = document.createElement('div');
+            rightGroup.style.display = 'flex';
+            rightGroup.style.alignItems = 'center';
+            rightGroup.style.gap = '10px'; // Espace entre le carré et la cloche
+
+            // --- A. NOUVEAU BOUTON CARRÉ (GRILLE) ---
+            const gridBtn = document.createElement('div');
+            // Style Carré type iOS
+            gridBtn.style.width = '32px';
+            gridBtn.style.height = '32px';
+            gridBtn.style.borderRadius = '10px'; // Carré arrondi
+            gridBtn.style.backgroundColor = '#F3F4F6'; // Gris clair
+            gridBtn.style.display = 'flex';
+            gridBtn.style.alignItems = 'center';
+            gridBtn.style.justifyContent = 'center';
+            gridBtn.style.cursor = 'pointer';
+            gridBtn.style.border = '1px solid rgba(0,0,0,0.05)';
+            gridBtn.innerHTML = '<i class="fa-solid fa-border-all" style="font-size: 14px; color: black;"></i>';
+            
+            gridBtn.onclick = () => {
+                // Animation clic
+                gridBtn.style.transform = "scale(0.9)";
+                setTimeout(() => gridBtn.style.transform = "scale(1)", 150);
+                // Action
+                if(window.cycleGridCols) window.cycleGridCols();
+            };
+
+            // --- B. LA CLOCHE (TON CODE D'ORIGINE) ---
             const notifBtn = document.createElement('div');
             notifBtn.className = 'notif-btn';
-            notifBtn.style.marginLeft = '15px'; // Espace entre titre et cloche
+            // On garde ton style et ta structure exacte
             notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
             notifBtn.onclick = () => window.openNotifications();
-            topRow.appendChild(notifBtn);
+
+            // On ajoute les deux éléments dans le groupe de droite
+            rightGroup.appendChild(gridBtn);
+            rightGroup.appendChild(notifBtn);
+
+            // On ajoute le groupe au header
+            topRow.appendChild(rightGroup);
         }
 
         /* --- I.2 SYSTÈME DE TRI & FILTRES --- */
@@ -1803,10 +1804,34 @@
         // J. FONCTIONS DE RENDU PRINCIPALES (CORRIGÉE - SANS DOUBLON)
         // -----------------------------------------------------------
 
-        /* --- J.1 RENDU DE LA LISTE PRINCIPALE (GRILLE AJUSTÉE) --- */
+   /* --- J.1 RENDU DE LA LISTE PRINCIPALE (MÉMOIRE PAR CATÉGORIE) --- */
+        
+        // Fonction appelée par le bouton carré : Cycle 2->3->4 et SAUVEGARDE par catégorie
+        window.cycleGridCols = () => {
+            // 1. Initialisation de la mémoire si vide
+            if (!window.gridPrefs) window.gridPrefs = {};
+            
+            // 2. Récupération de la valeur actuelle pour CETTE catégorie
+            const type = window.currentType;
+            // Si pas de valeur enregistrée, on prend le défaut (3 pour Album/YouTube, 4 sinon)
+            const defaultVal = (type === 'YouTube' || type === 'Album') ? 3 : 4;
+            let current = window.gridPrefs[type] || defaultVal;
+            
+            // 3. Logique de cycle : 4 -> 2 -> 3 -> 4
+            if (current === 4) current = 2;
+            else if (current === 2) current = 3;
+            else current = 4;
+            
+            // 4. SAUVEGARDE DANS LA MÉMOIRE POUR CE TYPE
+            window.gridPrefs[type] = current;
+            
+            // 5. Rafraîchissement
+            window.renderList(); 
+        };
+
         window.renderList = () => {
             if (!window.myCollection) return;
-            // Filtrage strict
+            // Filtrage
             let filtered = window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
             
             // Tri
@@ -1826,23 +1851,24 @@
                 return; 
             }
 
-            // --- LOGIQUE NOMBRE DE COLONNES ---
-            // Si YouTube (format large 16:9) -> 3 par ligne (min 120px)
-            // Sinon (Film, Série, Livre, Album) -> 4 par ligne (min 85px)
-            const isYouTube = (window.currentType === 'YouTube');
+            // --- GESTION COLONNES INTELLIGENTE ---
+            if (!window.gridPrefs) window.gridPrefs = {};
+            const type = window.currentType;
             
-            const gridStyle = isYouTube
-                ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;' // 3 par ligne
-                : 'display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px;';   // 4 par ligne
+            // Valeur par défaut si l'utilisateur n'a jamais touché au bouton pour cette catégorie
+            const defaultVal = (type === 'YouTube' || type === 'Album') ? 3 : 4;
+            
+            // On prend la valeur en mémoire OU la valeur par défaut
+            const cols = window.gridPrefs[type] || defaultVal;
 
-            let html = '';
-            
-            // Wrapper avec marges latérales (px-4)
-            html += `<div class="px-4 pb-24">`; 
+            // Application du style CSS
+            const gridStyle = `display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px;`;
+
+            let html = `<div class="px-4 pb-24 mt-4">`; 
 
             if (window.extState.sort !== 'date') {
-                html += `<div style="${gridStyle}" class="mt-4">`;
-                filtered.forEach(item => html += window.generateGridItemHTML(item));
+                html += `<div style="${gridStyle}">`;
+                filtered.forEach(item => html += window.generateGridItemHTML(item, cols));
                 html += `</div>`;
             } else {
                 const groups = {};
@@ -1854,7 +1880,7 @@
                 const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
                 years.forEach(year => {
                     html += `<div class="year-divider mt-6 mb-4 font-black text-xl">${year}</div><div style="${gridStyle}">`;
-                    groups[year].forEach(item => html += window.generateGridItemHTML(item));
+                    groups[year].forEach(item => html += window.generateGridItemHTML(item, cols));
                     html += `</div>`;
                 });
             }
@@ -1863,13 +1889,16 @@
             container.innerHTML = html;
         };
 
-        window.generateGridItemHTML = (item) => {
+        window.generateGridItemHTML = (item, cols) => {
             const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
             
             // --- LOGIQUE VISUELLE ---
-            let aspectClass = 'aspect-[2/3]'; // Par défaut (Film, Série, Livre)
-            if (item.type === 'Album') aspectClass = 'aspect-square'; // Carré
-            if (item.type === 'YouTube') aspectClass = 'aspect-video'; // 16:9
+            let aspectClass = 'aspect-[2/3]'; 
+            if (item.type === 'Album') aspectClass = 'aspect-square'; 
+            if (item.type === 'YouTube') aspectClass = 'aspect-video'; 
+
+            // Ajustement taille police si 4 colonnes
+            const titleSize = (cols >= 4) ? 'text-[9px]' : 'text-[11px]';
 
             let dateDisplay = '';
             if (item.finishDate) {
@@ -1885,13 +1914,13 @@
             else unit = 'min';
 
             return `
-            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm" onclick='window.openPreview(${itemData})'>
+            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95" onclick='window.openPreview(${itemData})'>
                 <img src="${item.img || ''}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
                 ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
                 
                 <div class="grid-item-overlay">
                     <div class="flex justify-between items-start">
-                        <div class="text-[10px] font-black truncate text-white uppercase leading-tight pr-1 shadow-black drop-shadow-md">${item.title}</div>
+                        <div class="${titleSize} font-black truncate text-white uppercase leading-tight pr-1 shadow-black drop-shadow-md">${item.title}</div>
                     </div>
                     <div class="flex flex-col mt-1">
                         ${dateDisplay}
@@ -1956,6 +1985,202 @@
             alert("Action impossible directement.");
         };
 
+        /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ) --- */
+        window.renderProfile = async () => {
+            const container = document.getElementById('main-content');
+            const following = window.followingData || [];
+            
+            // 1. Récupération des données
+            let followers = [];
+            try {
+                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
+                const snap = await getDocs(q);
+                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id })); 
+            } catch (e) {}
+
+            // Données utilisateur
+            const bio = window.userProfile.bio || "Ajouter une biographie...";
+            const pinned = window.userProfile.pinned || [null, null, null]; 
+
+            container.innerHTML = `
+                <div class="pt-28 px-6 pb-32 text-center">
+                    
+                    <div class="avatar-container">
+                        <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
+                        <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
+                    </div>
+                    
+                    <div class="mt-4 flex items-center justify-center gap-2">
+                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
+                        <button onclick="window.updateProfileName()" class="text-blue-600 text-lg"><i class="fa-solid fa-pen-to-square"></i></button>
+                    </div>
+                    <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${bio} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
+
+                    <div class="text-left mt-8 mb-2 px-1"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Mes 3 Coups de ❤️</span></div>
+                    <div class="pinned-grid">
+                        ${[0, 1, 2].map(i => {
+                            const item = pinned[i];
+                            if (item) {
+                                return `
+                                <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
+                                    <img src="${item.img}">
+                                    <div class="pinned-overlay"><i class="fa-solid fa-rotate text-white"></i></div>
+                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
+                                </div>`;
+                            } else {
+                                return `
+                                <div class="pinned-item" onclick="window.openPinSelector(${i})">
+                                    <i class="fa-solid fa-plus text-gray-300 text-2xl"></i>
+                                </div>`;
+                            }
+                        }).join('')}
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open')"><span class="text-xl font-black text-gray-900">${following.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnements</span></button></div>
+                        <div class="flex-1"><button class="w-full bg-white border border-gray-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-1" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open')"><span class="text-xl font-black text-blue-600">${followers.length}</span><span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Abonnés</span></button></div>
+                    </div>
+
+                    <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
+                            ${following.length > 0 ? following.map(p => `
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div>
+                                        <span class="font-bold text-sm">${p.name}</span>
+                                    </div>
+                                    <button onclick="event.stopPropagation(); window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
+                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                        </div>
+                    </div>
+
+                    <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
+                            ${followers.length > 0 ? followers.map(f => `
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div>
+                                        <span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span>
+                                    </div>
+                                    <div class="flex gap-3 items-center">
+                                        <button onclick="event.stopPropagation(); window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
+                                        <div class="h-3 w-px bg-gray-300"></div>
+                                        <button onclick="event.stopPropagation(); window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button>
+                                    </div>
+                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
+                        </div>
+                    </div>
+
+                    <div class="ios-group !mx-0 mt-8"><div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()"><span class="font-bold text-sm">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i></div></div>
+                    <div class="ios-group !mx-0 mt-4"><div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div></div>
+                </div>`;
+        };
+
+        // --- FONCTIONS DE GESTION ---
+        
+        window.updateBio = async () => {
+            const current = window.userProfile.bio || "";
+            const newBio = prompt("Entrez votre biographie (courte phrase) :", current);
+            if (newBio !== null && newBio !== current) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                    await updateDoc(ref, { bio: newBio });
+                    window.userProfile.bio = newBio;
+                    window.renderProfile();
+                } catch(e) { console.error(e); alert("Erreur sauvegarde bio."); }
+            }
+        };
+
+        window.openPinSelector = (slotIndex) => {
+            window.currentPinSlot = slotIndex;
+            const modal = document.getElementById('pin-selector-modal');
+            const list = document.getElementById('pin-selector-list');
+            modal.classList.add('open');
+            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
+            
+            window.renderPinList = (items) => {
+                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des films vus d\'abord !</div>'; return; }
+                list.innerHTML = items.map(item => {
+                    const safeItem = { id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type };
+                    const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
+                    return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'><img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${item.title}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div></div></div>`;
+                }).join('');
+                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML; }
+            };
+            window.renderPinList(candidates);
+        };
+
+        window.filterPinSelector = (query) => {
+            const term = query.toLowerCase();
+            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu') && i.title.toLowerCase().includes(term));
+            window.renderPinList(filtered);
+        };
+
+        window.savePin = async (itemData) => {
+            try {
+                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                let newPinned = window.userProfile.pinned || [null, null, null];
+                newPinned[window.currentPinSlot] = itemData;
+                await updateDoc(ref, { pinned: newPinned });
+                window.userProfile.pinned = newPinned;
+                document.getElementById('pin-selector-modal').classList.remove('open');
+                window.renderProfile();
+            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
+        };
+
+        // --- FONCTIONS BLOQUER / RETIRER ---
+
+        window.removeFollower = async (targetUid) => {
+            if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
+            try {
+                const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
+                await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                alert("Utilisateur retiré.");
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Impossible de modifier le profil distant (permissions)."); }
+        };
+
+        window.blockUser = async (targetUid) => {
+            if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
+            try {
+                // 1. Force Unfollow (Kick)
+                try {
+                    const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
+                    await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                } catch(e) {}
+                
+                // 2. Add to blocked list (Ban)
+                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
+                
+                alert("Utilisateur bloqué.");
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
+        };
+
+        // 3. Filtrer la recherche dans la modale
+        window.filterPinSelector = (query) => {
+            const term = query.toLowerCase();
+            const all = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
+            const filtered = all.filter(i => i.title.toLowerCase().includes(term));
+            window.renderPinList(filtered);
+        };
+
+        // 4. Sauvegarder le choix
+        window.savePin = async (itemData) => {
+            try {
+                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                let newPinned = window.userProfile.pinned || [null, null, null];
+                newPinned[window.currentPinSlot] = itemData; // itemData est null si on supprime
+                
+                await updateDoc(ref, { pinned: newPinned });
+                window.userProfile.pinned = newPinned; // Update local
+                
+                document.getElementById('pin-selector-modal').classList.remove('open');
+                window.renderProfile(); // Rafraîchir l'interface
+            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
+        };
+
     /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MENU DÉROULANT --- */
     window.friendData = [];
     window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
@@ -2010,12 +2235,12 @@
                 <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-4 pb-2 shadow-sm px-6">
                     <div class="relative mb-3">
                         <select id="friend-type-select" onchange="window.switchFriendTab(this.value)" class="w-full bg-gray-100 text-gray-800 font-bold text-sm rounded-xl p-3 pl-4 outline-none appearance-none border border-gray-200 focus:border-blue-500 transition-colors">
-                            <option value="Film">🎬 Films</option>
-                            <option value="Série">📺 Séries</option>
-                            <option value="Livre">📖 Livres</option>
-                            <option value="Album">🎵 Albums</option>
-                            <option value="YouTube">📹 YouTube</option>
-                            <option value="Jeu">🎮 Jeux</option>
+                            <option value="Film"> Films</option>
+                            <option value="Série"> Séries</option>
+                            <option value="Livre"> Livres</option>
+                            <option value="Album"> Albums</option>
+                            <option value="YouTube"> YouTube</option>
+                            <option value="Jeu"> Jeux</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
                             <i class="fa-solid fa-chevron-down text-xs"></i>
