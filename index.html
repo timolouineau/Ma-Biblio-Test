@@ -201,38 +201,14 @@
         <div class="flex-1 overflow-y-auto px-4 pb-10" id="search-results"></div>
     </div>
 
-    <div id="manual-modal" class="modal flex flex-col">
-        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center"><h2 class="text-xl font-black">Ajout Manuel</h2><button onclick="window.closeManualModal()" class="text-blue-600 font-bold">Annuler</button></div>
-        <div class="p-6 overflow-y-auto flex-1">
-            <div class="flex gap-4 mb-6">
-                <div class="w-1/3">
-                    <label class="manual-image-upload" id="manual-preview-container">
-                        <i class="fa-solid fa-plus"></i><span class="text-[10px] text-gray-400 font-black uppercase">Photo</span>
-                        <input type="file" accept="image/*" class="hidden" onchange="window.handleManualImageUpload(event)">
-                    </label>
-                </div>
-                <div class="flex-1 flex flex-col gap-3">
-                    <input type="text" id="m-title" placeholder="Titre" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
-                    <input type="text" id="m-author" placeholder="Auteur / Réalisateur / Artiste" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
-                    <select id="m-type" class="w-full p-3.5 rounded-xl bg-white border border-gray-100 outline-none font-bold text-sm">
-                        <option value="Film">Film</option>
-                        <option value="Série">Série</option>
-                        <option value="Livre">Livre</option>
-                        <option value="Album">Album</option>
-                        <option value="YouTube">YouTube</option>
-                        <option value="Jeu">Jeu</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="ios-group !mx-0">
-                <div class="ios-cell"><span class="font-bold text-sm">Valeur (pages/min/durée)</span><input type="number" id="m-metric" value="0" class="w-20 text-right bg-transparent font-black text-blue-600 outline-none"></div>
-                <div class="ios-cell border-t border-gray-100"><span class="font-bold text-sm">Date de parution</span><input type="date" id="m-date" class="bg-transparent text-blue-600 font-bold outline-none text-right"></div>
-            </div>
-
-            <textarea id="m-desc" placeholder="Résumé" class="w-full bg-white p-4 rounded-xl border border-gray-100 h-24 outline-none mb-6 mt-6 font-medium text-sm"></textarea>
-            <button onclick="window.confirmManualAdd()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-black text-lg">Suivant</button>
+    <div id="manual-modal" class="modal flex flex-col bg-white">
+        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center shrink-0">
+            <h2 class="text-xl font-black">Ajout Manuel</h2>
+            <button onclick="window.closeManualModal()" class="text-blue-600 font-bold">Annuler</button>
         </div>
+
+        <div id="manual-modal-content" class="p-6 flex-1 overflow-y-auto bg-white">
+            </div>
     </div>
 
     <div id="preview-modal" class="modal overflow-y-auto">
@@ -279,7 +255,7 @@
     <div id="comment-sheet" class="sheet-overlay">
         <div class="sheet flex flex-col" style="height: 80vh;">
             <div class="flex justify-between items-center px-6 py-4 border-b bg-white">
-                <span class="font-black text-lg">Commentaires</span>
+                <div class="font-black text-lg">Commentaires</div>
                 <button onclick="window.closeCommentSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="comments-list-container"></div>
@@ -291,6 +267,10 @@
                 </div>
             </div>
         </div>
+    </div>
+    
+    <div id="notification-modal" class="modal bg-white flex flex-col">
+        <div id="notif-list" class="flex-1 overflow-y-auto"></div>
     </div>
 
     <div id="public-profile-modal" class="modal overflow-y-auto">
@@ -1136,24 +1116,183 @@
             window.saveItem(status, currentRating, document.getElementById('rating-comment').value, dateValue, window.tempItem.metricValue || 0, document.getElementById('share-toggle').checked, platformValue);
         };
         
-        /* --- G.4 AJOUT MANUEL & FEEDBACK --- */
+      /* -----------------------------------------------------------
+           G.4 AJOUT MANUEL & FEEDBACK (CHAMPS DYNAMIQUES COMPLETS)
+           ----------------------------------------------------------- */
+
+        /* --- GESTION DE L'IMAGE (UPLOAD) --- */
         window.handleManualImageUpload = (event) => {
-            const file = event.target.files[0]; if (!file) return;
+            const file = event.target.files[0]; 
+            if (!file) return;
+            
             const reader = new FileReader();
             reader.onload = async (e) => {
+                // Compression et affichage
                 window.tempManualImage = await compressImage(e.target.result);
-                document.getElementById('manual-preview-container').innerHTML = `<img src="${window.tempManualImage}" class="w-full h-full object-cover rounded-xl shadow-md">`;
+                const container = document.getElementById('manual-preview-container');
+                container.innerHTML = `<img src="${window.tempManualImage}" class="w-full h-full object-cover rounded-xl shadow-md">`;
+                container.classList.remove('border-2', 'border-dashed', 'bg-gray-50'); 
             };
             reader.readAsDataURL(file);
         };
 
-        window.openManualModal = () => { window.tempManualImage = ''; document.getElementById('manual-modal').classList.add('open'); };
-        window.closeManualModal = () => document.getElementById('manual-modal').classList.remove('open');
-        window.confirmManualAdd = () => { 
-            const title = document.getElementById('m-title').value; if (!title) return alert("Saisir un titre."); 
-            window.openPreview({ id: 'manual_'+Date.now(), title, type: document.getElementById('m-type').value, metricValue: parseInt(document.getElementById('m-metric').value) || 0, img: window.tempManualImage || 'https://via.placeholder.com/300x450?text='+title, desc: document.getElementById('m-desc').value, releaseDate: new Date().toISOString() }); 
+        /* --- OUVERTURE DE LA MODALE (GÉNÉRATION DU FORMULAIRE) --- */
+        window.openManualModal = () => {
+            window.tempManualImage = '';
+            const modal = document.getElementById('manual-modal');
+            const container = document.getElementById('manual-modal-content');
+            
+            if(!container) return console.error("Erreur HTML: Container introuvable");
+
+            modal.classList.add('open');
+
+            // Type par défaut
+            const defType = window.currentType || 'Film';
+
+            // Injection du HTML de base
+            container.innerHTML = `
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Catégorie</label>
+                    <select id="m-type" onchange="window.updateManualUI(this.value)" class="w-full bg-gray-100 rounded-xl p-3 font-bold text-sm outline-none border border-transparent focus:border-blue-500 focus:bg-white transition-all">
+                        <option value="Film" ${defType === 'Film' ? 'selected' : ''}>Film</option>
+                        <option value="Série" ${defType === 'Série' ? 'selected' : ''}>Série</option>
+                        <option value="Livre" ${defType === 'Livre' ? 'selected' : ''}>Livre</option>
+                        <option value="Album" ${defType === 'Album' ? 'selected' : ''}>Album</option>
+                        <option value="YouTube" ${defType === 'YouTube' ? 'selected' : ''}>YouTube</option>
+                        <option value="Jeu" ${defType === 'Jeu' ? 'selected' : ''}>Jeu</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-4 mb-3">
+                    <div class="w-1/3">
+                        <div id="manual-image-wrapper" class="relative w-full aspect-[2/3] bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-gray-100 transition-colors">
+                            <input type="file" accept="image/*" class="absolute inset-0 opacity-0 z-10 cursor-pointer" onchange="window.handleManualImageUpload(event)">
+                            <div id="manual-preview-container" class="w-full h-full flex items-center justify-center pointer-events-none">
+                                <i class="fa-solid fa-camera text-gray-300 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-2/3 space-y-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Titre</label>
+                            <input id="m-title" type="text" class="w-full bg-gray-50 rounded-xl p-2.5 font-bold text-sm outline-none border border-gray-100 focus:border-blue-500" placeholder="Titre de l'œuvre">
+                        </div>
+                        
+                        <div id="m-extra-fields" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                     <label id="lbl-metric" class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Durée</label>
+                     <input id="m-metric" type="number" class="w-full bg-gray-50 rounded-xl p-2.5 font-bold text-sm outline-none border border-gray-100 focus:border-blue-500" placeholder="0">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Description (Optionnel)</label>
+                    <textarea id="m-desc" rows="3" class="w-full bg-gray-50 rounded-xl p-3 font-medium text-sm outline-none border border-gray-100 focus:border-blue-500 resize-none"></textarea>
+                </div>
+                
+                <button onclick="window.confirmManualAdd()" class="w-full bg-black text-white font-bold py-3.5 rounded-xl mt-6 shadow-lg active:scale-95 transition-transform">
+                    Ajouter à ma collection
+                </button>
+            `;
+            
+            // Mise à jour immédiate
+            window.updateManualUI(defType);
         };
 
+        /* --- MISE À JOUR DYNAMIQUE (INTERFACE) --- */
+        window.updateManualUI = (type) => {
+            const wrapper = document.getElementById('manual-image-wrapper');
+            const extraFields = document.getElementById('m-extra-fields');
+            const metricLbl = document.getElementById('lbl-metric');
+            const metricInput = document.getElementById('m-metric');
+
+            if(!wrapper || !extraFields) return;
+
+            // 1. Format Image
+            wrapper.classList.remove('aspect-[2/3]', 'aspect-square', 'aspect-video');
+            if (type === 'Album') wrapper.classList.add('aspect-square');
+            else if (type === 'YouTube') wrapper.classList.add('aspect-video');
+            else wrapper.classList.add('aspect-[2/3]');
+
+            // 2. Champs Dynamiques (Auteur/Casting/Chaîne)
+            let fieldsHtml = '';
+            
+            if (type === 'Film' || type === 'Série') {
+                const role = type === 'Film' ? 'Réalisateur' : 'Créateur';
+                fieldsHtml = `
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">${role}</label>
+                        <input id="m-author" type="text" class="w-full bg-gray-50 rounded-xl p-2.5 font-bold text-sm outline-none border border-gray-100 focus:border-blue-500" placeholder="Nom du ${role.toLowerCase()}">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Casting (Acteurs)</label>
+                        <input id="m-cast" type="text" class="w-full bg-gray-50 rounded-xl p-2.5 font-bold text-sm outline-none border border-gray-100 focus:border-blue-500" placeholder="Ex: Brad Pitt, ...">
+                    </div>
+                `;
+            } else {
+                let label = 'Auteur';
+                let place = 'Nom de l\'auteur';
+                
+                if (type === 'Album') { label = 'Artiste'; place = 'Nom de l\'artiste/groupe'; }
+                else if (type === 'YouTube') { label = 'Nom de la Chaîne'; place = 'Ex: Squeezie'; }
+                else if (type === 'Jeu') { label = 'Studio / Dév.'; place = 'Ex: Nintendo'; }
+                
+                fieldsHtml = `
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">${label}</label>
+                        <input id="m-author" type="text" class="w-full bg-gray-50 rounded-xl p-2.5 font-bold text-sm outline-none border border-gray-100 focus:border-blue-500" placeholder="${place}">
+                    </div>
+                `;
+            }
+            extraFields.innerHTML = fieldsHtml;
+
+            // 3. Label Métrique
+            let mLabel = 'Durée (min)';
+            let mPlace = 'ex: 120';
+            if (type === 'Livre') { mLabel = 'Pages'; mPlace = 'ex: 350'; }
+            else if (type === 'Série') { mLabel = 'Saisons'; mPlace = 'ex: 3'; }
+            else if (type === 'Album') { mLabel = 'Titres'; mPlace = 'ex: 12'; }
+            else if (type === 'Jeu') { mLabel = 'Heures de jeu'; mPlace = 'ex: 50'; }
+            
+            metricLbl.innerText = mLabel;
+            metricInput.placeholder = mPlace;
+        };
+
+        window.closeManualModal = () => document.getElementById('manual-modal').classList.remove('open');
+
+        /* --- CONFIRMATION (SAUVEGARDE) --- */
+        window.confirmManualAdd = () => { 
+            const title = document.getElementById('m-title').value; 
+            const type = document.getElementById('m-type').value;
+            
+            if (!title) return alert("Le titre est obligatoire."); 
+            
+            // Récupération sécurisée des champs dynamiques
+            const authorInput = document.getElementById('m-author');
+            const castInput = document.getElementById('m-cast'); // Peut être null si pas Film/Série
+
+            const newItem = { 
+                id: 'manual_' + Date.now(), 
+                title: title, 
+                type: type, 
+                // On stocke "Auteur", "Chaîne" ou "Réalisateur" dans la propriété générique 'author'
+                author: authorInput ? authorInput.value : '',
+                // On stocke le casting si présent
+                cast: castInput ? castInput.value : '',
+                metricValue: parseInt(document.getElementById('m-metric').value) || 0, 
+                img: window.tempManualImage || `https://via.placeholder.com/300x450?text=${encodeURIComponent(title)}`, 
+                desc: document.getElementById('m-desc').value, 
+                releaseDate: new Date().toISOString() 
+            };
+
+            window.closeManualModal();
+            window.openPreview(newItem); 
+        };
+
+        /* --- FEEDBACK (INCHANGÉ) --- */
         window.openFeedbackModal = () => { document.getElementById('feedback-modal').classList.add('open'); document.getElementById('fb-message').value = ""; document.getElementById('fb-status').classList.add('hidden'); };
         window.closeFeedbackModal = () => { document.getElementById('feedback-modal').classList.remove('open'); };
         window.sendFeedback = async () => {
@@ -2325,47 +2464,137 @@
 
     window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
 
-        /* --- J.4 RENDU DES STATISTIQUES (AVEC 6 TYPES) --- */
-        window.toggleStatsMode = (mode) => { window.extState.statsMode = mode; window.renderStatsView(); };
+        /* --- J.4 RENDU DES STATISTIQUES (CORRIGÉ LOGO YOUTUBE) --- */
+window.toggleStatsMode = (mode) => {
+    if (!window.extState) window.extState = {};
+    window.extState.statsMode = mode;
+    window.renderStatsView();
+};
 
-        window.renderStatsView = () => {
-            const isYear = window.extState.statsMode === 'year';
-            const finished = window.myCollection.filter(i => i.status !== 'Wishlist' && i.status !== 'En cours');
-            let filteredItems = finished;
-            const curYear = new Date().getFullYear().toString();
-            if (isYear) { filteredItems = finished.filter(i => (i.finishDate || i.date || '').startsWith(curYear)); }
+window.renderStatsView = () => {
+    // Initialisation
+    if (!window.extState) window.extState = { statsMode: 'all' };
+    
+    const isYear = window.extState.statsMode === 'year';
+    const finished = (window.myCollection || []).filter(i => i.status !== 'Wishlist' && i.status !== 'En cours');
+    
+    let filteredItems = finished;
+    const curYear = new Date().getFullYear().toString();
+    
+    // Filtre Année
+    if (isYear) {
+        filteredItems = finished.filter(i => {
+            const d = i.finishDate || i.date || '';
+            return d.startsWith(curYear);
+        });
+    }
 
-            const sumMetric = (type) => filteredItems.filter(i => i.type === type).reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
-            const totalPages = sumMetric('Livre');
-            const totalMinutes = sumMetric('Film');
-            const totalSeasons = sumMetric('Série');
-            const totalTitres = sumMetric('Album');
-            const totalMinutesYT = sumMetric('YouTube');
-            const totalHeuresJeu = sumMetric('Jeu');
-            
-            const stats = [
-                { type: 'Film', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
-                { type: 'Série', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${totalSeasons} saisons` },
-                { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${totalPages} pages` },
-                { type: 'Album', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${totalTitres} titres` },
-                { type: 'YouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
-                { type: 'Jeu', icon: 'fa-gamepad', color: '#10B981', count: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHeuresJeu}h` }
-            ];
+    const sumMetric = (type) => filteredItems.filter(i => i.type === type).reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
+    
+    const totalMinutes = sumMetric('Film');
+    const totalMinutesYT = sumMetric('YouTube');
+    const totalHeuresJeu = sumMetric('Jeu');
 
-            document.getElementById('main-content').innerHTML = `
-                <div class="pt-20 px-6 pb-32">
-                    <h1 class="text-4xl font-black mb-4">Stats</h1>
-                    <div class="text-center mb-6">
-                        <div class="stats-toggle"><button onclick="window.toggleStatsMode('year')" class="${isYear?'active':''}">Cette Année</button><button onclick="window.toggleStatsMode('all')" class="${!isYear?'active':''}">Depuis toujours</button></div>
+    // Dictionnaire Pluriels
+    const pluralLabels = {
+        'Film': 'Films',
+        'Série': 'Séries',
+        'Livre': 'Livres',
+        'Album': 'Albums',
+        'YouTube': 'YouTube',
+        'Jeu': 'Jeux'
+    };
+
+    const stats = [
+        { type: 'Film', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
+        { type: 'Série', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${sumMetric('Série')} saisons` },
+        { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${sumMetric('Livre')} pages` },
+        { type: 'Album', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
+        { type: 'YouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
+        { type: 'Jeu', icon: 'fa-gamepad', color: '#10B981', count: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHeuresJeu}h` }
+    ];
+
+    const container = document.getElementById('main-content');
+    
+    const switcherHtml = `
+        <div class="flex justify-center mb-6">
+            <div class="bg-gray-100 p-1 rounded-xl flex font-bold text-xs relative">
+                <button onclick="window.toggleStatsMode('year')" class="px-4 py-2 rounded-lg transition-all ${isYear ? 'bg-white shadow text-black' : 'text-gray-400'}">Cette Année</button>
+                <button onclick="window.toggleStatsMode('all')" class="px-4 py-2 rounded-lg transition-all ${!isYear ? 'bg-white shadow text-black' : 'text-gray-400'}">Toujours</button>
+            </div>
+        </div>
+    `;
+
+    const cardsHtml = stats.map(s => {
+        const showGoal = isYear;
+        const prog = showGoal ? Math.min(100, (s.count / (s.goal || 1)) * 100) : 0;
+        const label = pluralLabels[s.type] || s.type;
+
+        // CORRECTION ICI : On utilise fa-brands pour YouTube, fa-solid pour le reste
+        const iconStyle = s.type === 'YouTube' ? 'fa-brands' : 'fa-solid';
+
+        return `
+        <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-4">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg" style="background:${s.color}; box-shadow: 0 4px 10px ${s.color}40;">
+                        <i class="${iconStyle} ${s.icon}"></i>
                     </div>
-                    <div class="stat-card mb-8"><div class="font-black text-[10px] uppercase text-gray-400 mb-2">Total ${isYear ? curYear : 'Global'}</div><div class="text-2xl font-black text-blue-600">${filteredItems.length} œuvres terminées</div></div>
-                    ${stats.map(s => { const showGoal = isYear; const prog = Math.min(100, (s.count / (s.goal || 1)) * 100); return `<div class="stat-card"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:${s.color}"><i class="fa-solid ${s.icon}"></i></div><div><div class="font-black text-sm">${s.type}s</div><div class="text-[10px] text-gray-400 font-bold uppercase">${s.count} ${showGoal ? `/ ${s.goal}` : 'Terminés'}</div></div></div>${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('goal${s.type}', this.value)" class="w-12 text-right bg-blue-50 text-blue-600 font-black rounded p-1 outline-none text-xs">` : ''}</div>${showGoal ? `<div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width: ${prog}%; background: ${s.color}"></div></div>` : ''}<div class="mt-4 flex justify-between text-[10px] font-bold text-gray-400 uppercase"><span>${s.sub}</span>${showGoal ? `<span class="text-black font-black">${Math.round(prog)}%</span>` : ''}</div></div>`; }).join('')}</div>`;
-        };
+                    <div>
+                        <div class="font-black text-lg text-gray-800">${label}</div>
+                        <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                            ${s.count} ${showGoal ? `/ ${s.goal}` : 'Terminés'}
+                        </div>
+                    </div>
+                </div>
+                ${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('goal${s.type}', this.value)" class="w-16 text-right bg-gray-50 text-gray-800 font-bold rounded-lg p-2 outline-none text-sm border border-gray-100 focus:border-blue-500 transition-colors">` : ''}
+            </div>
+            
+            ${showGoal ? `
+            <div class="h-3 bg-gray-100 rounded-full overflow-hidden mb-3">
+                <div class="h-full rounded-full transition-all duration-1000 ease-out" style="width: ${prog}%; background: ${s.color}"></div>
+            </div>` : ''}
+            
+            <div class="flex justify-between items-center pt-2 border-t border-gray-50">
+                <span class="text-xs font-bold text-gray-400 uppercase"><i class="fa-regular fa-clock mr-1"></i> ${s.sub}</span>
+                ${showGoal ? `<span class="text-gray-800 font-black text-sm">${Math.round(prog)}%</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
 
-        window.updateGoal = async (key, val) => {
-            const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-            await updateDoc(ref, { [key]: parseInt(val) });
-        };
+    container.innerHTML = `
+        <div class="pt-24 px-6 pb-32">
+            <h1 class="text-4xl font-black mb-2 tracking-tight">Statistiques</h1>
+            <p class="text-gray-400 font-bold text-sm mb-6">Votre consommation culturelle</p>
+            
+            ${switcherHtml}
+            
+            <div class="bg-black text-white p-6 rounded-[2rem] shadow-xl mb-8 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-20 bg-white/10 rounded-full -mr-10 -mt-10 blur-3xl"></div>
+                <div class="relative z-10">
+                    <div class="text-gray-400 font-bold uppercase text-[10px] tracking-widest mb-2">Total ${isYear ? curYear : 'Global'}</div>
+                    <div class="text-5xl font-black mb-1">${filteredItems.length}</div>
+                    <div class="text-sm font-medium text-gray-400">œuvres terminées</div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                ${cardsHtml}
+            </div>
+        </div>
+    `;
+};
+
+window.updateGoal = async (key, val) => {
+    const appId = 'mabiblio-dc595'; 
+    if(!window.currentUser) return;
+    try {
+        const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+        await setDoc(ref, { [key]: parseInt(val) }, { merge: true });
+        if(window.userProfile) window.userProfile[key] = parseInt(val);
+        window.renderStatsView(); 
+    } catch(e) { console.error("Erreur updateGoal", e); }
+};
 
         /* --- J.5 INITIALISATION FINALE --- */
         window.handleCommentLike = async (actId, commentTimestamp) => {
