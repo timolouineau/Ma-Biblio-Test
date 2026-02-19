@@ -1603,15 +1603,16 @@
         const focusedVal = focusedId ? document.activeElement.value : null;
         const container = document.getElementById('main-content');
         
+        // CORRECTION RESPONSIVE : Ajout de w-full, min-w-0, h-12 pour forcer l'alignement avec les posts
         const searchBlock = `
-            <div class="flex gap-3 mb-4 items-center relative z-10">
-                <div class="flex-1 bg-white/80 backdrop-blur-md p-3 rounded-2xl shadow-sm flex items-center gap-3 border border-gray-100/50 transition-all focus-within:bg-white focus-within:shadow-md">
-                    <i class="fa-solid fa-magnifying-glass text-gray-400 ml-2"></i>
-                    <input id="user-search-input" type="text" placeholder="Chercher un ami..." class="flex-1 bg-transparent outline-none font-bold text-sm text-gray-800 placeholder-gray-400" oninput="window.handleUserSearch(this.value)">
+            <div class="flex gap-2 mb-4 items-center w-full relative z-10">
+                <div class="flex-1 min-w-0 h-12 bg-white/80 backdrop-blur-md px-3 rounded-2xl shadow-sm flex items-center gap-2 border border-gray-100/50 transition-all focus-within:bg-white focus-within:shadow-md">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                    <input id="user-search-input" type="text" placeholder="Chercher un ami..." class="w-full bg-transparent outline-none font-bold text-sm text-gray-800 placeholder-gray-400 truncate" oninput="window.handleUserSearch(this.value)">
                 </div>
                 
-                <div class="relative h-12 shrink-0">
-                    <select onchange="window.changeFeedFilter(this.value)" class="h-full bg-white/80 backdrop-blur-md text-gray-800 border border-gray-100/50 rounded-2xl pl-4 pr-10 shadow-sm font-black text-sm outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:shadow-md">
+                <div class="relative shrink-0 h-12">
+                    <select onchange="window.changeFeedFilter(this.value)" class="h-full bg-white/80 backdrop-blur-md text-gray-800 border border-gray-100/50 rounded-2xl pl-4 pr-9 shadow-sm font-black text-sm outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:shadow-md">
                         <option value="Film" ${window.feedFilter === 'Film' ? 'selected' : ''}>Films</option>
                         <option value="Série" ${window.feedFilter === 'Série' ? 'selected' : ''}>Séries</option>
                         <option value="Livre" ${window.feedFilter === 'Livre' ? 'selected' : ''}>Livres</option>
@@ -1619,7 +1620,7 @@
                         <option value="YouTube" ${window.feedFilter === 'YouTube' ? 'selected' : ''}>YouTube</option>
                         <option value="Jeu" ${window.feedFilter === 'Jeu' ? 'selected' : ''}>Jeux</option>
                     </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
                         <i class="fa-solid fa-chevron-down text-[10px]"></i>
                     </div>
                 </div>
@@ -1735,7 +1736,7 @@
         } else {
             container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="text-center py-20 opacity-50"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl"><i class="fa-solid fa-user-group"></i></div><p class="font-bold text-gray-400 text-sm">Votre fil d'actualité est vide.</p></div></div>`;
         }
-        if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
+        if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = v; } }
     };
 
     /* --- GESTION DU FILTRE (MENU DÉROULANT) --- */
@@ -1827,7 +1828,7 @@
     window.deleteActivity = async (actId) => { if(!confirm("Supprimer ce post ?")) return; try { const appId = 'mabiblio-dc595'; await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId)); if(window.socialFeed) { window.socialFeed = window.socialFeed.filter(a => a.id !== actId); window.renderSocialFeed(); } } catch (e) { console.error(e); } };
     window.sendNotification = async (targetUid, type, text, itemTitle, actId) => { try { const appId = 'mabiblio-dc595';  
     const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'); await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null }); } catch(e) { console.error(e); } };
-
+    
        // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
