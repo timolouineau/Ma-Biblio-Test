@@ -842,142 +842,159 @@
             return num;
         };
 
-        window.handleSearch = async (val) => { 
-            if (val.length < 3) return; 
-            let results = []; 
-            
-            // CLÉ YOUTUBE
-            const YOUTUBE_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco"; 
-            
-            if (searchType === 'Jeu') {
-                document.getElementById('search-results').innerHTML = `<div class="text-center mt-10 p-6 bg-gray-50 rounded-2xl"><i class="fa-solid fa-pen-to-square text-4xl text-gray-300 mb-4"></i><p class="font-bold text-gray-500 mb-4">Recherche Jeux non disponible.</p><button onclick="window.openManualModal()" class="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold">Ajouter manuellement</button></div>`;
+        // VARIABLE DU MINUTEUR POUR ÉCONOMISER LE QUOTA
+        window.searchTimeout = null;
+
+        window.handleSearch = (val) => { 
+            // 1. On annule la requête précédente si l'utilisateur est en train de taper
+            if (window.searchTimeout) {
+                clearTimeout(window.searchTimeout);
+            }
+
+            // 2. Si le texte est trop court, on vide les résultats et on s'arrête là
+            if (val.length < 3) {
+                document.getElementById('search-results').innerHTML = "";
                 return;
             }
 
-            try {
-                // --- CAS ALBUM (DEEZER VIA JSONP - LE VRAI CATALOGUE FR) ---
-                if (searchType === 'Album') {
-                    // 1. Recherche via JSONP (Direct Deezer)
-                    const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(val)}&limit=10`);
-                    
-                    // 2. Récupération des détails (Tracklist) pour chaque album
-                    results = await Promise.all((d.data || []).map(async a => {
-                        let trackListHtml = "Titres indisponibles";
-                        try {
-                            const details = await window.deezerJSONP(`https://api.deezer.com/album/${a.id}?`);
-                            if (details && details.tracks && details.tracks.data) {
-                                trackListHtml = details.tracks.data.slice(0, 5).map((t, i) => `${i+1}. ${t.title}`).join('<br>');
-                            }
-                        } catch(e) {}
-
-                        return {
-                            id: String(a.id),
-                            title: a.title,
-                            img: a.cover_xl || a.cover_medium,
-                            desc: trackListHtml, // On stocke la liste des titres ici
-                            type: 'Album',
-                            releaseDate: a.release_date,
-                            metricValue: a.nb_tracks || 0,
-                            author: a.artist ? a.artist.name : 'Inconnu',
-                            platform: 'Deezer',
-                            subInfo: `${a.nb_tracks} titres`
-                        };
-                    }));
+            // 3. On lance le retardateur (800ms)
+            window.searchTimeout = setTimeout(async () => {
+                let results = []; 
+                
+                // CLÉ YOUTUBE
+                const YOUTUBE_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco"; 
+                
+                if (searchType === 'Jeu') {
+                    document.getElementById('search-results').innerHTML = `<div class="text-center mt-10 p-6 bg-gray-50 rounded-2xl"><i class="fa-solid fa-pen-to-square text-4xl text-gray-300 mb-4"></i><p class="font-bold text-gray-500 mb-4">Recherche Jeux non disponible.</p><button onclick="window.openManualModal()" class="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold">Ajouter manuellement</button></div>`;
+                    return;
                 }
 
-                // --- CAS YOUTUBE ---
-                else if (searchType === 'YouTube') {
-                    const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(val)}&key=${YOUTUBE_KEY}&maxResults=10`);
-                    if (!r.ok) throw new Error("Erreur Clé API YouTube");
-                    const d = await r.json();
-                    
-                    if (d.items) {
-                        const videoIds = d.items.map(v => v.id.videoId).join(',');
-                        const rDetails = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_KEY}`);
-                        const dDetails = await rDetails.json();
+                try {
+                    // --- CAS ALBUM (DEEZER VIA JSONP - LE VRAI CATALOGUE FR) ---
+                    if (searchType === 'Album') {
+                        // 1. Recherche via JSONP (Direct Deezer)
+                        const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(val)}&limit=10`);
                         
-                        results = d.items.map(v => {
-                            const detail = dDetails.items ? dDetails.items.find(x => x.id === v.id.videoId) : null;
-                            let duration = 0;
-                            let views = 0;
-                            
-                            if (detail) {
-                                if (detail.contentDetails && detail.contentDetails.duration) {
-                                    const matches = detail.contentDetails.duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
-                                    if (matches) duration = ((Number(matches[1]||0))*60) + (Number(matches[2]||0)) + ((Number(matches[3]||0)>30)?1:0);
+                        // 2. Récupération des détails (Tracklist) pour chaque album
+                        results = await Promise.all((d.data || []).map(async a => {
+                            let trackListHtml = "Titres indisponibles";
+                            try {
+                                const details = await window.deezerJSONP(`https://api.deezer.com/album/${a.id}?`);
+                                if (details && details.tracks && details.tracks.data) {
+                                    trackListHtml = details.tracks.data.slice(0, 5).map((t, i) => `${i+1}. ${t.title}`).join('<br>');
                                 }
-                                if (detail.statistics) views = window.formatNumber(detail.statistics.viewCount);
-                            }
+                            } catch(e) {}
 
                             return {
-                                id: v.id.videoId,
-                                title: v.snippet.title,
-                                img: v.snippet.thumbnails.high ? v.snippet.thumbnails.high.url : v.snippet.thumbnails.medium.url,
-                                desc: v.snippet.description,
-                                type: 'YouTube',
-                                releaseDate: v.snippet.publishedAt,
-                                metricValue: duration || 0,
-                                author: v.snippet.channelTitle,
-                                platform: 'YouTube',
-                                subInfo: `${views} vues`
+                                id: String(a.id),
+                                title: a.title,
+                                img: a.cover_xl || a.cover_medium,
+                                desc: trackListHtml, // On stocke la liste des titres ici
+                                type: 'Album',
+                                releaseDate: a.release_date,
+                                metricValue: a.nb_tracks || 0,
+                                author: a.artist ? a.artist.name : 'Inconnu',
+                                platform: 'Deezer',
+                                subInfo: `${a.nb_tracks} titres`
                             };
-                        });
+                        }));
                     }
-                }
 
-                // --- CAS LIVRE ---
-                else if (searchType === 'Livre') { 
-                    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10&langRestrict=fr`); 
-                    const d = await r.json(); 
-                    results = (d.items || []).map(b => ({ 
-                        id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
-                        desc: b.volumeInfo.description || "", type: 'Livre', releaseDate: b.volumeInfo.publishedDate, 
-                        metricValue: b.volumeInfo.pageCount || 0, author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
-                    })); 
-                } 
-                // --- CAS FILM/SÉRIE ---
-                else { 
-                    const ep = searchType === 'Film' ? 'movie' : 'tv'; 
-                    const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
-                    const d = await r.json(); 
-                    results = await Promise.all((d.results || []).map(async m => { 
-                        const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
-                        const details = await dr.json(); 
-                        let author = "", cast = "";
-                        if (details.credits) {
-                            if (details.credits.cast) cast = details.credits.cast.slice(0, 4).map(c => c.name).join(', ');
-                            if (searchType === 'Film' && details.credits.crew) { const director = details.credits.crew.find(x => x.job === 'Director'); if(director) author = director.name; } 
-                            else if (searchType === 'Série' && details.created_by) author = details.created_by.map(c => c.name).join(', ');
+                    // --- CAS YOUTUBE ---
+                    else if (searchType === 'YouTube') {
+                        const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(val)}&key=${YOUTUBE_KEY}&maxResults=10`);
+                        if (!r.ok) throw new Error("Erreur Clé API YouTube");
+                        const d = await r.json();
+                        
+                        if (d.items) {
+                            const videoIds = d.items.map(v => v.id.videoId).join(',');
+                            const rDetails = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_KEY}`);
+                            const dDetails = await rDetails.json();
+                            
+                            results = d.items.map(v => {
+                                const detail = dDetails.items ? dDetails.items.find(x => x.id === v.id.videoId) : null;
+                                let duration = 0;
+                                let views = 0;
+                                
+                                if (detail) {
+                                    if (detail.contentDetails && detail.contentDetails.duration) {
+                                        const matches = detail.contentDetails.duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+                                        if (matches) duration = ((Number(matches[1]||0))*60) + (Number(matches[2]||0)) + ((Number(matches[3]||0)>30)?1:0);
+                                    }
+                                    if (detail.statistics) views = window.formatNumber(detail.statistics.viewCount);
+                                }
+
+                                return {
+                                    id: v.id.videoId,
+                                    title: v.snippet.title,
+                                    img: v.snippet.thumbnails.high ? v.snippet.thumbnails.high.url : v.snippet.thumbnails.medium.url,
+                                    desc: v.snippet.description,
+                                    type: 'YouTube',
+                                    releaseDate: v.snippet.publishedAt,
+                                    metricValue: duration || 0,
+                                    author: v.snippet.channelTitle,
+                                    platform: 'YouTube',
+                                    subInfo: `${views} vues`
+                                };
+                            });
                         }
-                        return { 
-                            id: String(m.id), title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
-                            desc: m.overview || "", type: searchType, releaseDate: m.release_date || m.first_air_date, 
-                            metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0), author: author, cast: cast
-                        }; 
-                    })); 
-                }
-            } catch (e) { console.error("Erreur Search", e); }
+                    }
 
-            // Rendu
-            document.getElementById('search-results').innerHTML = results.map(i => {
-                let unit = 'min';
-                if(i.type === 'Album') unit = 'titres';
-                if(i.type === 'Livre') unit = 'p.';
-                if(i.type === 'Série') unit = 'sais.';
-                const sub = i.subInfo ? `• ${i.subInfo}` : '';
-                const safeItem = JSON.stringify(i).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    // --- CAS LIVRE ---
+                    else if (searchType === 'Livre') { 
+                        const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10&langRestrict=fr`); 
+                        const d = await r.json(); 
+                        results = (d.items || []).map(b => ({ 
+                            id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
+                            desc: b.volumeInfo.description || "", type: 'Livre', releaseDate: b.volumeInfo.publishedDate, 
+                            metricValue: b.volumeInfo.pageCount || 0, author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
+                        })); 
+                    } 
+                    // --- CAS FILM/SÉRIE ---
+                    else { 
+                        const ep = searchType === 'Film' ? 'movie' : 'tv'; 
+                        const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
+                        const d = await r.json(); 
+                        results = await Promise.all((d.results || []).map(async m => { 
+                            const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
+                            const details = await dr.json(); 
+                            let author = "", cast = "";
+                            if (details.credits) {
+                                if (details.credits.cast) cast = details.credits.cast.slice(0, 4).map(c => c.name).join(', ');
+                                if (searchType === 'Film' && details.credits.crew) { const director = details.credits.crew.find(x => x.job === 'Director'); if(director) author = director.name; } 
+                                else if (searchType === 'Série' && details.created_by) author = details.created_by.map(c => c.name).join(', ');
+                            }
+                            return { 
+                                id: String(m.id), title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
+                                desc: m.overview || "", type: searchType, releaseDate: m.release_date || m.first_air_date, 
+                                metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0), author: author, cast: cast
+                            }; 
+                        })); 
+                    }
+                } catch (e) { console.error("Erreur Search", e); }
 
-                return `
-                <div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${safeItem})'>
-                    <img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200">
-                    <div class="flex-1 font-black text-xs">
-                        ${i.title}
-                        <div class="text-[10px] text-gray-400 font-normal mt-0.5">
-                            ${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''} • ${i.metricValue || 0} ${unit} ${sub}
+                // Rendu
+                document.getElementById('search-results').innerHTML = results.map(i => {
+                    let unit = 'min';
+                    if(i.type === 'Album') unit = 'titres';
+                    if(i.type === 'Livre') unit = 'p.';
+                    if(i.type === 'Série') unit = 'sais.';
+                    const sub = i.subInfo ? `• ${i.subInfo}` : '';
+                    const safeItem = JSON.stringify(i).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+
+                    return `
+                    <div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${safeItem})'>
+                        <img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200">
+                        <div class="flex-1 font-black text-xs">
+                            ${i.title}
+                            <div class="text-[10px] text-gray-400 font-normal mt-0.5">
+                                ${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''} • ${i.metricValue || 0} ${unit} ${sub}
+                            </div>
                         </div>
-                    </div>
-                </div>`;
-            }).join(''); 
+                    </div>`;
+                }).join(''); 
+                
+            }, 800); // FIN DU MINUTEUR
         };
 
        /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS RICHE & ADAPTATIF) --- */
@@ -996,15 +1013,21 @@
             if (item.type === 'Album') {
                 imageClass = 'w-64 h-64'; // Grand Carré pour l'Album
             } else if (item.type === 'YouTube') {
-                imageClass = 'w-full aspect-video shadow-sm'; // 16:9 Large pour YouTube
+                imageClass = 'w-full aspect-video shadow-sm scale-105 mb-8'; // 16:9 Large pour YouTube
             }
             // ----------------------------------------------------------
 
-            let authorLabel = 'De', iconClass = 'fa-video';
-            if (item.type === 'Livre') { authorLabel = 'Auteur'; iconClass = 'fa-pen-nib'; }
-            if (item.type === 'Album') { authorLabel = 'Artiste'; iconClass = 'fa-microphone'; }
-            if (item.type === 'YouTube') { authorLabel = 'Chaîne'; iconClass = 'fa-youtube'; }
-            if (item.type === 'Jeu') { authorLabel = 'Créateur'; iconClass = 'fa-chess-pawn'; }
+            // CORRECTION: Gestion des icônes (Solid vs Brands pour YouTube)
+            let authorLabel = 'De', iconClass = 'fa-solid fa-video', iconColor = 'text-gray-500';
+            
+            if (item.type === 'Livre') { authorLabel = 'Auteur'; iconClass = 'fa-solid fa-pen-nib'; }
+            if (item.type === 'Album') { authorLabel = 'Artiste'; iconClass = 'fa-solid fa-microphone'; }
+            if (item.type === 'YouTube') { 
+                authorLabel = 'Chaîne'; 
+                iconClass = 'fa-brands fa-youtube'; // Changement ici : brands
+                iconColor = 'text-red-500'; // Optionnel: petite touche de rouge YouTube
+            }
+            if (item.type === 'Jeu') { authorLabel = 'Créateur'; iconClass = 'fa-solid fa-chess-pawn'; }
 
             let commentHtml = '';
             if (item.comment && item.comment.trim() !== '') {
@@ -1022,7 +1045,7 @@
                 <div class="w-full bg-white/5 rounded-xl p-4 mb-6 border border-white/10 flex flex-col gap-3 text-left">
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex-1">
-                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid ${iconClass} mr-1"></i> ${authorLabel}</div>
+                            <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="${iconClass} ${iconColor} mr-1"></i> ${authorLabel}</div>
                             <div class="text-sm font-bold text-white leading-tight">${item.author || 'Inconnu'}</div>
                         </div>
                         <div class="text-right">
@@ -1420,17 +1443,20 @@
             if(!text) return;
             
             const actData = window.socialFeed.find(a => a.id === window.currentCommentActId);
+            const appId = 'mabiblio-dc595'; // CORRECTION : Déclaration de l'ID Firebase
+
+            const newComment = { 
+                userId: window.currentUser.uid, 
+                userName: window.userProfile.name, 
+                userAvatar: window.userProfile.avatar || '', 
+                text: text, 
+                timestamp: Date.now(),
+                likes: [] 
+            };
 
             // Mise à jour Firestore (Ajout du commentaire)
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', window.currentCommentActId), { 
-                comments: arrayUnion({ 
-                    userId: window.currentUser.uid, 
-                    userName: window.userProfile.name, 
-                    userAvatar: window.userProfile.avatar || '', 
-                    text: text, 
-                    timestamp: Date.now(),
-                    likes: [] 
-                }) 
+                comments: arrayUnion(newComment) 
             });
 
             // Notification pour l'auteur du post
@@ -1449,6 +1475,17 @@
             }
 
             input.value = "";
+            
+            // CORRECTION : Affichage instantané du commentaire et rafraîchissement de la modale
+            if (!actData.comments) actData.comments = [];
+            actData.comments.push(newComment);
+            window.openCommentModal(window.currentCommentActId);
+            
+            // On force le scroll tout en bas pour voir le nouveau commentaire
+            setTimeout(() => {
+                const container = document.getElementById('comments-list-container');
+                if (container) container.scrollTop = container.scrollHeight;
+            }, 50);
         };
 
        /* --- 4. GESTION ABONNEMENTS & NAVIGATION SOCIALE --- */
@@ -1552,20 +1589,19 @@
         // Ancienne fonction conservée pour éviter les erreurs si appelée ailleurs
         window.followUser = async () => {};
 
-     /* ==================================================================
+/* ==================================================================
    H.2 : SOCIAL - FEED & NOTIFICATIONS (DESIGN IOS ÉPURÉ)
    ================================================================== */
 
     /* --- INITIALISATION --- */
-    if (!window.feedFilters) window.feedFilters = ['All']; 
+    // On force la valeur par défaut sur "Film"
+    if (!window.feedFilter) window.feedFilter = 'Film'; 
 
     /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
     window.renderSocialFeed = () => {
         const focusedId = document.activeElement ? document.activeElement.id : null;
         const focusedVal = focusedId ? document.activeElement.value : null;
         const container = document.getElementById('main-content');
-        
-        const activeFilterCount = window.feedFilters.includes('All') ? 0 : window.feedFilters.length;
         
         const searchBlock = `
             <div class="flex gap-3 mb-4 items-center relative z-10">
@@ -1574,10 +1610,19 @@
                     <input id="user-search-input" type="text" placeholder="Chercher un ami..." class="flex-1 bg-transparent outline-none font-bold text-sm text-gray-800 placeholder-gray-400" oninput="window.handleUserSearch(this.value)">
                 </div>
                 
-                <button onclick="window.openFeedFilterModal()" class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border transition-all active:scale-95 ${activeFilterCount > 0 ? 'bg-blue-600 text-white border-blue-600 shadow-blue-200' : 'bg-white/80 backdrop-blur-md text-gray-400 border-gray-100/50 hover:bg-white'}">
-                    <i class="fa-solid fa-filter"></i>
-                    ${activeFilterCount > 0 ? `<div class="absolute top-0 right-0 -mt-1 -mr-1 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center text-white font-bold border-2 border-white">${activeFilterCount}</div>` : ''}
-                </button>
+                <div class="relative h-12 shrink-0">
+                    <select onchange="window.changeFeedFilter(this.value)" class="h-full bg-white/80 backdrop-blur-md text-gray-800 border border-gray-100/50 rounded-2xl pl-4 pr-10 shadow-sm font-black text-sm outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:shadow-md">
+                        <option value="Film" ${window.feedFilter === 'Film' ? 'selected' : ''}>Films</option>
+                        <option value="Série" ${window.feedFilter === 'Série' ? 'selected' : ''}>Séries</option>
+                        <option value="Livre" ${window.feedFilter === 'Livre' ? 'selected' : ''}>Livres</option>
+                        <option value="Album" ${window.feedFilter === 'Album' ? 'selected' : ''}>Albums</option>
+                        <option value="YouTube" ${window.feedFilter === 'YouTube' ? 'selected' : ''}>YouTube</option>
+                        <option value="Jeu" ${window.feedFilter === 'Jeu' ? 'selected' : ''}>Jeux</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </div>
+                </div>
             </div>
             <div id="user-search-results" class="mb-4"></div>
         `;
@@ -1586,9 +1631,9 @@
         
         if (window.socialFeed && window.socialFeed.length > 0) {
             let sortedFeed = [...window.socialFeed].sort((a,b) => b.timestamp - a.timestamp);
-            if (!window.feedFilters.includes('All')) {
-                sortedFeed = sortedFeed.filter(act => window.feedFilters.includes(act.type));
-            }
+            
+            // Le filtre ne garde que la catégorie sélectionnée (Film par défaut)
+            sortedFeed = sortedFeed.filter(act => act.type === window.feedFilter);
 
             if (sortedFeed.length > 0) {
                 sortedFeed.forEach(act => {
@@ -1596,8 +1641,17 @@
                     const isLiked = likes.includes(window.currentUser.uid);
                     const commentsCount = (act.comments || []).length;
                     
-                    let typeIcon = 'fa-film'; if (act.type === 'Livre') typeIcon = 'fa-book'; if (act.type === 'Série') typeIcon = 'fa-tv'; if (act.type === 'Album') typeIcon = 'fa-music'; if (act.type === 'YouTube') typeIcon = 'fa-youtube'; if (act.type === 'Jeu') typeIcon = 'fa-gamepad';
-                    let thumbClass = 'w-16 h-24'; if (act.type === 'Album') thumbClass = 'w-20 h-20'; if (act.type === 'YouTube') thumbClass = 'w-32 h-20'; 
+                    let iconClass = 'fa-solid fa-film'; 
+                    if (act.type === 'Livre') iconClass = 'fa-solid fa-book'; 
+                    if (act.type === 'Série') iconClass = 'fa-solid fa-tv'; 
+                    if (act.type === 'Album') iconClass = 'fa-solid fa-music'; 
+                    if (act.type === 'YouTube') iconClass = 'fa-brands fa-youtube'; 
+                    if (act.type === 'Jeu') iconClass = 'fa-solid fa-gamepad';
+
+                    let thumbClass = 'w-16 h-24'; 
+                    if (act.type === 'Album') thumbClass = 'w-20 h-20'; 
+                    if (act.type === 'YouTube') thumbClass = 'w-32 aspect-video'; 
+                    
                     let likesText = likes.length > 0 ? (likes.length === 1 ? `1 J'aime` : `${likes.length} J'aime`) : 'J\'aime';
 
                     let facesHtml = '';
@@ -1630,7 +1684,7 @@
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="text-[10px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
                                         <span class="bg-gray-100/80 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-black uppercase flex items-center gap-1 border border-gray-50">
-                                            <i class="fa-solid ${typeIcon}"></i> ${act.type} ${platformBadge}
+                                            <i class="${iconClass}"></i> ${act.type} ${platformBadge}
                                         </span>
                                     </div>
                                 </div>
@@ -1640,7 +1694,7 @@
 
                         <div class="flex gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick='window.openPreview(${previewJson})'>
                             <div class="relative ${thumbClass} shrink-0 rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                                <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200">
+                                <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200 ${act.type === 'YouTube' ? 'scale-110' : ''}">
                                 <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-md">${act.rating || '-'}</div>
                             </div>
                             <div class="flex-1 py-1 min-w-0">
@@ -1675,7 +1729,7 @@
                     </div>`
                 });
             } else {
-                 feedHtml = `<div class="text-center py-10 opacity-50 text-sm text-gray-400">Aucun post ne correspond à ces filtres.</div>`;
+                 feedHtml = `<div class="text-center py-10 opacity-50 text-sm text-gray-400">Aucun post ne correspond à cette catégorie.</div>`;
             }
             container.innerHTML = `<div class="pt-24 px-5 pb-32 relative"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="space-y-4">${feedHtml}</div></div>`;
         } else {
@@ -1684,89 +1738,9 @@
         if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = ''; el.value = v; } }
     };
 
-    /* --- LOGIQUE DU POP-UP FILTRE (DESIGN ACTION SHEET IOS) --- */
-    window.openFeedFilterModal = () => {
-        const types = ['Film', 'Série', 'Livre', 'Album', 'YouTube', 'Jeu'];
-        const labels = { 'Film': 'Films', 'Série': 'Séries', 'Livre': 'Livres', 'Album': 'Albums', 'YouTube': 'YouTube', 'Jeu': 'Jeux' };
-        const isAll = window.feedFilters.includes('All');
-
-        const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 z-[100] flex items-end bg-black/30 backdrop-blur-sm transition-opacity duration-300 opacity-0';
-        overlay.id = 'filter-popup-overlay';
-        
-        // Animation d'entrée
-        setTimeout(() => {
-            overlay.classList.remove('opacity-0');
-            overlay.querySelector('.action-sheet').classList.remove('translate-y-full');
-        }, 10);
-
-        const close = () => {
-            overlay.classList.add('opacity-0');
-            overlay.querySelector('.action-sheet').classList.add('translate-y-full');
-            setTimeout(() => document.body.removeChild(overlay), 300);
-        };
-        overlay.onclick = (e) => { if(e.target === overlay) close(); };
-
-        const generateButtons = () => {
-            return types.map(t => {
-                const isActive = window.feedFilters.includes(t);
-                return `<button onclick="window.toggleFeedFilterFromModal('${t}')" class="w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}"><span>${labels[t]}</span>${isActive ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}</button>`;
-            }).join('');
-        };
-
-        overlay.innerHTML = `
-            <div class="action-sheet w-full bg-white/90 backdrop-blur-xl rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] p-6 transform transition-transform duration-300 translate-y-full pb-safe">
-                <div class="w-12 h-1 bg-gray-300/50 rounded-full mx-auto mb-6"></div>
-                <h3 class="text-center font-black text-xl mb-6">Filtrer le flux</h3>
-                
-                <div class="space-y-2 mb-6">
-                    <button onclick="window.toggleFeedFilterFromModal('All')" id="btn-filter-all" class="w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isAll ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}"><span>Tout voir</span>${isAll ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}</button>
-                    <div class="space-y-2" id="filter-list">${generateButtons()}</div>
-                </div>
-
-                <button onclick="window.applyFeedFilters()" class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-base shadow-lg shadow-blue-200/50 active:scale-95 transition-transform">
-                    Afficher (${isAll ? 'Tout' : window.feedFilters.length})
-                </button>
-            </div>
-        `;
-        document.body.appendChild(overlay);
-        window.currentFilterOverlay = overlay; // Référence pour la fermeture
-    };
-
-    window.toggleFeedFilterFromModal = (type) => {
-        if (type === 'All') { window.feedFilters = ['All']; } 
-        else {
-            if (window.feedFilters.includes('All')) window.feedFilters = [];
-            if (window.feedFilters.includes(type)) { window.feedFilters = window.feedFilters.filter(t => t !== type); } 
-            else { window.feedFilters.push(type); }
-            if (window.feedFilters.length === 0) window.feedFilters = ['All'];
-        }
-
-        // Mise à jour visuelle in-place
-        const isAll = window.feedFilters.includes('All');
-        const overlay = window.currentFilterOverlay;
-        if(!overlay) return;
-
-        overlay.querySelector('#btn-filter-all').className = `w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isAll ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}`;
-        overlay.querySelector('#btn-filter-all').innerHTML = `<span>Tout voir</span>${isAll ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}`;
-        
-        const types = ['Film', 'Série', 'Livre', 'Album', 'YouTube', 'Jeu'];
-        const labels = { 'Film': 'Films', 'Série': 'Séries', 'Livre': 'Livres', 'Album': 'Albums', 'YouTube': 'YouTube', 'Jeu': 'Jeux' };
-        overlay.querySelector('#filter-list').innerHTML = types.map(t => {
-            const isActive = window.feedFilters.includes(t);
-            return `<button onclick="window.toggleFeedFilterFromModal('${t}')" class="w-full p-4 rounded-2xl font-bold text-sm transition-all flex justify-between items-center active:scale-[0.98] ${isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-50/50 text-gray-600'}"><span>${labels[t]}</span>${isActive ? '<i class="fa-solid fa-check text-blue-600"></i>' : ''}</button>`;
-        }).join('');
-        
-        overlay.querySelector('button.bg-blue-600').innerHTML = `Afficher (${isAll ? 'Tout' : window.feedFilters.length})`;
-    };
-
-    window.applyFeedFilters = () => {
-        const overlay = window.currentFilterOverlay;
-        if(overlay) {
-             overlay.classList.add('opacity-0');
-             overlay.querySelector('.action-sheet').classList.add('translate-y-full');
-             setTimeout(() => document.body.removeChild(overlay), 300);
-        }
+    /* --- GESTION DU FILTRE (MENU DÉROULANT) --- */
+    window.changeFeedFilter = (val) => {
+        window.feedFilter = val;
         window.renderSocialFeed();
     };
 
@@ -1823,6 +1797,7 @@
     /* --- 4. CENTRE DE NOTIFICATIONS --- */
     window.openNotifications = async () => {
         window.currentView = 'notifications';
+        const appId = 'mabiblio-dc595'; 
         const h = document.getElementById('app-header'); if(h) h.style.display = 'none'; 
         const badge = document.getElementById('notif-badge'); if(badge) { badge.innerText = '0'; badge.classList.remove('active'); badge.style.opacity = '0'; badge.style.transform = 'scale(0)'; }
         const unreadNotifs = (window.extState.notifications || []).filter(n => !n.read && n.id);
@@ -1834,12 +1809,24 @@
     
     /* --- 5. FONCTIONS UTILITAIRES (LIKES COMMENTAIRES, DELETE, NOTIFS) --- */
     window.toggleCommentLike = async (actId, commentTimestamp) => {
+        const appId = 'mabiblio-dc595'; 
         const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
-        try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const comments = data.comments || []; const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp); if (cIndex > -1) { const comment = comments[cIndex]; let likes = comment.likes || []; const uid = window.currentUser.uid; let isNewLike = false; if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); isNewLike = true; } comment.likes = likes; comments[cIndex] = comment; await updateDoc(actRef, { comments: comments }); if (isNewLike && comment.userId !== window.currentUser.uid) { window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId); } } } } catch (e) { console.error(e); }
+        try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const comments = data.comments || []; const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp); if (cIndex > -1) { const comment = comments[cIndex]; let likes = comment.likes || []; const uid = window.currentUser.uid; let isNewLike = false; if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); isNewLike = true; } comment.likes = likes; comments[cIndex] = comment; await updateDoc(actRef, { comments: comments }); if (isNewLike && comment.userId !== window.currentUser.uid) { window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId); }
+        window.openCommentModal(actId);
+        } } } catch (e) { console.error(e); }
     };
-    window.deleteComment = async (actId, commentTimestamp) => { if(!confirm("Supprimer ce commentaire ?")) return; const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId); try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const newComments = (data.comments || []).filter(c => c.timestamp !== commentTimestamp); await updateDoc(actRef, { comments: newComments }); } } catch(e) { console.error(e); } };
+    window.deleteComment = async (actId, commentTimestamp) => { 
+        if(!confirm("Supprimer ce commentaire ?")) return; 
+        const appId = 'mabiblio-dc595'; 
+        const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId); 
+        try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const newComments = (data.comments || []).filter(c => c.timestamp !== commentTimestamp); await updateDoc(actRef, { comments: newComments }); 
+        const actData = window.socialFeed.find(a => a.id === actId); if(actData) actData.comments = newComments;
+        window.openCommentModal(actId);
+        } } catch(e) { console.error(e); } 
+    };
     window.deleteActivity = async (actId) => { if(!confirm("Supprimer ce post ?")) return; try { const appId = 'mabiblio-dc595'; await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId)); if(window.socialFeed) { window.socialFeed = window.socialFeed.filter(a => a.id !== actId); window.renderSocialFeed(); } } catch (e) { console.error(e); } };
-    window.sendNotification = async (targetUid, type, text, itemTitle, actId) => { try { const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'); await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null }); } catch(e) { console.error(e); } };
+    window.sendNotification = async (targetUid, type, text, itemTitle, actId) => { try { const appId = 'mabiblio-dc595';  
+    const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'); await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null }); } catch(e) { console.error(e); } };
 
        // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
@@ -1952,11 +1939,11 @@
             
             // 2. Récupération de la valeur actuelle pour CETTE catégorie
             const type = window.currentType;
-            // Si pas de valeur enregistrée, on prend le défaut (3 pour Album/YouTube, 4 sinon)
-            const defaultVal = (type === 'YouTube' || type === 'Album') ? 3 : 4;
+            // CORRECTION : 2 pour YouTube, 3 pour Album, 4 pour le reste
+            const defaultVal = type === 'YouTube' ? 2 : (type === 'Album' ? 3 : 4);
             let current = window.gridPrefs[type] || defaultVal;
             
-            // 3. Logique de cycle : 4 -> 2 -> 3 -> 4
+            // 3. Logique de cycle unifiée : 4 -> 2 -> 3 -> 4
             if (current === 4) current = 2;
             else if (current === 2) current = 3;
             else current = 4;
@@ -1994,8 +1981,8 @@
             if (!window.gridPrefs) window.gridPrefs = {};
             const type = window.currentType;
             
-            // Valeur par défaut si l'utilisateur n'a jamais touché au bouton pour cette catégorie
-            const defaultVal = (type === 'YouTube' || type === 'Album') ? 3 : 4;
+            // CORRECTION : 2 pour YouTube, 3 pour Album, 4 pour le reste
+            const defaultVal = type === 'YouTube' ? 2 : (type === 'Album' ? 3 : 4);
             
             // On prend la valeur en mémoire OU la valeur par défaut
             const cols = window.gridPrefs[type] || defaultVal;
@@ -2036,8 +2023,8 @@
             if (item.type === 'Album') aspectClass = 'aspect-square'; 
             if (item.type === 'YouTube') aspectClass = 'aspect-video'; 
 
-            // Ajustement taille police si 4 colonnes
-            const titleSize = (cols >= 4) ? 'text-[9px]' : 'text-[11px]';
+            // Ajustement taille police : plus la colonne est petite (4 cols), plus la police est petite
+            const titleSize = (cols >= 4) ? 'text-[9px]' : (cols === 2 ? 'text-xs' : 'text-[11px]');
 
             let dateDisplay = '';
             if (item.finishDate) {
@@ -2052,9 +2039,12 @@
             else if(item.type === 'Jeu') unit = 'h';
             else unit = 'min';
 
+            // CORRECTION ZOOM YOUTUBE (scale-110 pour tuer la bande noire, scale-125 au survol)
+            const zoomClass = item.type === 'YouTube' ? 'scale-110 group-hover:scale-125' : 'group-hover:scale-105';
+
             return `
             <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95" onclick='window.openPreview(${itemData})'>
-                <img src="${item.img || ''}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                <img src="${item.img || ''}" class="w-full h-full object-cover transition-transform duration-500 ${zoomClass}">
                 ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
                 
                 <div class="grid-item-overlay">
