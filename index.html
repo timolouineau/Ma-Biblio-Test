@@ -1594,8 +1594,8 @@
    ================================================================== */
 
     /* --- INITIALISATION --- */
-    // On force la valeur par défaut sur "Film"
-    if (!window.feedFilter) window.feedFilter = 'Film'; 
+    // On met la valeur par défaut sur "Tout"
+    if (!window.feedFilter) window.feedFilter = 'Tout'; 
 
     /* --- 1. RENDU DU FIL D'ACTUALITÉ (FEED) --- */
     window.renderSocialFeed = () => {
@@ -1613,6 +1613,7 @@
                 
                 <div class="relative shrink-0 h-12">
                     <select onchange="window.changeFeedFilter(this.value)" class="h-full bg-white/80 backdrop-blur-md text-gray-800 border border-gray-100/50 rounded-2xl pl-4 pr-9 shadow-sm font-black text-sm outline-none appearance-none cursor-pointer transition-all focus:bg-white focus:shadow-md">
+                        <option value="Tout" ${window.feedFilter === 'Tout' ? 'selected' : ''}>Tout</option>
                         <option value="Film" ${window.feedFilter === 'Film' ? 'selected' : ''}>Films</option>
                         <option value="Série" ${window.feedFilter === 'Série' ? 'selected' : ''}>Séries</option>
                         <option value="Livre" ${window.feedFilter === 'Livre' ? 'selected' : ''}>Livres</option>
@@ -1633,8 +1634,10 @@
         if (window.socialFeed && window.socialFeed.length > 0) {
             let sortedFeed = [...window.socialFeed].sort((a,b) => b.timestamp - a.timestamp);
             
-            // Le filtre ne garde que la catégorie sélectionnée (Film par défaut)
-            sortedFeed = sortedFeed.filter(act => act.type === window.feedFilter);
+            // Le filtre ne garde que la catégorie sélectionnée, SAUF si c'est "Tout"
+            if (window.feedFilter !== 'Tout') {
+                sortedFeed = sortedFeed.filter(act => act.type === window.feedFilter);
+            }
 
             if (sortedFeed.length > 0) {
                 sortedFeed.forEach(act => {
