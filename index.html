@@ -488,8 +488,7 @@
                 document.querySelector('.app-shell').style.display = 'none';
             }
         });
-
-       // -----------------------------------------------------------
+// -----------------------------------------------------------
         // D. CHARGEMENT DES DONNÉES (USER & COLLECTION) - VERSION FIXÉE (ARTIFACTS)
         // -----------------------------------------------------------
 
@@ -540,7 +539,7 @@
             });
         };
 
-        /* --- D.3 ÉCOUTE SOCIALE (FOLLOWING) --- */
+        /* --- D.3 ÉCOUTE SOCIALE (FOLLOWING) & NOTIFICATIONS --- */
         window.setupSocialListeners = () => {
             const appId = 'mabiblio-dc595';
             
@@ -566,6 +565,23 @@
                 );
                 
                 window.refreshCurrentView();
+            });
+
+            // CORRECTION : 3. Écouter les notifications en temps réel
+            if (!window.extState) window.extState = {};
+            const qNotifs = query(collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications'), orderBy('timestamp', 'desc'), limit(30));
+            onSnapshot(qNotifs, (snap) => {
+                window.extState.notifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                
+                // Mettre à jour la petite cloche s'il y a des notifications non lues
+                if (window.updateNotifBadge) {
+                    window.updateNotifBadge();
+                }
+                
+                // Si l'utilisateur est déjà sur la page des notifications, on la rafraîchit en direct
+                if (window.currentView === 'notifications') {
+                    window.openNotifications();
+                }
             });
         };
 
@@ -758,6 +774,9 @@
         /* --- F.4 NAVIGATION PRINCIPALE (VUES) --- */
         window.switchView = (view) => {
             window.currentView = view;
+            
+            // CORRECTION : Forcer le retour en haut de la page au changement de vue
+            window.scrollTo(0, 0);
             
             // Mise à jour visuelle de la barre du bas
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
@@ -1696,9 +1715,9 @@
                             ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>` : ''}
                         </div>
 
-                        <div class="flex gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick='window.openPreview(${previewJson})'>
+                        <div class="flex items-start gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick='window.openPreview(${previewJson})'>
                             <div class="relative ${thumbClass} shrink-0 rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                                <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200 ${act.type === 'YouTube' ? 'scale-110' : ''}">
+                                <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200 ${act.type === 'YouTube' ? 'scale-[1.35]' : ''}">
                                 <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-md">${act.rating || '-'}</div>
                             </div>
                             <div class="flex-1 py-1 min-w-0">
@@ -1808,7 +1827,45 @@
         if(unreadNotifs.length > 0) { const batch = writeBatch(db); unreadNotifs.forEach(n => { const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id); batch.update(ref, { read: true }); }); try { await batch.commit(); } catch(e) { console.error(e); } }
         const container = document.getElementById('main-content');
         const notifs = (window.extState.notifications || []).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
-        container.innerHTML = `<div class="pt-10 px-6 pb-32"><div class="flex items-center gap-4 mb-6"><button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button><h1 class="text-3xl font-black">Activité</h1></div>${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}${notifs.map(n => { const isFollow = n.type === 'follow'; const action = isFollow ? `window.openPublicProfile('${n.fromUid}')` : `window.openCommentModal('${n.actId}')`; let icon = '<i class="fa-solid fa-comment"></i>'; let color = 'text-blue-600'; if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'text-green-500'; } else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'text-red-500'; } else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'text-purple-500'; } const content = isFollow ? `<span class="font-bold text-gray-800">${n.message}</span>` : `<span class="font-black">${n.user || 'Quelqu\'un'}</span> ${n.text || n.message}`; const subText = isFollow ? 'Voir le profil' : `Sur ${n.itemTitle || 'un post'}`; return `<div class="notif-item cursor-pointer flex items-start gap-3 py-3 border-b border-gray-50" onclick="${action}"><div class="notif-icon ${color} text-lg w-8 pt-1">${icon}</div><div class="flex-1"><div class="text-sm leading-tight">${content}</div><div class="text-[10px] text-gray-400 font-bold uppercase mt-1">${subText} • ${new Date(n.time || n.timestamp).toLocaleDateString()}</div></div>${!n.read ? '<div class="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>' : ''}</div>`; }).join('')}</div>`;
+        
+        container.innerHTML = `<div class="pt-10 px-6 pb-32">
+            <div class="flex items-center gap-4 mb-6">
+                <button onclick="window.switchView('home')" class="w-10 h-10 rounded-full bg-white shadow flex items-center justify-center"><i class="fa-solid fa-arrow-left"></i></button>
+                <h1 class="text-3xl font-black">Activité</h1>
+            </div>
+            ${notifs.length === 0 ? '<div class="opacity-40 text-center mt-20 font-bold">Rien pour le moment</div>' : ''}
+            ${notifs.map(n => { 
+                const isFollow = n.type === 'follow'; 
+                const isLikePost = n.type === 'like'; // Action spécifique pour le "like" normal
+                
+                let action = '';
+                if (isFollow) {
+                    action = `window.openPublicProfile('${n.fromUid}')`;
+                } else if (isLikePost) {
+                    // On bascule sur le Feed, et on scrolle doucement jusqu'au post
+                    action = `window.switchView('friends'); setTimeout(() => { const post = document.getElementById('act-${n.actId}'); if(post) post.scrollIntoView({behavior: 'smooth', block: 'center'}); }, 200);`;
+                } else {
+                    // Pour les commentaires / like de commentaire : on bascule sur le Feed et on ouvre la modale
+                    action = `window.switchView('friends'); setTimeout(() => window.openCommentModal('${n.actId}'), 200);`;
+                }
+                
+                let icon = '<i class="fa-solid fa-comment"></i>'; 
+                let color = 'text-blue-600'; 
+                if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'text-green-500'; } 
+                else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'text-red-500'; } 
+                else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'text-purple-500'; } 
+                const content = isFollow ? `<span class="font-bold text-gray-800">${n.message}</span>` : `<span class="font-black">${n.user || 'Quelqu\'un'}</span> ${n.text || n.message}`; 
+                const subText = isFollow ? 'Voir le profil' : `Sur ${n.itemTitle || 'un post'}`; 
+                return `<div class="notif-item cursor-pointer flex items-start gap-3 py-3 border-b border-gray-50" onclick="${action}">
+                    <div class="notif-icon ${color} text-lg w-8 pt-1">${icon}</div>
+                    <div class="flex-1">
+                        <div class="text-sm leading-tight">${content}</div>
+                        <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">${subText} • ${new Date(n.time || n.timestamp).toLocaleDateString()}</div>
+                    </div>
+                    ${!n.read ? '<div class="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>' : ''}
+                </div>`; 
+            }).join('')}
+        </div>`;
     };
     
     /* --- 5. FONCTIONS UTILITAIRES (LIKES COMMENTAIRES, DELETE, NOTIFS) --- */
@@ -1832,6 +1889,7 @@
     window.sendNotification = async (targetUid, type, text, itemTitle, actId) => { try { const appId = 'mabiblio-dc595';  
     const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'); await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null }); } catch(e) { console.error(e); } };
     
+
        // -----------------------------------------------------------
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
@@ -2314,7 +2372,7 @@
             } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
         };
 
-    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MENU DÉROULANT --- */
+   /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MENU DÉROULANT --- */
     window.friendData = [];
     window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
 
@@ -2441,6 +2499,7 @@
     };
 
     window.toggleFollowFromProfile = async (uid) => {
+        const appId = 'mabiblio-dc595'; // CORRECTION : Ajout de l'ID Firebase
         const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
         const isFollowing = (window.userProfile.following || []).includes(uid);
         try {
@@ -2451,6 +2510,8 @@
                 }
             } else {
                 await updateDoc(myRef, { following: arrayUnion(uid) });
+                // CORRECTION : Envoi de la notification au nouvel ami
+                window.sendNotification(uid, 'follow', 'a commencé à vous suivre', 'Nouveau follower', null);
                 window.openPublicProfile(uid);
             }
         } catch (e) { console.error(e); }
