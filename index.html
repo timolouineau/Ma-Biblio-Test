@@ -792,7 +792,7 @@
             window.refreshCurrentView();
         };
 
-    /* --- G.1 MOTEUR DE RECHERCHE (DEEZER NATIF JSONP - 100% CATALOGUE FR) --- */
+ /* --- G.1 MOTEUR DE RECHERCHE (DEEZER NATIF JSONP - 100% CATALOGUE FR) --- */
         
         // Fonction utilitaire pour parler à Deezer en direct sans blocage (JSONP)
         window.deezerJSONP = (url) => {
@@ -891,10 +891,7 @@
                 try {
                     // --- CAS ALBUM (DEEZER VIA JSONP - LE VRAI CATALOGUE FR) ---
                     if (searchType === 'Album') {
-                        // 1. Recherche via JSONP (Direct Deezer)
                         const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(val)}&limit=10`);
-                        
-                        // 2. Récupération des détails (Tracklist) pour chaque album
                         results = await Promise.all((d.data || []).map(async a => {
                             let trackListHtml = "Titres indisponibles";
                             try {
@@ -908,7 +905,7 @@
                                 id: String(a.id),
                                 title: a.title,
                                 img: a.cover_xl || a.cover_medium,
-                                desc: trackListHtml, // On stocke la liste des titres ici
+                                desc: trackListHtml, 
                                 type: 'Album',
                                 releaseDate: a.release_date,
                                 metricValue: a.nb_tracks || 0,
@@ -932,8 +929,7 @@
                             
                             results = d.items.map(v => {
                                 const detail = dDetails.items ? dDetails.items.find(x => x.id === v.id.videoId) : null;
-                                let duration = 0;
-                                let views = 0;
+                                let duration = 0, views = 0;
                                 
                                 if (detail) {
                                     if (detail.contentDetails && detail.contentDetails.duration) {
@@ -944,16 +940,11 @@
                                 }
 
                                 return {
-                                    id: v.id.videoId,
-                                    title: v.snippet.title,
+                                    id: v.id.videoId, title: v.snippet.title,
                                     img: v.snippet.thumbnails.high ? v.snippet.thumbnails.high.url : v.snippet.thumbnails.medium.url,
-                                    desc: v.snippet.description,
-                                    type: 'YouTube',
-                                    releaseDate: v.snippet.publishedAt,
-                                    metricValue: duration || 0,
-                                    author: v.snippet.channelTitle,
-                                    platform: 'YouTube',
-                                    subInfo: `${views} vues`
+                                    desc: v.snippet.description, type: 'YouTube', releaseDate: v.snippet.publishedAt,
+                                    metricValue: duration || 0, author: v.snippet.channelTitle,
+                                    platform: 'YouTube', subInfo: `${views} vues`
                                 };
                             });
                         }
@@ -961,18 +952,25 @@
 
                     // --- CAS LIVRE ---
                     else if (searchType === 'Livre') { 
-                        const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${val}&maxResults=10&langRestrict=fr`); 
+                        // AJOUT DE TA CLÉ API ET SECURISATION DES ESPACES/GUILLEMETS
+                        const BOOKS_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco";
+                        const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(val)}&maxResults=10&langRestrict=fr&key=${BOOKS_KEY}`); 
                         const d = await r.json(); 
-                        results = (d.items || []).map(b => ({ 
-                            id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
-                            desc: b.volumeInfo.description || "", type: 'Livre', releaseDate: b.volumeInfo.publishedDate, 
-                            metricValue: b.volumeInfo.pageCount || 0, author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
-                        })); 
+                        results = (d.items || []).map(b => {
+                            let safeDesc = b.volumeInfo.description || "";
+                            safeDesc = safeDesc.replace(/[\n\r]/g, " ").replace(/"/g, "'");
+
+                            return { 
+                                id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
+                                desc: safeDesc, type: 'Livre', releaseDate: b.volumeInfo.publishedDate, 
+                                metricValue: b.volumeInfo.pageCount || 0, author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
+                            };
+                        }); 
                     } 
                     // --- CAS FILM/SÉRIE ---
                     else { 
                         const ep = searchType === 'Film' ? 'movie' : 'tv'; 
-                        const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${val}&language=fr-FR`); 
+                        const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${encodeURIComponent(val)}&language=fr-FR`); 
                         const d = await r.json(); 
                         results = await Promise.all((d.results || []).map(async m => { 
                             const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
@@ -983,9 +981,13 @@
                                 if (searchType === 'Film' && details.credits.crew) { const director = details.credits.crew.find(x => x.job === 'Director'); if(director) author = director.name; } 
                                 else if (searchType === 'Série' && details.created_by) author = details.created_by.map(c => c.name).join(', ');
                             }
+                            
+                            let safeDesc = m.overview || "";
+                            safeDesc = safeDesc.replace(/[\n\r]/g, " ").replace(/"/g, "'");
+
                             return { 
                                 id: String(m.id), title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
-                                desc: m.overview || "", type: searchType, releaseDate: m.release_date || m.first_air_date, 
+                                desc: safeDesc, type: searchType, releaseDate: m.release_date || m.first_air_date, 
                                 metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0), author: author, cast: cast
                             }; 
                         })); 
