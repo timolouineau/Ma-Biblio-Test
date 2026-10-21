@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "activity",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "profile",
+      "fieldPath": "following",
+      "indexes": [
+        { "queryScope": "COLLECTION", "arrayConfig": "CONTAINS" },
+        { "queryScope": "COLLECTION_GROUP", "arrayConfig": "CONTAINS" }
+      ]
+    }
+  ]
+}

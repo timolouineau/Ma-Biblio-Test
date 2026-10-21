@@ -593,13 +593,15 @@
                 window.listenToMyCollection(userRoot);
                 window.setupSocialListeners();
 
-                // Les profils des amis ne sont rechargés que si la liste d'abonnements a changé
+                // Les profils des amis et le fil ne sont rechargés que si la liste d'abonnements a changé
                 const followingKey = JSON.stringify(window.following);
                 if (followingKey !== lastFollowingKey) {
                     lastFollowingKey = followingKey;
                     window.loadFollowingProfiles();
-                    window.applyFeedFilter();
+                    window.subscribeFeed();
                 }
+                window.rememberProfile(window.currentUser.uid, window.userProfile);
+                window.applyFeedFilter();
             }, (err) => console.error('Écoute profil', err));
         };
 
@@ -618,30 +620,78 @@
         };
 
         /* --- D.3 ÉCOUTE SOCIALE (FIL) & NOTIFICATIONS --- */
+
+        // Annuaire des profils connus (moi, mes abonnements, résultats de recherche…) :
+        // permet d'afficher le pseudo et la photo ACTUELS de chacun, même sur d'anciens posts.
+        window.profileCache = {};
+        window.rememberProfile = (uid, data) => {
+            if (!uid || !data) return;
+            window.profileCache[uid] = { name: data.name, avatar: data.avatar || '', blocked: Array.isArray(data.blocked) ? data.blocked : [] };
+        };
+        // Pseudo et photo à afficher pour un utilisateur (valeurs enregistrées dans le post en secours)
+        window.liveUser = (uid, fallbackName, fallbackAvatar) => {
+            const p = window.profileCache[uid];
+            return { name: (p && p.name) || fallbackName || 'Utilisateur', avatar: (p && p.avatar) || fallbackAvatar || '' };
+        };
+
+        // Blocage : comptes que J'AI bloqués, et comptes qui M'ONT bloqué
+        window.myBlocked = () => (window.userProfile && Array.isArray(window.userProfile.blocked)) ? window.userProfile.blocked : [];
+        window.hasBlockedMe = (uid) => { const p = window.profileCache[uid]; return !!(p && p.blocked.includes(window.currentUser.uid)); };
+        window.isHiddenUser = (uid) => window.myBlocked().includes(uid) || window.hasBlockedMe(uid);
+
+        // Posts reçus de Firebase (moi + mes abonnements), regroupés et triés
         window._allActivity = [];
-        // Garde uniquement mes posts et ceux de mes abonnements
+        window._feedChunks = [];
+        window._feedState = 'loading'; // 'loading' | 'ok' | 'error'
         window.applyFeedFilter = () => {
+            const me = window.currentUser.uid;
             const following = (window.userProfile && window.userProfile.following) || [];
             window.socialFeed = window._allActivity.filter(act =>
-                act.userId === window.currentUser.uid || following.includes(act.userId)
+                (act.userId === me || following.includes(act.userId)) && !window.isHiddenUser(act.userId)
             );
             if (window.currentView === 'friends') window.renderSocialFeed();
         };
 
+        // Écoute du fil : on demande à Firebase UNIQUEMENT les posts de mes abonnements et les miens
+        // (avant : les 50 derniers posts de TOUTE l'app, filtrés ensuite — les amis disparaissaient
+        // dès que d'autres personnes publiaient beaucoup).
+        window.subscribeFeed = () => {
+            if (window._listeners.feed) { window._listeners.feed(); delete window._listeners.feed; }
+            const me = window.currentUser.uid;
+            const uids = [...new Set([me, ...((window.userProfile && window.userProfile.following) || [])])]
+                .filter(u => typeof u === 'string' && u && !window.myBlocked().includes(u));
+            const chunks = [];
+            for (let i = 0; i < uids.length; i += 30) chunks.push(uids.slice(i, i + 30)); // Firebase : 30 max par requête
+            window._feedChunks = chunks.map(() => []);
+            window._feedState = 'loading';
+            const merge = () => {
+                const all = window._feedChunks.flat();
+                all.sort((a, b) => num(b.timestamp) - num(a.timestamp));
+                window._allActivity = all.slice(0, 60);
+                window._feedState = 'ok';
+                window.applyFeedFilter();
+            };
+            const unsubs = chunks.map((chunk, i) => onSnapshot(
+                query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), where('userId', 'in', chunk), orderBy('timestamp', 'desc'), limit(60)),
+                (snap) => { window._feedChunks[i] = snap.docs.map(d => ({ id: d.id, ...d.data() })); merge(); },
+                (err) => {
+                    // Le plus souvent : l'index "userId + timestamp" n'existe pas encore (le lien de création est dans la console)
+                    console.error('Écoute fil', err);
+                    window._feedState = 'error';
+                    if (window.currentView === 'friends') window.renderSocialFeed();
+                }
+            ));
+            window._listeners.feed = () => unsubs.forEach(u => { try { u(); } catch (e) {} });
+        };
+
+        // Retrouve un post (dans le fil, ou chargé à part depuis une notification)
+        window._extraActivity = {};
+        window.findAct = (actId) => (window.socialFeed || []).find(a => a.id === actId) || window._extraActivity[actId] || null;
+
         window.setupSocialListeners = () => {
             if (!window.extState) window.extState = {};
 
-            // 1. Écouter l'activité publique (Feed) — une seule écoute
-            if (!window._listeners.activity) {
-                const qActivity = query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), orderBy('timestamp', 'desc'), limit(50));
-                window._listeners.activity = onSnapshot(qActivity, (snap) => {
-                    window._allActivity = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    window.applyFeedFilter();
-                    if (window.currentView !== 'friends') window.refreshCurrentView();
-                }, (err) => console.error('Écoute fil', err));
-            }
-
-            // 2. Écouter les notifications en temps réel — une seule écoute
+            // Écouter les notifications en temps réel — une seule écoute
             if (!window._listeners.notifications) {
                 const qNotifs = query(collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications'), orderBy('timestamp', 'desc'), limit(30));
                 window._listeners.notifications = onSnapshot(qNotifs, (snap) => {
@@ -664,7 +714,9 @@
                 } catch (e) { console.error(e); return null; }
             }));
             if (token !== followingLoadSeq) return; // un chargement plus récent a pris le relais
-            window.followingData = results.filter(Boolean);
+            results.filter(Boolean).forEach(p => window.rememberProfile(p.uid, p));
+            window.followingData = results.filter(p => p && !window.isHiddenUser(p.uid));
+            window.applyFeedFilter();
             window.refreshCurrentView();
         };
 
@@ -687,6 +739,8 @@
                 date: new Date().toISOString(),
                 metricValue: num(metricValue),
                 platform: platform || "",
+                // "Non daté" coché explicitement (seulement pour une œuvre terminée)
+                noDate: (status !== 'Wishlist' && status !== 'En cours') ? !!window.tempItem.noDate : false,
                 lastUpdate: Date.now()
             };
             
@@ -711,7 +765,7 @@
                     const activityData = {
                         userId: window.currentUser.uid,
                         userName: window.userProfile.name,
-                        userAvatar: window.userProfile.avatar || '',
+                        userAvatar: '', // la photo actuelle est lue dans le profil à l'affichage
                         itemTitle: itemToSave.title,
                         itemImg: itemToSave.img || '',
                         itemDesc: itemToSave.desc || '', // Important pour le feed
@@ -822,12 +876,21 @@
         };
 
         /* --- F.2 GESTION DES CATÉGORIES (TYPES) --- */
+        // Remonte tout en haut de la page. La zone qui défile est "main-content" (pas la fenêtre) :
+        // c'est pour ça que l'ancien window.scrollTo(0, 0) ne faisait rien.
+        window.scrollMainTop = () => {
+            const main = document.getElementById('main-content');
+            if (main) main.scrollTop = 0;
+            window.scrollTo(0, 0);
+        };
+
         window.switchType = (type) => {
             window.currentType = type;
             // On met à jour le statut par défaut quand on change de type
             window.currentStatus = CONFIG[type].statuses[0];
             window.renderPills(); 
             window.renderList();
+            window.scrollMainTop();
         };
 
         /* --- F.3 GESTION DES FILTRES (STATUTS) --- */
@@ -844,6 +907,7 @@
             window.currentStatus = s; 
             window.renderPills(); 
             window.renderList(); 
+            window.scrollMainTop();
         };
 
         /* --- F.4 NAVIGATION PRINCIPALE (VUES) --- */
@@ -852,8 +916,8 @@
             // Les abonnés sont relus à chaque arrivée sur la page Profil (et seulement à ce moment-là)
             if (view === 'profile') window._followersCache = null;
             
-            // CORRECTION : Forcer le retour en haut de la page au changement de vue
-            window.scrollTo(0, 0);
+            // Retour en haut de la page au changement de vue
+            window.scrollMainTop();
             
             // Mise à jour visuelle de la barre du bas
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.id === 'nav-'+view));
@@ -863,10 +927,11 @@
             if(appHeader) appHeader.style.display = (view === 'home' ? 'block' : 'none');
             
             if (view !== 'friends') {
-                localStorage.setItem('mabiblio_last_check', Date.now());
+                try { localStorage.setItem('mabiblio_last_check', Date.now()); } catch (e) {}
                 if (window.updateNotifBadge) window.updateNotifBadge(); 
             }
             window.refreshCurrentView();
+            window.scrollMainTop(); // une seconde fois, une fois la nouvelle page affichée
         };
 
  /* --- G.1 MOTEUR DE RECHERCHE (DEEZER NATIF JSONP - 100% CATALOGUE FR) --- */
@@ -1098,7 +1163,9 @@
        /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS RICHE & ADAPTATIF) --- */
         window.openPreview = (item) => { 
             window.tempItem = item; 
-            document.getElementById('preview-modal').classList.add('open'); 
+            const previewModal = document.getElementById('preview-modal');
+            previewModal.classList.add('open');
+            previewModal.scrollTop = 0; // chaque fiche s'ouvre en haut
             
             // Lecture seule = l'œuvre vient du fil ou du profil d'un ami (pas de ma bibliothèque).
             // Une œuvre de MA bibliothèque a toujours un docId : elle n'est jamais en lecture seule,
@@ -1227,14 +1294,20 @@
             const noDateToggle = document.getElementById('no-date-toggle');
             const shareToggle = document.getElementById('share-toggle');
             
-            if (window.tempItem.finishDate === "") { if(noDateToggle) noDateToggle.checked = true; if(dateInput) { dateInput.value = ""; dateInput.disabled = true; dateInput.style.opacity = '0.3'; } } 
-            else if (window.tempItem.finishDate) { if(noDateToggle) noDateToggle.checked = false; if(dateInput) { dateInput.value = window.tempItem.finishDate; dateInput.disabled = false; dateInput.style.opacity = '1'; } } 
+            // Œuvre déjà terminée qu'on modifie (≠ wishlist / en cours qu'on termine maintenant)
+            const alreadyFinished = !!window.tempItem.docId && !!window.tempItem.status && window.tempItem.status !== 'Wishlist' && window.tempItem.status !== 'En cours';
+            // "Non daté" n'est pré-coché que si l'œuvre était déjà terminée sans date
+            // (avant, il se cochait tout seul pour une œuvre sortie de la wishlist)
+            const showNoDate = alreadyFinished && (window.tempItem.noDate === true || window.tempItem.finishDate === "");
+            if (showNoDate) { if(noDateToggle) noDateToggle.checked = true; if(dateInput) { dateInput.value = ""; dateInput.disabled = true; dateInput.style.opacity = '0.3'; } } 
+            else if (window.tempItem.finishDate && alreadyFinished) { if(noDateToggle) noDateToggle.checked = false; if(dateInput) { dateInput.value = window.tempItem.finishDate; dateInput.disabled = false; dateInput.style.opacity = '1'; } } 
             else { if(noDateToggle) noDateToggle.checked = false; if(dateInput) { dateInput.value = new Date().toISOString().split('T')[0]; dateInput.disabled = false; dateInput.style.opacity = '1'; } }
 
             const initialRating = window.tempItem.rating || 8;
             window.updateRatingUI(initialRating);
             document.getElementById('rating-comment').value = window.tempItem.comment || "";
-            if(shareToggle) shareToggle.checked = !window.tempItem.docId; 
+            // Partager coché par défaut, sauf quand on retouche une œuvre déjà terminée (pour ne pas republier)
+            if(shareToggle) shareToggle.checked = !alreadyFinished; 
         };
 
         window.closeRatingSheet = () => document.getElementById('rating-sheet').classList.remove('open');
@@ -1244,6 +1317,7 @@
             const dateValue = isNoDate ? "" : document.getElementById('finish-date-input').value;
             const platformValue = document.getElementById('platform-select').value;
             const status = CONFIG[window.tempItem.type] ? CONFIG[window.tempItem.type].statuses[0] : 'Vu';
+            window.tempItem.noDate = isNoDate; // choix explicite "Non daté", mémorisé
 
             window.saveItem(status, currentRating, document.getElementById('rating-comment').value, dateValue, window.tempItem.metricValue || 0, document.getElementById('share-toggle').checked, platformValue);
         };
@@ -1448,7 +1522,7 @@
         /* --- 1. GESTION DE LA MODALE COMMENTAIRES --- */
         window.openCommentModal = (actId) => {
             window.currentCommentActId = actId;
-            const actData = window.socialFeed.find(a => a.id === actId);
+            const actData = window.findAct(actId);
             if (!actData) return;
 
             const container = document.getElementById('comments-list-container');
@@ -1458,21 +1532,23 @@
             
             comments.forEach(c => {
                  if (!c || typeof c !== 'object') return;
+                 if (window.myBlocked().includes(c.userId)) return; // commentaires des comptes bloqués masqués
+                 const cu = window.liveUser(c.userId, c.userName, c.userAvatar);
                  // Texte échappé PUIS mise en couleur des mentions @Pseudo
                  const textWithMentions = esc(c.text).replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
                  const isMyComment = c.userId === window.currentUser.uid;
                  const likes = Array.isArray(c.likes) ? c.likes : [];
                  const isLiked = likes.includes(window.currentUser.uid);
-                 const avatar = safeImg(c.userAvatar);
+                 const avatar = safeImg(cu.avatar);
 
                  html += `
                     <div class="flex gap-3 mb-4">
                         <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0 cursor-pointer" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">
-                            ${avatar ? `<img src="${avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${initial(c.userName)}</div>`}
+                            ${avatar ? `<img src="${avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${initial(cu.name)}</div>`}
                         </div>
                         <div class="flex-1">
                             <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm relative group">
-                                <div class="font-bold text-xs mb-1 cursor-pointer hover:underline" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">${esc(c.userName)}</div>
+                                <div class="font-bold text-xs mb-1 cursor-pointer hover:underline" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">${esc(cu.name)}</div>
                                 <div class="text-sm text-gray-800 leading-snug">${textWithMentions}</div>
 
                                 <div class="flex items-center justify-end gap-3 mt-2 border-t pt-2 border-gray-100">
@@ -1554,14 +1630,14 @@
             const text = input.value.trim().slice(0, 1000);
             if(!text) return;
             
-            const actData = (window.socialFeed || []).find(a => a.id === actId);
+            const actData = window.findAct(actId);
             if (!actData) return;
             const myUid = window.currentUser.uid;
 
             const newComment = { 
                 userId: myUid, 
                 userName: window.userProfile.name, 
-                userAvatar: window.userProfile.avatar || '', 
+                userAvatar: '', // la photo actuelle est lue dans le profil à l'affichage
                 text: text, 
                 timestamp: Date.now(),
                 likes: [] 
@@ -1615,37 +1691,57 @@
         
         // --- A. MOTEUR DE RECHERCHE "FUZZY" (INTELLIGENT) ---
         
+        // Liste des membres (pour la recherche d'amis), gardée en mémoire 5 minutes
+        window._allProfiles = null;
+        window._allProfilesAt = 0;
+        window._userSearchSeq = 0;
+        window.loadAllProfiles = () => {
+            if (window._allProfiles && Date.now() - window._allProfilesAt < 5 * 60 * 1000) return Promise.resolve(window._allProfiles);
+            if (window._allProfilesPromise) return window._allProfilesPromise; // chargement déjà en cours
+            window._allProfilesPromise = (async () => {
+                try {
+                    const snapshot = await getDocs(query(collectionGroup(db, 'profile'), limit(500)));
+                    // L'identifiant est lu dans le chemin du document (users/{uid}/profile/info) :
+                    // les profils récents ne l'enregistrent pas dans leurs données.
+                    const all = snapshot.docs.map(d => ({ ...d.data(), uid: d.ref.parent.parent.id }));
+                    all.forEach(u => window.rememberProfile(u.uid, u));
+                    window._allProfiles = all;
+                    window._allProfilesAt = Date.now();
+                    return all;
+                } finally {
+                    window._allProfilesPromise = null;
+                }
+            })();
+            return window._allProfilesPromise;
+        };
+
         window.handleUserSearch = async (val) => {
             // On cible le conteneur de résultats (qu'il soit dans une modale ou dans la page)
             const container = document.getElementById('user-search-results');
             if (!container) return;
 
-            val = val.trim().toLowerCase(); // On met tout en minuscule pour comparer
+            // Comparaison sans majuscules ni accents ("Solene" trouve "Solène")
+            const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            val = norm(val.trim());
             
             if (!val) {
                 container.innerHTML = '<div class="text-center text-gray-400 mt-4 text-sm">Cherchez un ami...</div>';
                 return;
             }
 
-            // Petit spinner discret
-            container.innerHTML = `<div class="text-center mt-6"><i class="fa-solid fa-spinner fa-spin text-blue-600"></i></div>`;
+            const token = ++window._userSearchSeq;
+            if (!window._allProfiles) container.innerHTML = `<div class="text-center mt-6"><i class="fa-solid fa-spinner fa-spin text-blue-600"></i></div>`;
 
             try {
-                // STRATÉGIE "FUZZY" : 
-                // 1. On récupère les 100 derniers profils actifs (ou tout le monde si petite app)
-                // 2. On filtre en JavaScript pour être souple (insensible à la casse, partie du mot...)
-                const q = query(collectionGroup(db, 'profile'), limit(100));
-                const snapshot = await getDocs(q);
+                // La liste des membres est chargée UNE fois (puis gardée 5 minutes) au lieu de
+                // relire tous les profils à chaque lettre tapée.
+                const allUsers = await window.loadAllProfiles();
+                if (token !== window._userSearchSeq) return; // une recherche plus récente a pris le relais
                 
-                // L'identifiant est lu dans le chemin du document (users/{uid}/profile/info) :
-                // les profils récents ne l'enregistrent pas dans leurs données.
-                const allUsers = snapshot.docs.map(d => ({ ...d.data(), uid: d.ref.parent.parent.id }));
-                
-                // Le filtre magique : convertit les deux en minuscules et vérifie si ça "contient" le texte
                 const matches = allUsers.filter(u => 
-                    u.name && 
-                    u.name.toLowerCase().includes(val) && 
-                    u.uid !== window.currentUser.uid
+                    u.uid !== window.currentUser.uid &&
+                    !window.isHiddenUser(u.uid) &&
+                    norm(u.name).includes(val)
                 );
                 
                 if (matches.length === 0) {
@@ -1688,7 +1784,7 @@
         window.updateNotifBadge = () => {
             const badge = document.getElementById('notif-badge');
             if (!badge) return;
-            const count = (window.extState && window.extState.notifications) ? window.extState.notifications.filter(n => !n.read).length : 0;
+            const count = (window.extState && window.extState.notifications) ? window.extState.notifications.filter(n => !n.read && !window.myBlocked().includes(n.fromUid)).length : 0;
 
             if(count > 0) {
                 badge.innerText = count > 9 ? '9+' : count;
@@ -1709,9 +1805,17 @@
             }, 600);
         };
 
-        window.goToActivityComments = (actId) => {
-            if(!actId) return;
+        window.goToActivityComments = async (actId) => {
+            if(!actId || typeof actId !== 'string') return;
             window.switchView('friends');
+            // Post trop ancien pour être dans le fil : on le charge à part
+            if (!window.findAct(actId)) {
+                try {
+                    const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
+                    if (!snap.exists()) { alert("Ce post a été supprimé."); return; }
+                    window._extraActivity[actId] = { id: actId, ...snap.data() };
+                } catch (e) { console.error(e); return; }
+            }
             setTimeout(() => window.openCommentModal(actId), 200);
         };
         
@@ -1792,9 +1896,7 @@
                         const firstLikers = likes.slice(0, 3);
                         facesHtml = '<div class="flex -space-x-2 mr-2">';
                         firstLikers.forEach(uid => {
-                            let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
-                            if(uid === window.currentUser.uid) u = window.userProfile;
-                            const avatarUrl = u ? safeImg(u.avatar) : '';
+                            const avatarUrl = safeImg(window.liveUser(uid).avatar);
                             if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover shadow-sm">`; } 
                             else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 shadow-sm"><i class="fa-solid fa-user"></i></div>`; }
                         });
@@ -1804,17 +1906,18 @@
                     const previewData = { id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: num(act.metricValue), desc: act.itemDesc || '', platform: act.platform, rating: act.rating, releaseDate: null, _fromFeed: true };
                     const previewKey = regItem(previewData);
                     const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${esc(act.platform)}</span>` : '';
-                    const actAvatar = safeImg(act.userAvatar);
+                    const author = window.liveUser(act.userId, act.userName, act.userAvatar);
+                    const actAvatar = safeImg(author.avatar);
 
                     feedHtml += `
                     <div class="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-5 mb-6 shadow-sm border border-gray-100/50 transition-all hover:shadow-md" id="act-${esc(act.id)}">
                         <div class="flex justify-between items-start mb-4">
                             <div class="flex items-center gap-3 cursor-pointer group" onclick="window.openPublicProfile(${jsArg(act.userId)})">
                                 <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center font-black overflow-hidden border border-white shadow-sm group-hover:scale-105 transition-transform">
-                                    ${actAvatar ? `<img src="${actAvatar}" class="w-full h-full object-cover">` : initial(act.userName)}
+                                    ${actAvatar ? `<img src="${actAvatar}" class="w-full h-full object-cover">` : initial(author.name)}
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="font-bold text-sm text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">${esc(act.userName)}</span>
+                                    <span class="font-bold text-sm text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">${esc(author.name)}</span>
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="text-[10px] text-gray-400 font-bold uppercase">${new Date(num(act.timestamp)).toLocaleDateString('fr-FR')}</span>
                                         <span class="bg-gray-100/80 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-black uppercase flex items-center gap-1 border border-gray-50">
@@ -1867,7 +1970,10 @@
             }
             container.innerHTML = `<div class="pt-24 px-5 pb-32 relative"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="space-y-4">${feedHtml}</div></div>`;
         } else {
-            container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="text-center py-20 opacity-50"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl"><i class="fa-solid fa-user-group"></i></div><p class="font-bold text-gray-400 text-sm">Votre fil d'actualité est vide.</p></div></div>`;
+            const emptyFeedText = window._feedState === 'loading' ? 'Chargement du fil…'
+                : window._feedState === 'error' ? "Le fil d'actualité n'a pas pu être chargé. Réessaie dans un instant."
+                : ((window.userProfile.following || []).length === 0 ? 'Abonne-toi à des amis pour voir leur activité ici.' : "Votre fil d'actualité est vide.");
+            container.innerHTML = `<div class="pt-24 px-5 pb-32"><h1 class="text-3xl font-black mb-6">Amis</h1>${searchBlock}<div class="text-center py-20 opacity-50"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl"><i class="fa-solid fa-user-group"></i></div><p class="font-bold text-gray-400 text-sm">${emptyFeedText}</p></div></div>`;
         }
         if(focusedId) { const el = document.getElementById(focusedId); if(el) { el.value = focusedVal; el.focus(); const v = el.value; el.value = v; } }
     };
@@ -1883,7 +1989,7 @@
         if (!window.currentUser) return;
         const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
         const uid = window.currentUser.uid;
-        const act = (window.socialFeed || []).find(a => a.id === actId);
+        const act = window.findAct(actId);
         const alreadyLiked = !!(act && Array.isArray(act.likes) && act.likes.includes(uid));
         try {
             // On ne touche qu'au champ "likes", en ajoutant ou retirant SEULEMENT mon identifiant
@@ -1896,7 +2002,7 @@
 
     /* --- 3. POPUP DES LIKES (DESIGN IOS ÉPURÉ) --- */
     window.showLikesList = (actId) => {
-        const act = window.socialFeed.find(a => a.id === actId);
+        const act = window.findAct(actId);
         if(!act || !act.likes || act.likes.length === 0) return;
 
         const overlay = document.createElement('div');
@@ -1909,10 +2015,9 @@
 
         window.closeLikesPopup = close;
         let listHtml = act.likes.map(uid => {
-            let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
-            if (uid === window.currentUser.uid) u = window.userProfile;
-            const name = u ? u.name : 'Utilisateur';
-            const avatarUrl = u ? safeImg(u.avatar) : '';
+            const u = window.liveUser(uid);
+            const name = u.name;
+            const avatarUrl = safeImg(u.avatar);
             const avatar = avatarUrl ? `<img src="${avatarUrl}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-400 text-xs">${initial(name)}</span>`;
             return `<div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition-colors active:scale-98" onclick="window.closeLikesPopup(); window.openPublicProfile(${jsArg(uid)})"><div class="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-50 shadow-sm">${avatar}</div><span class="font-bold text-sm text-gray-900">${esc(name)}</span></div>`;
         }).join('');
@@ -1931,6 +2036,7 @@
 
     /* --- 4. CENTRE DE NOTIFICATIONS --- */
     window.openNotifications = async () => {
+        if (window.currentView !== 'notifications') window.scrollMainTop();
         window.currentView = 'notifications';
         const appId = 'mabiblio-dc595'; 
         const h = document.getElementById('app-header'); if(h) h.style.display = 'none'; 
@@ -1938,7 +2044,7 @@
         const unreadNotifs = (window.extState.notifications || []).filter(n => !n.read && n.id);
         if(unreadNotifs.length > 0) { const batch = writeBatch(db); unreadNotifs.forEach(n => { const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications', n.id); batch.update(ref, { read: true }); }); try { await batch.commit(); } catch(e) { console.error(e); } }
         const container = document.getElementById('main-content');
-        const notifs = (window.extState.notifications || []).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
+        const notifs = (window.extState.notifications || []).filter(n => !window.myBlocked().includes(n.fromUid)).sort((a,b) => (b.time || b.timestamp) - (a.time || a.timestamp));
         
         container.innerHTML = `<div class="pt-10 px-6 pb-32">
             <div class="flex items-center gap-4 mb-6">
@@ -1985,7 +2091,7 @@
     // "transaction" (lecture + écriture d'un seul bloc) pour qu'un like ou une suppression
     // simultanés ne s'écrasent jamais l'un l'autre.
     const updateCommentsLocally = (actId, comments) => {
-        const actData = (window.socialFeed || []).find(a => a.id === actId);
+        const actData = window.findAct(actId);
         if (actData) actData.comments = comments;
         window.openCommentModal(actId);
     };
@@ -2040,7 +2146,7 @@
         try {
             const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications');
             // fromUid = mon identifiant : les règles de sécurité refusent toute notification "usurpée"
-            await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId || null, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null });
+            await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId || null, timestamp: Date.now(), read: false });
         } catch(e) { console.error(e); }
     };
     
@@ -2172,6 +2278,21 @@
             window.renderList(); 
         };
 
+        // Date de classement d'une œuvre :
+        //  - terminée : sa date de fin ; si "Non daté" a été coché, aucune date
+        //  - en wishlist / en cours : la date d'ajout
+        const isFinishedItem = (item) => item.status !== 'Wishlist' && item.status !== 'En cours';
+        window.itemDateKey = (item) => {
+            // Seul le choix EXPLICITE (noDate) classe en "Non daté" : les anciennes œuvres
+            // sans date restent rangées comme avant (à leur date d'enregistrement).
+            if (isFinishedItem(item) && item.noDate === true) return '';
+            return String((isFinishedItem(item) && item.finishDate) || item.date || '');
+        };
+        window.itemYear = (item) => {
+            const d = window.itemDateKey(item);
+            return /^(19|20)\d\d/.test(d) ? d.slice(0, 4) : null;
+        };
+
         window.renderList = () => {
             if (!window.myCollection) return;
             // Filtrage
@@ -2181,11 +2302,8 @@
             if (window.extState.sort === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
             else if (window.extState.sort === 'name') { filtered.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))); } 
             else {
-                filtered.sort((a, b) => {
-                    const dateA = a.finishDate || a.lastUpdate || a.date || '0';
-                    const dateB = b.finishDate || b.lastUpdate || b.date || '0';
-                    return dateB > dateA ? 1 : -1;
-                });
+                // Plus récent d'abord ; les œuvres "Non daté" à la fin
+                filtered.sort((a, b) => window.itemDateKey(b).localeCompare(window.itemDateKey(a)));
             }
 
             const container = document.getElementById('main-content');
@@ -2216,8 +2334,7 @@
             } else {
                 const groups = {};
                 filtered.forEach(item => { 
-                    const d = item.finishDate || item.date || 'Non daté';
-                    const year = d.startsWith('20') || d.startsWith('19') ? d.split('-')[0] : 'Non daté';
+                    const year = window.itemYear(item) || 'Non daté';
                     if (!groups[year]) groups[year] = []; groups[year].push(item); 
                 });
                 const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
@@ -2351,9 +2468,12 @@
                     window._followersCache = snap.docs.map(d => ({ ...d.data(), id: d.ref.parent.parent.id }));
                 } catch (e) { console.error('Abonnés', e); }
             }
+            // Noms des comptes bloqués (liste des membres gardée en mémoire)
+            const blockedUids = window.myBlocked();
+            if (blockedUids.some(u => !window.profileCache[u])) { try { await window.loadAllProfiles(); } catch (e) { console.error(e); } }
             // Si l'utilisateur a changé de page pendant le chargement, on n'écrase pas la nouvelle page
             if (window.currentView !== 'profile') return;
-            const followers = window._followersCache;
+            const followers = window._followersCache.filter(f => !window.myBlocked().includes(f.id));
 
             // Données utilisateur
             const bio = window.userProfile.bio || "Ajouter une biographie...";
@@ -2429,12 +2549,71 @@
                         </div>
                     </div>
 
+                    ${blockedUids.length ? `
+                    <div class="text-left mt-8 mb-2 px-1"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Comptes bloqués</span></div>
+                    <div class="bg-white rounded-2xl border border-gray-100">
+                        ${blockedUids.map(u => `
+                            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                                <span class="font-bold text-sm">${esc(window.liveUser(u).name)}</span>
+                                <button onclick="window.unblockUser(${jsArg(u)})" class="text-blue-600 text-[10px] font-black uppercase">Débloquer</button>
+                            </div>`).join('')}
+                    </div>` : ''}
+
                     <div class="ios-group !mx-0 mt-8"><div class="ios-cell py-3 cursor-pointer flex justify-between items-center" onclick="window.openFeedbackModal()"><span class="font-bold text-sm">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i></div></div>
                     <div class="ios-group !mx-0 mt-4"><div class="ios-cell py-4 cursor-pointer text-center" onclick="window.logout()"><span class="text-red-500 font-bold text-sm">Déconnexion</span></div></div>
                 </div>`;
         };
 
         // --- FONCTIONS DE GESTION ---
+
+        // Photo de profil : recadrée en carré 256×256 et compressée (≈ 20 Ko) avant l'enregistrement
+        const compressAvatar = (dataUrl, size = 256) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const side = Math.min(img.width, img.height);
+                const canvas = document.createElement('canvas');
+                canvas.width = size; canvas.height = size;
+                canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = () => reject(new Error('Image illisible'));
+            img.src = dataUrl;
+        });
+
+        window.handleAvatarUpload = (event) => {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = ''; // permet de re-choisir la même photo
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { alert("Ce fichier n'est pas une image."); return; }
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const avatar = await compressAvatar(e.target.result);
+                    const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                    await updateDoc(ref, { avatar });
+                    window.userProfile.avatar = avatar;
+                    window.rememberProfile(window.currentUser.uid, window.userProfile);
+                    window.renderProfile();
+                } catch (err) { console.error(err); alert("La photo n'a pas pu être enregistrée."); }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.updateProfileName = async () => {
+            const current = window.userProfile.name || '';
+            const input = prompt("Ton pseudo (2 à 30 caractères) :", current);
+            if (input === null) return;
+            const name = input.trim().replace(/\s+/g, ' ');
+            if (name === current) return;
+            if (name.length < 2 || name.length > 30) { alert("Le pseudo doit faire entre 2 et 30 caractères."); return; }
+            try {
+                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                await updateDoc(ref, { name });
+                window.userProfile.name = name;
+                window.rememberProfile(window.currentUser.uid, window.userProfile);
+                window.renderProfile();
+            } catch (e) { console.error(e); alert("Le pseudo n'a pas pu être enregistré."); }
+        };
         
         window.updateBio = async () => {
             const current = window.userProfile.bio || "";
@@ -2462,23 +2641,39 @@
             } catch (e) { console.error(e); alert("Impossible de modifier le profil distant (permissions)."); }
         };
 
+        // BLOCAGE : la personne bloquée…
+        //  - est retirée de mes abonnés (elle ne me suit plus) et de mes abonnements ;
+        //  - ne peut plus me suivre ni voir mon profil, ma bibliothèque et mes posts ;
+        //  - n'apparaît plus dans mon fil, ma recherche, mes notifications et les commentaires.
         window.blockUser = async (targetUid) => {
-            if(!confirm("BLOQUER cet utilisateur ?\nIl sera retiré et ne pourra plus s'abonner.")) return;
+            if (!targetUid || targetUid === window.currentUser.uid) return;
+            if(!confirm("BLOQUER ce compte ?\nIl ne pourra plus te suivre ni voir ton activité, et tu ne verras plus la sienne.")) return;
             try {
-                // 1. Force Unfollow (Kick)
+                // 1. Je me retire de SES abonnements (autorisé par les règles : je ne retire que moi)
                 try {
                     const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
                     await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
-                } catch(e) {}
+                } catch(e) { /* il ne me suivait peut-être pas */ }
                 
-                // 2. Add to blocked list (Ban)
+                // 2. Je l'ajoute à MA liste de blocage et je ne le suis plus
                 const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
+                await updateDoc(myRef, { blocked: arrayUnion(targetUid), following: arrayRemove(targetUid) });
                 
                 window._followersCache = null;
-                alert("Utilisateur bloqué.");
-                window.renderProfile();
+                alert("Compte bloqué.");
+                if (document.getElementById('public-profile-modal').classList.contains('open')) window.closePublicProfile();
+                if (window.currentView === 'profile') window.renderProfile();
             } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
+        };
+
+        window.unblockUser = async (targetUid) => {
+            try {
+                const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
+                await updateDoc(myRef, { blocked: arrayRemove(targetUid) });
+                if (window.userProfile && Array.isArray(window.userProfile.blocked)) window.userProfile.blocked = window.userProfile.blocked.filter(u => u !== targetUid);
+                if (document.getElementById('public-profile-modal').classList.contains('open')) window.openPublicProfile(targetUid);
+                if (window.currentView === 'profile') window.renderProfile();
+            } catch (e) { console.error(e); alert("Erreur lors du déblocage."); }
         };
 
 
@@ -2490,7 +2685,9 @@
         if (!uid || uid === 'undefined') return;
         if (uid === window.currentUser.uid) { window.switchView('profile'); return; }
         
-        document.getElementById('public-profile-modal').classList.add('open');
+        const publicModal = document.getElementById('public-profile-modal');
+        publicModal.classList.add('open');
+        publicModal.scrollTop = 0;
         const container = document.getElementById('public-profile-content');
         container.innerHTML = `<div class="pt-40 text-center"><i class="fa-solid fa-spinner fa-spin text-3xl text-gray-400"></i></div>`;
 
@@ -2499,6 +2696,22 @@
             const profSnap = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
             if (!profSnap.exists()) throw new Error("User not found");
             const prof = profSnap.data();
+            window.rememberProfile(uid, prof);
+
+            // Blocage : on n'affiche rien d'un compte qui m'a bloqué, ni d'un compte que j'ai bloqué
+            const blockedMe = Array.isArray(prof.blocked) && prof.blocked.includes(window.currentUser.uid);
+            const iBlocked = window.myBlocked().includes(uid);
+            if (blockedMe || iBlocked) {
+                container.innerHTML = `
+                    <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
+                    <div class="pt-40 px-8 text-center">
+                        <div class="w-20 h-20 mx-auto rounded-full bg-gray-100 flex items-center justify-center text-gray-300 text-3xl mb-5"><i class="fa-solid fa-user-slash"></i></div>
+                        ${iBlocked
+                            ? `<h2 class="text-xl font-black mb-2">${esc(prof.name)}</h2><p class="text-gray-500 text-sm mb-6">Tu as bloqué ce compte.</p><button onclick="window.unblockUser(${jsArg(uid)})" class="bg-gray-100 text-gray-800 border border-gray-200 px-8 py-2.5 rounded-full font-bold text-sm">Débloquer</button>`
+                            : `<h2 class="text-xl font-black mb-2">Compte indisponible</h2><p class="text-gray-500 text-sm">Ce profil n'est pas accessible.</p>`}
+                    </div>`;
+                return;
+            }
             
             // 2. Collection Ami
             const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
@@ -2525,6 +2738,7 @@
                         <h1 class="text-2xl font-black mt-4">${esc(prof.name)}</h1>
                         ${bio ? `<p class="bio-text mt-2">"${esc(bio)}"</p>` : ''}
                         ${buttonHTML}
+                        <div><button onclick="window.blockUser(${jsArg(uid)})" class="text-[11px] text-gray-400 font-bold mt-4 hover:text-red-600">Bloquer ce compte</button></div>
 
                         ${hasPinned ? `
                             <div class="mt-8 mb-2 px-1 text-left"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Ses Coups de ❤️</span></div>
@@ -2610,7 +2824,6 @@
     };
 
     window.toggleFollowFromProfile = async (uid) => {
-        const appId = 'mabiblio-dc595'; // CORRECTION : Ajout de l'ID Firebase
         const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
         const isFollowing = (window.userProfile.following || []).includes(uid);
         try {
@@ -2620,12 +2833,17 @@
                     window.openPublicProfile(uid); 
                 }
             } else {
+                // Blocage : impossible de suivre un compte que j'ai bloqué, ou qui m'a bloqué
+                if (window.myBlocked().includes(uid)) { alert("Tu as bloqué ce compte. Débloque-le d'abord."); return; }
+                const target = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
+                if (target.exists()) window.rememberProfile(uid, target.data());
+                if (window.hasBlockedMe(uid)) { alert("Ce compte n'est pas disponible."); window.openPublicProfile(uid); return; }
+
                 await updateDoc(myRef, { following: arrayUnion(uid) });
-                // CORRECTION : Envoi de la notification au nouvel ami
                 window.sendNotification(uid, 'follow', 'a commencé à vous suivre', 'Nouveau follower', null);
                 window.openPublicProfile(uid);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); alert("L'action n'a pas pu être effectuée."); }
     };
 
     window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
@@ -2649,10 +2867,8 @@ window.renderStatsView = () => {
     
     // Filtre Année
     if (isYear) {
-        filteredItems = finished.filter(i => {
-            const d = i.finishDate || i.date || '';
-            return d.startsWith(curYear);
-        });
+        // Les œuvres "Non daté" ne comptent pas dans les statistiques de l'année (elles comptent dans "Toujours")
+        filteredItems = finished.filter(i => window.itemYear(i) === curYear);
     }
 
     const sumMetric = (type) => filteredItems.filter(i => i.type === type).reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
@@ -2672,12 +2888,12 @@ window.renderStatsView = () => {
     };
 
     const stats = [
-        { type: 'Film', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
-        { type: 'Série', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || 10, sub: `${sumMetric('Série')} saisons` },
-        { type: 'Livre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${sumMetric('Livre')} pages` },
-        { type: 'Album', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
-        { type: 'YouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
-        { type: 'Jeu', icon: 'fa-gamepad', color: '#10B981', count: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHeuresJeu}h` }
+        { type: 'Film', key: 'goalFilm', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
+        { type: 'Série', key: 'goalSerie', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || window.userProfile['goalSérie'] || 10, sub: `${sumMetric('Série')} saisons` },
+        { type: 'Livre', key: 'goalLivre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${sumMetric('Livre')} pages` },
+        { type: 'Album', key: 'goalAlbum', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
+        { type: 'YouTube', key: 'goalYouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
+        { type: 'Jeu', key: 'goalJeu', icon: 'fa-gamepad', color: '#10B981', count: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHeuresJeu}h` }
     ];
 
     const container = document.getElementById('main-content');
@@ -2713,7 +2929,7 @@ window.renderStatsView = () => {
                         </div>
                     </div>
                 </div>
-                ${showGoal ? `<input type="number" value="${num(s.goal)}" onchange="window.updateGoal('goal${s.type}', this.value)" class="w-16 text-right bg-gray-50 text-gray-800 font-bold rounded-lg p-2 outline-none text-sm border border-gray-100 focus:border-blue-500 transition-colors">` : ''}
+                ${showGoal ? `<input type="number" value="${num(s.goal)}" onchange="window.updateGoal(${jsArg(s.key)}, this.value)" class="w-16 text-right bg-gray-50 text-gray-800 font-bold rounded-lg p-2 outline-none text-sm border border-gray-100 focus:border-blue-500 transition-colors">` : ''}
             </div>
             
             ${showGoal ? `
@@ -2752,18 +2968,22 @@ window.renderStatsView = () => {
 };
 
 window.updateGoal = async (key, val) => {
-    const appId = 'mabiblio-dc595'; 
     if(!window.currentUser) return;
+    // Clé sans accent (l'ancienne version enregistrait "goalSérie", jamais relue)
+    const allowed = ['goalFilm', 'goalSerie', 'goalLivre', 'goalAlbum', 'goalYouTube', 'goalJeu'];
+    if (!allowed.includes(key)) return;
+    const n = parseInt(val, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 100000) { window.renderStatsView(); return; }
     try {
         const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-        await setDoc(ref, { [key]: parseInt(val) }, { merge: true });
-        if(window.userProfile) window.userProfile[key] = parseInt(val);
+        await setDoc(ref, { [key]: n }, { merge: true });
+        if(window.userProfile) window.userProfile[key] = n;
         window.renderStatsView(); 
     } catch(e) { console.error("Erreur updateGoal", e); }
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v3.2 (lot 1 : sécurité)");
+        console.log("MaBiblio v3.3 (lots 1 et 2)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
