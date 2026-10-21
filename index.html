@@ -123,6 +123,27 @@
         .pinned-item img { width: 100%; height: 100%; object-fit: cover; }
         .pinned-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; align-items: flex-end; justify-content: center; padding: 8px; opacity: 0; transition: opacity 0.2s; }
         .pinned-item.filled:hover .pinned-overlay { opacity: 1; }
+        /* Fenêtres et messages de l'app */
+        .ui-overlay { position: fixed; inset: 0; z-index: 40000; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; transition: opacity .18s; }
+        .ui-overlay.show { opacity: 1; }
+        .ui-box { width: 100%; max-width: 320px; background: rgba(255,255,255,.97); border-radius: 18px; padding: 20px 18px 14px; box-shadow: 0 20px 50px rgba(0,0,0,.25); transform: scale(.95); transition: transform .18s; }
+        .ui-overlay.show .ui-box { transform: scale(1); }
+        .ui-text { margin: 0 0 14px; font-size: 15px; line-height: 1.45; color: #1C1C1E; white-space: pre-line; text-align: center; font-weight: 500; }
+        .ui-input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #E5E5EA; background: #F9F9F9; font-size: 16px; outline: none; margin-bottom: 14px; }
+        .ui-input:focus { border-color: var(--ios-blue); background: #fff; }
+        .ui-actions { display: flex; gap: 8px; }
+        .ui-btn { flex: 1; padding: 12px; border-radius: 12px; background: #F2F2F7; font-weight: 700; font-size: 15px; color: #1C1C1E; border: none; cursor: pointer; }
+        .ui-ok { background: var(--ios-blue); color: #fff; }
+        .ui-danger { background: #FF3B30; }
+        .ui-toast { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); z-index: 41000; background: rgba(28,28,30,.94); color: #fff; padding: 12px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); box-shadow: 0 10px 30px rgba(0,0,0,.25); opacity: 0; transition: opacity .2s, transform .2s; }
+        .ui-toast.show { opacity: 1; transform: translate(-50%, 0); }
+        .ui-toast button { color: #64D2FF; font-weight: 800; background: none; border: none; font-size: 14px; cursor: pointer; white-space: nowrap; }
+
+        /* Sélection multiple */
+        .grid-item .sel-check { position: absolute; top: 6px; left: 6px; z-index: 4; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.25); display: flex; align-items: center; justify-content: center; color: transparent; font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+        .grid-item.is-selected .sel-check { background: #007AFF; color: #fff; }
+        .grid-item.is-selected { outline: 3px solid #007AFF; outline-offset: -3px; }
+        .grid-item.is-selected img { opacity: .75; }
         .bio-text { font-size: 14px; color: #4b5563; margin-top: 8px; line-height: 1.4; padding: 0 20px; font-style: italic; }
     </style>
 
@@ -143,15 +164,18 @@
             </div>
 
             <div class="auth-card">
-                <input type="email" id="auth-email" class="ios-input" placeholder="E-mail">
+                <input type="text" id="auth-name" class="ios-input" placeholder="Pseudo (visible par tes amis)" maxlength="30" autocomplete="nickname" style="display:none">
+                <input type="email" id="auth-email" class="ios-input" placeholder="E-mail" autocomplete="username">
                 <div class="relative">
-                    <input type="password" id="auth-password" class="ios-input" placeholder="Mot de passe">
+                    <input type="password" id="auth-password" class="ios-input" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter') window.handleAuth()">
                     <button type="button" onclick="window.toggleAuthPass()" class="absolute right-4 top-4 text-gray-400">
                         <i class="fa-solid fa-eye" id="eye-icon"></i>
                     </button>
                 </div>
                 <button class="ios-btn" onclick="window.handleAuth()" id="auth-submit-btn">Se connecter</button>
                 <p id="auth-error" class="text-red-500 text-sm mt-4 text-center hidden font-bold"></p>
+                <p id="auth-info" class="text-green-600 text-sm mt-4 text-center hidden font-bold"></p>
+                <button type="button" id="auth-forgot" onclick="window.forgotPassword()" class="w-full text-center text-blue-600 text-sm font-bold mt-4">Mot de passe oublié ?</button>
             </div>
         </div>
     </div>
@@ -165,7 +189,6 @@
                     <option value="Livre">Livres</option>
                     <option value="Album">Albums</option>
                     <option value="YouTube">YouTube</option>
-                    <option value="Jeu">Jeux</option>
                 </select>
                 <i class="fa-solid fa-chevron-down header-chevron"></i>
             </div>
@@ -193,7 +216,6 @@
                 <button id="s-Livre" onclick="window.setSearchType('Livre')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Livre</button>
                 <button id="s-Album" onclick="window.setSearchType('Album')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Album</button>
                 <button id="s-YouTube" onclick="window.setSearchType('YouTube')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">YouTube</button>
-                <button id="s-Jeu" onclick="window.setSearchType('Jeu')" class="px-6 py-2.5 rounded-xl bg-gray-100 font-bold text-sm">Jeu</button>
             </div>
         </div>
         <div class="px-4 pb-4 bg-white flex flex-col gap-3">
@@ -330,7 +352,7 @@
 
         /* --- A.1 IMPORTS DES MODULES --- */
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
         import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -362,6 +384,90 @@
             testBadge.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top) + 4px);left:50%;transform:translateX(-50%);z-index:99999;background:#FF9500;color:#fff;font:800 11px -apple-system,sans-serif;letter-spacing:1px;padding:3px 10px;border-radius:999px;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.2);';
             document.body.appendChild(testBadge);
         }
+
+        /* --- A.5 FENÊTRES ET MESSAGES DE L'APP (remplacent les fenêtres grises du navigateur) ---
+           ui.alert(texte), ui.confirm(texte) → true/false, ui.prompt(texte, valeur) → texte ou null,
+           ui.toast(texte, { actionLabel, onAction }) : petit message en bas de l'écran. */
+        window.ui = (() => {
+            const open = ({ message, input = null, okLabel = 'OK', cancelLabel = null, danger = false, maxLength = 200 }) => new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'ui-overlay';
+                const box = document.createElement('div');
+                box.className = 'ui-box';
+                box.setAttribute('role', 'dialog');
+                box.setAttribute('aria-modal', 'true');
+                const text = document.createElement('p');
+                text.className = 'ui-text';
+                text.textContent = message; // texte affiché tel quel, jamais interprété
+                box.appendChild(text);
+                let field = null;
+                if (input !== null) {
+                    field = document.createElement('input');
+                    field.className = 'ui-input';
+                    field.value = input;
+                    field.maxLength = maxLength;
+                    box.appendChild(field);
+                }
+                const actions = document.createElement('div');
+                actions.className = 'ui-actions';
+                const finish = (val) => {
+                    document.removeEventListener('keydown', onKey, true);
+                    overlay.classList.remove('show');
+                    setTimeout(() => overlay.remove(), 180);
+                    resolve(val);
+                };
+                if (cancelLabel) {
+                    const c = document.createElement('button');
+                    c.className = 'ui-btn';
+                    c.textContent = cancelLabel;
+                    c.onclick = () => finish(input !== null ? null : false);
+                    actions.appendChild(c);
+                }
+                const ok = document.createElement('button');
+                ok.className = 'ui-btn ui-ok' + (danger ? ' ui-danger' : '');
+                ok.textContent = okLabel;
+                ok.onclick = () => finish(input !== null ? field.value : true);
+                actions.appendChild(ok);
+                box.appendChild(actions);
+                overlay.appendChild(box);
+                const onKey = (e) => {
+                    if (e.key === 'Escape' && cancelLabel) { e.preventDefault(); finish(input !== null ? null : false); }
+                    if (e.key === 'Enter') { e.preventDefault(); ok.click(); }
+                };
+                document.addEventListener('keydown', onKey, true);
+                document.body.appendChild(overlay);
+                requestAnimationFrame(() => overlay.classList.add('show'));
+                setTimeout(() => (field || ok).focus(), 50);
+            });
+            let toastTimer = null;
+            const toast = (message, { actionLabel = null, onAction = null, duration = 3000 } = {}) => {
+                let el = document.getElementById('ui-toast');
+                if (el) el.remove();
+                clearTimeout(toastTimer);
+                el = document.createElement('div');
+                el.id = 'ui-toast';
+                el.className = 'ui-toast';
+                el.setAttribute('role', 'status');
+                const span = document.createElement('span');
+                span.textContent = message;
+                el.appendChild(span);
+                if (actionLabel && onAction) {
+                    const b = document.createElement('button');
+                    b.textContent = actionLabel;
+                    b.onclick = () => { el.remove(); clearTimeout(toastTimer); onAction(); };
+                    el.appendChild(b);
+                }
+                document.body.appendChild(el);
+                requestAnimationFrame(() => el.classList.add('show'));
+                toastTimer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, duration);
+            };
+            return {
+                alert: (message) => open({ message }),
+                confirm: (message, opts = {}) => open({ message, okLabel: opts.okLabel || 'Confirmer', cancelLabel: 'Annuler', danger: !!opts.danger }),
+                prompt: (message, value = '', opts = {}) => open({ message, input: String(value ?? ''), okLabel: opts.okLabel || 'Enregistrer', cancelLabel: 'Annuler', maxLength: opts.maxLength || 200 }),
+                toast,
+            };
+        })();
 
         /* --- A.4 SÉCURITÉ : AFFICHAGE SANS RISQUE DES TEXTES ---
            Tout texte venant d'un utilisateur ou d'une API (pseudo, titre, commentaire, bio…)
@@ -476,6 +582,13 @@
             const btn = document.getElementById('auth-submit-btn');
             const subtitle = document.getElementById('auth-subtitle');
 
+            // Le champ pseudo n'apparaît qu'à l'inscription, "Mot de passe oublié" qu'à la connexion
+            document.getElementById('auth-name').style.display = mode === 'signup' ? 'block' : 'none';
+            document.getElementById('auth-forgot').style.display = mode === 'login' ? 'block' : 'none';
+            document.getElementById('auth-error').classList.add('hidden');
+            document.getElementById('auth-info').classList.add('hidden');
+            document.getElementById('auth-password').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+
             if (mode === 'login') {
                 slider.style.transform = 'translateX(0)';
                 title.innerText = "MaBiblio";
@@ -506,28 +619,73 @@
         };
 
         /* --- C.3 LOGIQUE DE CONNEXION / INSCRIPTION --- */
-        window.handleAuth = async () => {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-password').value;
-            const errorEl = document.getElementById('auth-error');
-            
-            if (!email || !pass) return;
+        auth.languageCode = 'fr'; // e-mails Firebase (mot de passe oublié) en français
 
+        const authMessage = (e) => {
+            const messages = {
+                'auth/invalid-credential': "Identifiants incorrects",
+                'auth/wrong-password': "Identifiants incorrects",
+                'auth/user-not-found': "Identifiants incorrects",
+                'auth/invalid-email': "Adresse e-mail invalide",
+                'auth/email-already-in-use': "Cet e-mail est déjà utilisé",
+                'auth/weak-password': "Mot de passe trop court (6 caractères minimum)",
+                'auth/too-many-requests': "Trop de tentatives. Réessaie dans quelques minutes.",
+                'auth/network-request-failed': "Pas de connexion internet",
+            };
+            return messages[e && e.code] || "Une erreur est survenue. Réessaie.";
+        };
+        const showAuth = (id, text) => {
+            ['auth-error', 'auth-info'].forEach(x => document.getElementById(x).classList.add('hidden'));
+            const el = document.getElementById(id);
+            el.innerText = text;
+            el.classList.remove('hidden');
+        };
+
+        window.handleAuth = async () => {
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-password').value;
+            if (!email || !pass) { showAuth('auth-error', "Remplis l'e-mail et le mot de passe"); return; }
+
+            let name = '';
+            if (window.authMode === 'signup') {
+                name = document.getElementById('auth-name').value.trim().replace(/\s+/g, ' ');
+                if (name.length < 2 || name.length > 30) { showAuth('auth-error', "Choisis un pseudo de 2 à 30 caractères"); return; }
+            }
+
+            const btn = document.getElementById('auth-submit-btn');
+            btn.disabled = true;
             try {
-                errorEl.classList.add('hidden');
+                document.getElementById('auth-error').classList.add('hidden');
                 await setPersistence(auth, browserLocalPersistence);
                 if (window.authMode === 'login') {
                     await signInWithEmailAndPassword(auth, email, pass);
                 } else {
+                    // Le pseudo choisi sera utilisé à la création du profil
+                    window._pendingSignupName = name;
                     await createUserWithEmailAndPassword(auth, email, pass);
                 }
             } catch (e) {
-                let msg = e.message;
-                if (e.code === 'auth/invalid-credential') msg = "Identifiants incorrects";
-                if (e.code === 'auth/email-already-in-use') msg = "Cet email est déjà utilisé";
-                if (e.code === 'auth/weak-password') msg = "Mot de passe trop court";
-                errorEl.innerText = msg;
-                errorEl.classList.remove('hidden');
+                window._pendingSignupName = null;
+                showAuth('auth-error', authMessage(e));
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // Mot de passe oublié : Firebase envoie un e-mail avec un lien pour en choisir un nouveau
+        window.forgotPassword = async () => {
+            const email = document.getElementById('auth-email').value.trim();
+            if (!email) { showAuth('auth-error', "Entre d'abord ton adresse e-mail ci-dessus"); return; }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showAuth('auth-info', "Si un compte existe pour cette adresse, un e-mail vient d'être envoyé pour choisir un nouveau mot de passe. Pense à regarder dans les courriers indésirables.");
+            } catch (e) {
+                if (e && e.code === 'auth/user-not-found') {
+                    // Même message, pour ne pas révéler quelles adresses ont un compte
+                    showAuth('auth-info', "Si un compte existe pour cette adresse, un e-mail vient d'être envoyé pour choisir un nouveau mot de passe. Pense à regarder dans les courriers indésirables.");
+                } else {
+                    showAuth('auth-error', authMessage(e));
+                }
             }
         };
 
@@ -577,17 +735,18 @@
                 } else {
                     // CRÉATION PROFIL PAR DÉFAUT (AVEC LES 6 TYPES)
                     window.userProfile = {
-                        name: window.currentUser.email.split('@')[0],
+                        // Pseudo choisi à l'inscription (sinon : début de l'adresse e-mail, comme avant)
+                        name: window._pendingSignupName || window.currentUser.email.split('@')[0],
                         avatar: '',
                         goalLivre: 12,
                         goalFilm: 50,
                         goalSerie: 10,
                         goalAlbum: 50,    // Nouveau
                         goalYouTube: 100, // Nouveau
-                        goalJeu: 10,      // Nouveau
                         following: []
                     };
                     setDoc(profileRef, window.userProfile);
+                    window._pendingSignupName = null;
                 }
                 // Les autres écoutes ne sont lancées qu'une seule fois
                 window.listenToMyCollection(userRoot);
@@ -611,10 +770,11 @@
             const q = query(collection(db, userRoot, 'items'));
             
             window._listeners.items = onSnapshot(q, (snapshot) => {
+                // Les œuvres de catégories retirées (Jeux) restent en base mais ne sont plus affichées
                 window.myCollection = snapshot.docs.map(doc => ({
                     docId: doc.id,
                     ...doc.data()
-                }));
+                })).filter(i => !HIDDEN_TYPES.includes(i.type));
                 window.refreshCurrentView();
             }, (err) => console.error('Écoute bibliothèque', err));
         };
@@ -647,7 +807,7 @@
             const me = window.currentUser.uid;
             const following = (window.userProfile && window.userProfile.following) || [];
             window.socialFeed = window._allActivity.filter(act =>
-                (act.userId === me || following.includes(act.userId)) && !window.isHiddenUser(act.userId)
+                (act.userId === me || following.includes(act.userId)) && !window.isHiddenUser(act.userId) && !HIDDEN_TYPES.includes(act.type)
             );
             if (window.currentView === 'friends') window.renderSocialFeed();
         };
@@ -727,6 +887,11 @@
         /* --- E.1 SAUVEGARDE D'UN ITEM --- */
         window.saveItem = async (status, rating, comment, finishDate, metricValue, share, platform) => {
             if (!window.currentUser || !window.tempItem) return;
+            // Résultat de recherche dont le détail n'est pas encore arrivé : on l'attend (4 s maximum)
+            if (window.tempItem.needsDetails && !window.tempItem.detailsLoaded) {
+                await Promise.race([window.loadItemDetails(window.tempItem), new Promise(r => setTimeout(r, 4000))]);
+                if (!num(metricValue) && num(window.tempItem.metricValue)) metricValue = window.tempItem.metricValue;
+            }
             const appId = 'mabiblio-dc595';
 
             // 1. Préparation de l'objet
@@ -751,6 +916,9 @@
             // Marqueurs internes d'affichage : ne jamais les enregistrer
             delete itemToSave._fromFeed;
             delete itemToSave._fromFriend;
+            delete itemToSave.needsDetails;
+            delete itemToSave.detailsLoaded;
+            delete itemToSave._detailsPromise;
 
             try {
                 // 2. Sauvegarde dans artifacts/.../items
@@ -865,7 +1033,10 @@
         const TMDB_KEY = "fa1123067cae30eea6420cfaef569bc2";
         let searchType = 'Film'; 
         
-        // CONFIGURATION DES 6 CATÉGORIES (Types)
+        // Catégories retirées de l'app : les données restent en base, mais ne sont plus affichées nulle part
+        const HIDDEN_TYPES = ['Jeu'];
+
+        // CONFIGURATION DES CATÉGORIES (Types) — "Jeu" est conservé uniquement pour lire d'anciennes données
         const CONFIG = {
             'Film': { statuses: ['Vu', 'Wishlist'], action: 'Vu !', icon: 'fa-film', metric: 'min', color: '#AF52DE' },
             'Série': { statuses: ['Vu', 'Wishlist', 'En cours'], action: 'Saison Finie !', icon: 'fa-tv', metric: 'saisons', color: '#34C759' },
@@ -912,6 +1083,13 @@
 
         /* --- F.4 NAVIGATION PRINCIPALE (VUES) --- */
         window.switchView = (view) => {
+            // On quitte le mode sélection en changeant de page
+            if (view !== 'home' && window._select && window._select.on) {
+                window._select.on = false;
+                window._select.ids.clear();
+                const btn = document.getElementById('btn-select-mode');
+                if (btn) { btn.style.background = '#F3F4F6'; btn.querySelector('i').style.color = 'black'; }
+            }
             window.currentView = view;
             // Les abonnés sont relus à chaque arrivée sur la page Profil (et seulement à ce moment-là)
             if (view === 'profile') window._followersCache = null;
@@ -971,7 +1149,6 @@
                         <option value="Livre"> Livre</option>
                         <option value="Album"> Album</option>
                         <option value="YouTube"> YouTube</option>
-                        <option value="Jeu"> Jeu</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
                         <i class="fa-solid fa-chevron-down text-xs"></i>
@@ -1006,81 +1183,129 @@
         // VARIABLE DU MINUTEUR POUR ÉCONOMISER LE QUOTA
         window.searchTimeout = null;
 
+        // --- Image par défaut : visuel coloré avec les initiales, créé sur place (aucun service externe) ---
+        const PALETTE = [['#5B5FEF', '#9B6BFF'], ['#FF6B6B', '#FF9F43'], ['#10B981', '#3B82F6'], ['#F59E0B', '#EF4444'], ['#0EA5E9', '#6366F1'], ['#EC4899', '#8B5CF6']];
+        window.placeholderCover = (title) => {
+            const t = String(title || '?').trim();
+            let h = 0; for (const ch of t) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+            const [c1, c2] = PALETTE[h % PALETTE.length];
+            const initials = t.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+            const xml = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="200" height="300" fill="url(#g)"/><text x="100" y="165" font-family="-apple-system,Segoe UI,sans-serif" font-size="72" font-weight="800" fill="#fff" text-anchor="middle">${xml(initials)}</text></svg>`;
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        };
+        // Adresse d'image à afficher (le visuel généré si l'image manque ou vient de l'ancien service en panne)
+        window.coverSrc = (img, title) => {
+            const s = String(img || '');
+            if (!s || s.includes('via.placeholder.com')) return esc(window.placeholderCover(title));
+            return safeImg(s) || esc(window.placeholderCover(title));
+        };
+        // Image cassée (lien expiré…) : on la remplace par le visuel généré
+        window.imgFallback = (el) => { el.onerror = null; el.src = window.placeholderCover(el.dataset.title || ''); };
+        const coverImg = (img, title, cls, extra = '') => `<img src="${window.coverSrc(img, title)}" data-title="${esc(title)}" onerror="window.imgFallback(this)" class="${cls}" ${extra}>`;
+        window.coverImg = coverImg;
+
+        // --- Détails complets d'une œuvre (chargés à l'ouverture de la fiche, plus à chaque recherche) ---
+        // On en profite pour garder genres et pays : ils serviront aux statistiques détaillées.
+        window.loadItemDetails = async (item) => {
+            if (!item || !item.needsDetails || item.detailsLoaded) return item;
+            if (item._detailsPromise) return item._detailsPromise;
+            item._detailsPromise = (async () => {
+                try {
+                    if (item.type === 'Film' || item.type === 'Série') {
+                        const ep = item.type === 'Film' ? 'movie' : 'tv';
+                        const r = await fetch(`https://api.themoviedb.org/3/${ep}/${encodeURIComponent(item.id)}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`);
+                        if (!r.ok) throw new Error('TMDB ' + r.status);
+                        const d = await r.json();
+                        const credits = d.credits || {};
+                        item.cast = (credits.cast || []).slice(0, 4).map(c => c.name).join(', ');
+                        item.castList = (credits.cast || []).slice(0, 8).map(c => c.name);
+                        if (item.type === 'Film') {
+                            const director = (credits.crew || []).find(x => x.job === 'Director');
+                            item.author = director ? director.name : (item.author || '');
+                            item.metricValue = d.runtime || item.metricValue || 0;
+                        } else {
+                            item.author = (d.created_by || []).map(c => c.name).join(', ') || item.author || '';
+                            item.metricValue = d.number_of_seasons || item.metricValue || 0;
+                        }
+                        item.genres = (d.genres || []).map(g => g.name);
+                        item.countries = (d.production_countries || []).map(c => c.name);
+                        item.countryCodes = (d.production_countries || []).map(c => c.iso_3166_1).concat(d.origin_country || []).filter((v, i, a) => v && a.indexOf(v) === i);
+                        item.originalLanguage = d.original_language || '';
+                        if (!item.desc && d.overview) item.desc = d.overview;
+                    } else if (item.type === 'Album') {
+                        const d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(item.id)}?`);
+                        if (d && d.tracks && d.tracks.data) item.desc = d.tracks.data.slice(0, 5).map((t, i) => `${i + 1}. ${t.title}`).join('<br>');
+                        if (d && d.release_date) item.releaseDate = d.release_date;
+                        if (d && d.genres && d.genres.data) item.genres = d.genres.data.map(g => g.name);
+                        if (d && d.nb_tracks) item.metricValue = d.nb_tracks;
+                        if (d && d.duration) item.durationMin = Math.round(d.duration / 60);
+                    }
+                    item.detailsLoaded = true;
+                } catch (e) {
+                    console.error('Détails', e);
+                } finally {
+                    delete item._detailsPromise;
+                }
+                return item;
+            })();
+            return item._detailsPromise;
+        };
+
+        // Œuvre de MA bibliothèque correspondant à un résultat de recherche (même identifiant)
+        window.findInLibrary = (type, id) => (window.myCollection || []).find(i => i.docId === `${type}_${id}` || (i.type === type && String(i.id) === String(id)));
+
+        let searchSeq = 0;
         window.handleSearch = (val) => { 
             // 1. On annule la requête précédente si l'utilisateur est en train de taper
-            if (window.searchTimeout) {
-                clearTimeout(window.searchTimeout);
-            }
+            if (window.searchTimeout) clearTimeout(window.searchTimeout);
 
             // 2. Si le texte est trop court, on vide les résultats et on s'arrête là
-            if (val.length < 3) {
+            if (val.trim().length < 3) {
                 document.getElementById('search-results').innerHTML = "";
                 return;
             }
 
-            // 3. On lance le retardateur (800ms)
+            // 3. Petit délai pour attendre la fin de la frappe
             window.searchTimeout = setTimeout(async () => {
+                const token = ++searchSeq;
+                const type = searchType;
                 let results = []; 
-                
-                // CLÉ YOUTUBE
+                let failed = false;
                 const YOUTUBE_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco"; 
-                
-                if (searchType === 'Jeu') {
-                    document.getElementById('search-results').innerHTML = `<div class="text-center mt-10 p-6 bg-gray-50 rounded-2xl"><i class="fa-solid fa-pen-to-square text-4xl text-gray-300 mb-4"></i><p class="font-bold text-gray-500 mb-4">Recherche Jeux non disponible.</p><button onclick="window.openManualModal()" class="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold">Ajouter manuellement</button></div>`;
-                    return;
-                }
+                document.getElementById('search-results').innerHTML = `<div class="text-center mt-8 text-gray-400"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
 
                 try {
-                    // --- CAS ALBUM (DEEZER VIA JSONP - LE VRAI CATALOGUE FR) ---
-                    if (searchType === 'Album') {
-                        const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(val)}&limit=10`);
-                        results = await Promise.all((d.data || []).map(async a => {
-                            let trackListHtml = "Titres indisponibles";
-                            try {
-                                const details = await window.deezerJSONP(`https://api.deezer.com/album/${a.id}?`);
-                                if (details && details.tracks && details.tracks.data) {
-                                    trackListHtml = details.tracks.data.slice(0, 5).map((t, i) => `${i+1}. ${t.title}`).join('<br>');
-                                }
-                            } catch(e) {}
-
-                            return {
-                                id: String(a.id),
-                                title: a.title,
-                                img: a.cover_xl || a.cover_medium,
-                                desc: trackListHtml, 
-                                type: 'Album',
-                                releaseDate: a.release_date,
-                                metricValue: a.nb_tracks || 0,
-                                author: a.artist ? a.artist.name : 'Inconnu',
-                                platform: 'Deezer',
-                                subInfo: `${a.nb_tracks} titres`
-                            };
+                    // --- ALBUM (Deezer) : une seule requête, la liste des titres se charge à l'ouverture ---
+                    if (type === 'Album') {
+                        const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(val)}&limit=15`);
+                        results = (d.data || []).map(a => ({
+                            id: String(a.id), title: a.title, img: a.cover_xl || a.cover_medium || '',
+                            desc: '', type: 'Album', releaseDate: '', metricValue: a.nb_tracks || 0,
+                            author: a.artist ? a.artist.name : 'Inconnu', platform: 'Deezer',
+                            subInfo: `${a.nb_tracks || 0} titres`, needsDetails: true
                         }));
                     }
 
-                    // --- CAS YOUTUBE ---
-                    else if (searchType === 'YouTube') {
+                    // --- YOUTUBE ---
+                    else if (type === 'YouTube') {
                         const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(val)}&key=${YOUTUBE_KEY}&maxResults=10`);
                         if (!r.ok) throw new Error("Erreur Clé API YouTube");
                         const d = await r.json();
-                        
-                        if (d.items) {
+                        if (d.items && d.items.length) {
                             const videoIds = d.items.map(v => v.id.videoId).join(',');
                             const rDetails = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_KEY}`);
                             const dDetails = await rDetails.json();
-                            
                             results = d.items.map(v => {
                                 const detail = dDetails.items ? dDetails.items.find(x => x.id === v.id.videoId) : null;
                                 let duration = 0, views = 0;
-                                
                                 if (detail) {
                                     if (detail.contentDetails && detail.contentDetails.duration) {
-                                        const matches = detail.contentDetails.duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
-                                        if (matches) duration = ((Number(matches[1]||0))*60) + (Number(matches[2]||0)) + ((Number(matches[3]||0)>30)?1:0);
+                                        const m = detail.contentDetails.duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+                                        if (m) duration = ((Number(m[1]||0))*60) + (Number(m[2]||0)) + ((Number(m[3]||0)>30)?1:0);
                                     }
                                     if (detail.statistics) views = window.formatNumber(detail.statistics.viewCount);
                                 }
-
                                 return {
                                     id: v.id.videoId, title: v.snippet.title,
                                     img: v.snippet.thumbnails.high ? v.snippet.thumbnails.high.url : v.snippet.thumbnails.medium.url,
@@ -1092,72 +1317,66 @@
                         }
                     }
 
-                    // --- CAS LIVRE ---
-                    else if (searchType === 'Livre') { 
-                        // AJOUT DE TA CLÉ API ET SECURISATION DES ESPACES/GUILLEMETS
+                    // --- LIVRE (Google Livres) : tout arrive en une requête ---
+                    else if (type === 'Livre') { 
                         const BOOKS_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco";
-                        const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(val)}&maxResults=10&langRestrict=fr&key=${BOOKS_KEY}`); 
+                        const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(val)}&maxResults=15&langRestrict=fr&key=${BOOKS_KEY}`); 
                         const d = await r.json(); 
                         results = (d.items || []).map(b => {
-                            let safeDesc = b.volumeInfo.description || "";
-                            safeDesc = safeDesc.replace(/[\n\r]/g, " ").replace(/"/g, "'");
-
+                            const v = b.volumeInfo || {};
                             return { 
-                                id: b.id, title: b.volumeInfo.title, img: b.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'), 
-                                desc: safeDesc, type: 'Livre', releaseDate: b.volumeInfo.publishedDate, 
-                                metricValue: b.volumeInfo.pageCount || 0, author: b.volumeInfo.authors ? b.volumeInfo.authors.join(', ') : null 
+                                id: b.id, title: v.title, img: v.imageLinks && v.imageLinks.thumbnail ? v.imageLinks.thumbnail.replace('http:', 'https:') : '', 
+                                desc: String(v.description || '').replace(/[\n\r]/g, " "), type: 'Livre', releaseDate: v.publishedDate || '', 
+                                metricValue: v.pageCount || 0, author: v.authors ? v.authors.join(', ') : '',
+                                genres: v.categories || [], language: v.language || ''
                             };
                         }); 
                     } 
-                    // --- CAS FILM/SÉRIE ---
+
+                    // --- FILM / SÉRIE (TMDB) : une seule requête, le détail se charge à l'ouverture ---
                     else { 
-                        const ep = searchType === 'Film' ? 'movie' : 'tv'; 
+                        const ep = type === 'Film' ? 'movie' : 'tv'; 
                         const r = await fetch(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${encodeURIComponent(val)}&language=fr-FR`); 
                         const d = await r.json(); 
-                        results = await Promise.all((d.results || []).map(async m => { 
-                            const dr = await fetch(`https://api.themoviedb.org/3/${ep}/${m.id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`); 
-                            const details = await dr.json(); 
-                            let author = "", cast = "";
-                            if (details.credits) {
-                                if (details.credits.cast) cast = details.credits.cast.slice(0, 4).map(c => c.name).join(', ');
-                                if (searchType === 'Film' && details.credits.crew) { const director = details.credits.crew.find(x => x.job === 'Director'); if(director) author = director.name; } 
-                                else if (searchType === 'Série' && details.created_by) author = details.created_by.map(c => c.name).join(', ');
-                            }
-                            
-                            let safeDesc = m.overview || "";
-                            safeDesc = safeDesc.replace(/[\n\r]/g, " ").replace(/"/g, "'");
-
-                            return { 
-                                id: String(m.id), title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
-                                desc: safeDesc, type: searchType, releaseDate: m.release_date || m.first_air_date, 
-                                metricValue: searchType === 'Film' ? (details.runtime || 0) : (details.number_of_seasons || 0), author: author, cast: cast
-                            }; 
+                        results = (d.results || []).map(m => ({ 
+                            id: String(m.id), title: m.title || m.name, img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', 
+                            desc: String(m.overview || '').replace(/[\n\r]/g, " "), type: type, releaseDate: m.release_date || m.first_air_date || '', 
+                            metricValue: 0, author: '', cast: '', needsDetails: true
                         })); 
                     }
-                } catch (e) { console.error("Erreur Search", e); }
+                } catch (e) { console.error("Erreur Search", e); failed = true; }
 
-                // Rendu
-                document.getElementById('search-results').innerHTML = results.map(i => {
+                if (token !== searchSeq) return; // une recherche plus récente a pris le relais
+                const box = document.getElementById('search-results');
+                if (failed) { box.innerHTML = `<div class="text-center mt-8 text-sm text-gray-400 font-bold">La recherche n'a pas fonctionné. Vérifie ta connexion et réessaie.</div>`; return; }
+                if (!results.length) { box.innerHTML = `<div class="text-center mt-8 text-sm text-gray-400 font-bold">Aucun résultat.<br>Tu peux l'ajouter avec « Créer manuellement ».</div>`; return; }
+
+                // Rendu (avec un badge si l'œuvre est déjà dans ma bibliothèque)
+                box.innerHTML = results.map(i => {
+                    const owned = window.findInLibrary(i.type, i.id);
                     let unit = 'min';
                     if(i.type === 'Album') unit = 'titres';
                     if(i.type === 'Livre') unit = 'p.';
                     if(i.type === 'Série') unit = 'sais.';
                     const sub = i.subInfo ? `• ${esc(i.subInfo)}` : '';
-                    const key = regItem(i);
+                    const metric = num(i.metricValue) > 0 && !i.subInfo ? ` • ${num(i.metricValue)} ${unit}` : '';
+                    const key = regItem(owned || i);
+                    const badge = owned ? `<span class="inline-block mt-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[9px] font-black uppercase">✓ ${esc(owned.status === 'Wishlist' ? 'Dans ta wishlist' : owned.status === 'En cours' ? 'En cours' : 'Déjà ' + String(owned.status).toLowerCase())}</span>` : '';
 
                     return `
                     <div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick="window.openPreviewKey(${jsArg(key)})">
-                        <img src="${safeImg(i.img)}" class="w-12 h-18 rounded-lg object-cover bg-gray-200">
+                        ${coverImg(i.img, i.title, 'w-12 h-18 rounded-lg object-cover bg-gray-200', 'loading="lazy"')}
                         <div class="flex-1 font-black text-xs">
                             ${esc(i.title)}
                             <div class="text-[10px] text-gray-400 font-normal mt-0.5">
-                                ${i.releaseDate ? esc(String(i.releaseDate).split('-')[0]) : ''} ${i.author ? '• ' + esc(i.author) : ''} • ${num(i.metricValue)} ${unit} ${sub}
+                                ${i.releaseDate ? esc(String(i.releaseDate).split('-')[0]) : ''} ${i.author ? '• ' + esc(i.author) : ''}${metric} ${sub}
                             </div>
+                            ${badge}
                         </div>
                     </div>`;
                 }).join(''); 
                 
-            }, 800); // FIN DU MINUTEUR
+            }, 450);
         };
 
        /* --- G.2 FENÊTRE DE PRÉVISUALISATION (DÉTAILS RICHE & ADAPTATIF) --- */
@@ -1245,12 +1464,14 @@
 
             document.getElementById('preview-content').innerHTML = `
                 <div class="px-6 pt-24 pb-20 flex flex-col items-center">
-                    <img src="${safeImg(item.img)}" class="${imageClass} rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
+                    ${coverImg(item.img, item.title, imageClass + ' rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800')}
                     <h2 class="text-2xl font-black mb-2 text-center text-white leading-tight">${esc(item.title)}</h2>
                     <p class="text-blue-400 font-bold mb-6 text-sm uppercase">
                         ${esc(item.type)} • ${metricDisplay} ${platformBadge}
                     </p>
                     ${metaInfos}
+                    ${(Array.isArray(item.genres) && item.genres.length) || (Array.isArray(item.countries) && item.countries.length) ? `<div class="w-full flex flex-wrap gap-2 justify-center mb-6 -mt-2">${[...(item.genres || []).slice(0, 4), ...(item.countries || []).slice(0, 2)].map(g => `<span class="px-3 py-1 rounded-full bg-white/10 text-gray-300 text-[11px] font-bold">${esc(g)}</span>`).join('')}</div>` : ''}
+                    ${item.needsDetails && !item.detailsLoaded && !item.docId ? `<div class="text-gray-500 text-xs mb-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des détails…</div>` : ''}
                     ${actionButtonsHtml}
                     ${commentHtml}
                     <div class="w-full text-gray-400 text-sm leading-relaxed text-justify opacity-80">${contentHtml}</div>
@@ -1258,6 +1479,18 @@
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+
+        // Après ouverture d'un résultat de recherche : on charge le détail puis on rafraîchit la fiche
+        const _openPreviewBase = window.openPreview;
+        window.openPreview = (item) => {
+            _openPreviewBase(item);
+            if (item && item.needsDetails && !item.detailsLoaded && !item.docId) {
+                window.loadItemDetails(item).then(() => {
+                    const stillOpen = document.getElementById('preview-modal').classList.contains('open');
+                    if (stillOpen && window.tempItem === item && item.detailsLoaded) _openPreviewBase(item);
+                });
+            }
+        };
 
         // Ajouter à MA bibliothèque une œuvre vue chez un ami : on repart d'une fiche vierge
         // (sans la note, l'avis ni la date de l'ami).
@@ -1270,7 +1503,10 @@
         /* --- G.3 SYSTÈME DE NOTATION (SHEET) --- */
         window.openNotation = () => { 
             document.getElementById('rating-sheet').classList.add('open'); 
-            document.getElementById('sheet-poster').src = window.tempItem.img; 
+            const poster = document.getElementById('sheet-poster');
+            poster.dataset.title = window.tempItem.title || '';
+            poster.onerror = () => window.imgFallback(poster);
+            poster.src = (window.tempItem.img && !String(window.tempItem.img).includes('via.placeholder.com') && /^(https?:\/\/|data:image\/)/i.test(window.tempItem.img)) ? window.tempItem.img : window.placeholderCover(window.tempItem.title); 
             document.getElementById('sheet-title').innerText = window.tempItem.title; 
             
             const platformLabel = document.getElementById('platform-label');
@@ -1365,7 +1601,6 @@
                         <option value="Livre" ${defType === 'Livre' ? 'selected' : ''}>Livre</option>
                         <option value="Album" ${defType === 'Album' ? 'selected' : ''}>Album</option>
                         <option value="YouTube" ${defType === 'YouTube' ? 'selected' : ''}>YouTube</option>
-                        <option value="Jeu" ${defType === 'Jeu' ? 'selected' : ''}>Jeu</option>
                     </select>
                 </div>
 
@@ -1489,7 +1724,7 @@
                 // On stocke le casting si présent
                 cast: castInput ? castInput.value : '',
                 metricValue: parseInt(document.getElementById('m-metric').value) || 0, 
-                img: window.tempManualImage || `https://via.placeholder.com/300x450?text=${encodeURIComponent(title)}`, 
+                img: window.tempManualImage || '', // sans photo : visuel coloré généré à l'affichage
                 desc: document.getElementById('m-desc').value, 
                 releaseDate: new Date().toISOString() 
             };
@@ -1852,7 +2087,6 @@
                         <option value="Livre" ${window.feedFilter === 'Livre' ? 'selected' : ''}>Livres</option>
                         <option value="Album" ${window.feedFilter === 'Album' ? 'selected' : ''}>Albums</option>
                         <option value="YouTube" ${window.feedFilter === 'YouTube' ? 'selected' : ''}>YouTube</option>
-                        <option value="Jeu" ${window.feedFilter === 'Jeu' ? 'selected' : ''}>Jeux</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
                         <i class="fa-solid fa-chevron-down text-[10px]"></i>
@@ -1931,7 +2165,7 @@
 
                         <div class="flex items-start gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick="window.openPreviewKey(${jsArg(previewKey)})">
                             <div class="relative ${thumbClass} shrink-0 rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                                <img src="${safeImg(act.itemImg)}" class="w-full h-full object-cover bg-gray-200 ${act.type === 'YouTube' ? 'scale-[1.35]' : ''}">
+                                ${coverImg(act.itemImg, act.itemTitle, 'w-full h-full object-cover bg-gray-200 ' + (act.type === 'YouTube' ? 'scale-[1.35]' : ''), 'loading="lazy"')}
                                 <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-md">${esc(act.rating || '-')}</div>
                             </div>
                             <div class="flex-1 py-1 min-w-0">
@@ -2155,6 +2389,21 @@
         // I. EXTENSIONS & LOGIQUE D'INTERFACE AVANCÉE
         // -----------------------------------------------------------
         
+        /* --- I.0 RÉGLAGES MÉMORISÉS SUR L'APPAREIL (tri, nombre de colonnes) --- */
+        const PREFS_KEY = 'mabiblio_prefs';
+        window.savePrefs = () => {
+            try { localStorage.setItem(PREFS_KEY, JSON.stringify({ sort: window.extState.sort, gridPrefs: window.gridPrefs || {} })); } catch (e) {}
+        };
+        (() => {
+            let prefs = {};
+            try { prefs = JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch (e) {}
+            if (['date', 'rating', 'name'].includes(prefs.sort)) window.extState.sort = prefs.sort;
+            window.gridPrefs = {};
+            if (prefs.gridPrefs && typeof prefs.gridPrefs === 'object') {
+                for (const [t, c] of Object.entries(prefs.gridPrefs)) if ([2, 3, 4].includes(c)) window.gridPrefs[t] = c;
+            }
+        })();
+
        /* --- I.1 INJECTION UI DYNAMIQUE (HEADER & NOTIFS + BOUTON GRILLE) --- */
         // On adapte l'injection pour le nouveau Header avec Select
         const header = document.getElementById('app-header');
@@ -2215,7 +2464,21 @@
             notifBtn.innerHTML = '<i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div>';
             notifBtn.onclick = () => window.openNotifications();
 
-            // On ajoute les deux éléments dans le groupe de droite
+            // --- C. LOUPE (recherche dans ma bibliothèque) et SÉLECTION MULTIPLE ---
+            const squareBtn = (icon, title, action, id) => {
+                const b = document.createElement('div');
+                b.id = id; b.title = title; b.setAttribute('role', 'button'); b.setAttribute('aria-label', title);
+                b.style.cssText = 'width:32px;height:32px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(0,0,0,0.05);transition:transform .15s';
+                b.innerHTML = `<i class="${icon}" style="font-size:14px;color:black"></i>`;
+                b.onclick = () => { b.style.transform = 'scale(0.9)'; setTimeout(() => b.style.transform = 'scale(1)', 150); action(); };
+                return b;
+            };
+            const searchBtn = squareBtn('fa-solid fa-magnifying-glass', 'Rechercher dans ma bibliothèque', () => window.toggleLibrarySearch(), 'btn-library-search');
+            const selectBtn = squareBtn('fa-regular fa-square-check', 'Sélectionner pour supprimer', () => window.toggleSelectMode(), 'btn-select-mode');
+
+            // On ajoute les éléments dans le groupe de droite
+            rightGroup.appendChild(searchBtn);
+            rightGroup.appendChild(selectBtn);
             rightGroup.appendChild(gridBtn);
             rightGroup.appendChild(notifBtn);
 
@@ -2238,8 +2501,17 @@
 
             // Ajout du Dropdown de Tri (à gauche des pills)
             const filterContainer = document.createElement('div');
-            filterContainer.innerHTML = `<select class="filter-dropdown" onchange="window.setSort(this.value)"><option value="date">Date</option><option value="rating">Note</option><option value="name">Nom</option></select>`;
+            filterContainer.innerHTML = `<select id="sort-select" class="filter-dropdown" onchange="window.setSort(this.value)"><option value="date">Date</option><option value="rating">Note</option><option value="name">Nom</option></select>`;
             controlsRow.appendChild(filterContainer);
+            const sortSel = filterContainer.querySelector('select');
+            if (sortSel) sortSel.value = window.extState.sort;
+
+            // Barre de recherche dans ma bibliothèque (cachée tant qu'on n'appuie pas sur la loupe)
+            const searchRow = document.createElement('div');
+            searchRow.id = 'library-search-row';
+            searchRow.style.cssText = 'display:none;margin-top:10px;position:relative';
+            searchRow.innerHTML = `<i class="fa-solid fa-magnifying-glass" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px"></i><input id="library-search" type="search" placeholder="Titre, auteur, artiste, acteur…" autocomplete="off" oninput="window.setLibraryQuery(this.value)" style="width:100%;padding:10px 40px 10px 36px;border-radius:12px;background:#E5E5EA;border:none;outline:none;font-size:15px;font-weight:600"><button onclick="window.toggleLibrarySearch(false)" aria-label="Fermer la recherche" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:#D1D1D6;color:#3A3A3C;font-size:12px"><i class="fa-solid fa-xmark"></i></button>`;
+            header.appendChild(searchRow);
 
             // Ajout des Status Pills (qui scrollent à droite)
             controlsRow.appendChild(statusContainer);
@@ -2247,7 +2519,12 @@
             statusContainer.style.overflowX = "auto"; // Garde le scroll horizontal
         }
 
-        window.setSort = (val) => { window.extState.sort = val; window.renderList(); };
+        window.setSort = (val) => {
+            if (!['date', 'rating', 'name'].includes(val)) return;
+            window.extState.sort = val;
+            window.savePrefs();
+            window.renderList();
+        };
 
       // -----------------------------------------------------------
         // J. FONCTIONS DE RENDU PRINCIPALES (CORRIGÉE - SANS DOUBLON)
@@ -2271,8 +2548,9 @@
             else if (current === 2) current = 3;
             else current = 4;
             
-            // 4. SAUVEGARDE DANS LA MÉMOIRE POUR CE TYPE
+            // 4. SAUVEGARDE DANS LA MÉMOIRE POUR CE TYPE (et sur l'appareil)
             window.gridPrefs[type] = current;
+            window.savePrefs();
             
             // 5. Rafraîchissement
             window.renderList(); 
@@ -2293,10 +2571,32 @@
             return /^(19|20)\d\d/.test(d) ? d.slice(0, 4) : null;
         };
 
+        // ---------- Recherche dans ma bibliothèque ----------
+        window.libraryQuery = '';
+        const normTxt = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        window.toggleLibrarySearch = (force) => {
+            const row = document.getElementById('library-search-row');
+            const input = document.getElementById('library-search');
+            if (!row || !input) return;
+            const open = typeof force === 'boolean' ? force : row.style.display === 'none';
+            row.style.display = open ? 'block' : 'none';
+            if (open) { input.focus(); }
+            else { input.value = ''; window.libraryQuery = ''; window.renderList(); }
+        };
+        let libSearchTimer = null;
+        window.setLibraryQuery = (val) => {
+            clearTimeout(libSearchTimer);
+            libSearchTimer = setTimeout(() => { window.libraryQuery = normTxt(val.trim()); window.renderList(); window.scrollMainTop(); }, 150);
+        };
+
         window.renderList = () => {
             if (!window.myCollection) return;
-            // Filtrage
-            let filtered = window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
+            const q = window.libraryQuery;
+            const searching = q.length > 0;
+            // Filtrage : en recherche, on cherche dans TOUTE la bibliothèque (toutes catégories et listes)
+            let filtered = searching
+                ? window.myCollection.filter(i => normTxt([i.title, i.author, i.cast, (i.genres || []).join(' ')].join(' ')).includes(q))
+                : window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
             
             // Tri
             if (window.extState.sort === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
@@ -2305,10 +2605,15 @@
                 // Plus récent d'abord ; les œuvres "Non daté" à la fin
                 filtered.sort((a, b) => window.itemDateKey(b).localeCompare(window.itemDateKey(a)));
             }
+            // Œuvres affichées (pour « Tout sélectionner »)
+            window._visibleDocIds = filtered.map(i => i.docId).filter(Boolean);
 
             const container = document.getElementById('main-content');
             if (!filtered.length) { 
-                container.innerHTML = `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; 
+                container.innerHTML = searching
+                    ? `<div class="p-16 opacity-50 text-center"><i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i><div class="font-black">Aucune œuvre trouvée</div></div>`
+                    : `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; 
+                window.updateSelectBar();
                 return; 
             }
 
@@ -2316,18 +2621,22 @@
             if (!window.gridPrefs) window.gridPrefs = {};
             const type = window.currentType;
             
-            // CORRECTION : 2 pour YouTube, 3 pour Album, 4 pour le reste
+            // 2 pour YouTube, 3 pour Album, 4 pour le reste
             const defaultVal = type === 'YouTube' ? 2 : (type === 'Album' ? 3 : 4);
             
             // On prend la valeur en mémoire OU la valeur par défaut
-            const cols = window.gridPrefs[type] || defaultVal;
+            const cols = searching ? 3 : (window.gridPrefs[type] || defaultVal);
 
             // Application du style CSS
             const gridStyle = `display: grid; grid-template-columns: repeat(${cols}, 1fr); gap: 10px;`;
 
             let html = `<div class="px-4 pb-24 mt-4">`; 
 
-            if (window.extState.sort !== 'date') {
+            if (searching) {
+                html += `<div class="text-xs font-bold text-gray-400 uppercase mb-3">${filtered.length} résultat${filtered.length > 1 ? 's' : ''} dans toute ta bibliothèque</div><div style="${gridStyle}">`;
+                filtered.forEach(item => html += window.generateGridItemHTML(item, cols, true));
+                html += `</div>`;
+            } else if (window.extState.sort !== 'date') {
                 html += `<div style="${gridStyle}">`;
                 filtered.forEach(item => html += window.generateGridItemHTML(item, cols));
                 html += `</div>`;
@@ -2339,7 +2648,7 @@
                 });
                 const years = Object.keys(groups).sort((a,b) => b === 'Non daté' ? -1 : (a === 'Non daté' ? 1 : b - a));
                 years.forEach(year => {
-                    html += `<div class="year-divider mt-6 mb-4 font-black text-xl">${year}</div><div style="${gridStyle}">`;
+                    html += `<div class="year-divider mt-6 mb-4 font-black text-xl">${esc(year)}</div><div style="${gridStyle}">`;
                     groups[year].forEach(item => html += window.generateGridItemHTML(item, cols));
                     html += `</div>`;
                 });
@@ -2347,10 +2656,107 @@
             html += `</div>`;
             
             container.innerHTML = html;
+            window.updateSelectBar();
         };
 
-        window.generateGridItemHTML = (item, cols) => {
+        // ---------- Sélection multiple (suppression rapide, avec possibilité d'annuler) ----------
+        window._select = { on: false, ids: new Set() };
+
+        window.toggleSelectMode = (force) => {
+            const on = typeof force === 'boolean' ? force : !window._select.on;
+            window._select.on = on;
+            window._select.ids.clear();
+            const btn = document.getElementById('btn-select-mode');
+            if (btn) {
+                btn.style.background = on ? '#007AFF' : '#F3F4F6';
+                btn.querySelector('i').style.color = on ? 'white' : 'black';
+            }
+            window.renderList();
+        };
+
+        // Clic sur une œuvre de la grille : ouvre la fiche, ou (en mode sélection) la coche / décoche
+        window.gridItemClick = (el, key) => {
+            const item = itemRegistry.get(key);
+            if (!item) return;
+            if (window._select.on && item.docId && !item._fromFriend) {
+                const ids = window._select.ids;
+                if (ids.has(item.docId)) ids.delete(item.docId); else ids.add(item.docId);
+                el.classList.toggle('is-selected', ids.has(item.docId));
+                window.updateSelectBar();
+                return;
+            }
+            window.openPreviewKey(key);
+        };
+
+        window.selectAllVisible = () => {
+            const all = window._visibleDocIds || [];
+            const everything = all.length > 0 && all.every(id => window._select.ids.has(id));
+            all.forEach(id => everything ? window._select.ids.delete(id) : window._select.ids.add(id));
+            window.renderList();
+        };
+
+        // Barre du bas en mode sélection
+        window.updateSelectBar = () => {
+            let bar = document.getElementById('select-bar');
+            if (!window._select.on || window.currentView !== 'home') { if (bar) bar.remove(); return; }
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'select-bar';
+                bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;display:flex;gap:8px;align-items:center';
+                document.body.appendChild(bar);
+            }
+            const n = window._select.ids.size;
+            const all = window._visibleDocIds || [];
+            const everything = all.length > 0 && all.every(id => window._select.ids.has(id));
+            bar.innerHTML = `
+                <button onclick="window.toggleSelectMode(false)" style="padding:10px 12px;border-radius:12px;background:#F2F2F7;font-weight:700;font-size:14px">Annuler</button>
+                <button onclick="window.selectAllVisible()" style="padding:10px 12px;border-radius:12px;background:#F2F2F7;font-weight:700;font-size:14px">${everything ? 'Tout désélectionner' : 'Tout sélectionner'}</button>
+                <button onclick="window.deleteSelected()" ${n ? '' : 'disabled'} style="flex:1;padding:10px 12px;border-radius:12px;background:${n ? '#FF3B30' : '#FFC9C6'};color:#fff;font-weight:800;font-size:14px"><i class="fa-solid fa-trash-can" style="margin-right:6px"></i>Supprimer${n ? ' (' + n + ')' : ''}</button>`;
+        };
+
+        window.deleteSelected = async () => {
+            const ids = [...window._select.ids];
+            if (!ids.length) return;
+            const items = ids.map(id => window.myCollection.find(i => i.docId === id)).filter(Boolean);
+            if (!items.length) return;
+            const preview = items.slice(0, 3).map(i => '• ' + (i.title || 'Sans titre')).join('\n') + (items.length > 3 ? `\n… et ${items.length - 3} autre(s)` : '');
+            if (!(await window.ui.confirm(`Supprimer ${items.length} œuvre${items.length > 1 ? 's' : ''} de ta bibliothèque ?\n\n${preview}`, { okLabel: 'Supprimer', danger: true }))) return;
+
+            // Copie de sécurité en mémoire pour pouvoir annuler
+            const backup = items.map(i => { const { docId, ...data } = i; return { docId, data }; });
+            const userItems = (id) => doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', id);
+            try {
+                for (let i = 0; i < backup.length; i += 400) {
+                    const batch = writeBatch(db);
+                    backup.slice(i, i + 400).forEach(b => batch.delete(userItems(b.docId)));
+                    await batch.commit();
+                }
+            } catch (e) {
+                console.error(e);
+                window.ui.alert("La suppression n'a pas pu se faire entièrement. Rien n'a été perdu : réessaie.");
+                return;
+            }
+            window.toggleSelectMode(false);
+            window.ui.toast(`${backup.length} œuvre${backup.length > 1 ? 's' : ''} supprimée${backup.length > 1 ? 's' : ''}`, {
+                actionLabel: 'Annuler',
+                duration: 8000,
+                onAction: async () => {
+                    try {
+                        for (let i = 0; i < backup.length; i += 400) {
+                            const batch = writeBatch(db);
+                            backup.slice(i, i + 400).forEach(b => batch.set(userItems(b.docId), b.data));
+                            await batch.commit();
+                        }
+                        window.ui.toast('Suppression annulée ✓');
+                    } catch (e) { console.error(e); window.ui.alert("La restauration a échoué."); }
+                }
+            });
+        };
+
+        window.generateGridItemHTML = (item, cols, showStatus = false) => {
             const itemKey = regItem(item);
+            const selectable = window._select.on && item.docId && !item._fromFriend;
+            const selected = selectable && window._select.ids.has(item.docId);
             
             // --- LOGIQUE VISUELLE ---
             let aspectClass = 'aspect-[2/3]'; 
@@ -2377,8 +2783,10 @@
             const zoomClass = item.type === 'YouTube' ? 'scale-110 group-hover:scale-125' : 'group-hover:scale-105';
 
             return `
-            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95" onclick="window.openPreviewKey(${jsArg(itemKey)})">
-                <img src="${safeImg(item.img)}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 ${zoomClass}">
+            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95${selectable ? ' selectable' : ''}${selected ? ' is-selected' : ''}" onclick="window.gridItemClick(this, ${jsArg(itemKey)})">
+                ${selectable ? '<div class="sel-check"><i class="fa-solid fa-check"></i></div>' : ''}
+                ${showStatus ? `<div class="absolute top-1 left-1 z-[3] bg-black/60 text-white text-[8px] font-black px-1.5 py-0.5 rounded">${esc(item.type)} · ${esc(item.status)}</div>` : ''}
+                ${coverImg(item.img, item.title, 'w-full h-full object-cover transition-transform duration-500 ' + zoomClass, 'loading="lazy"')}
                 ${item.rating ? `<div class="grid-rating">${esc(item.rating)}</div>` : ''}
 
                 <div class="grid-item-overlay">
@@ -2412,7 +2820,7 @@
             }
             html += items.map(item => {
                 const key = regItem({ id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type });
-                return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick="window.savePinKey(${jsArg(key)})"><img src="${safeImg(item.img)}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${esc(item.title)}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${esc(item.type)} • ${esc(item.rating || '-')} ★</div></div></div>`;
+                return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick="window.savePinKey(${jsArg(key)})">${coverImg(item.img, item.title, 'w-10 h-14 object-cover rounded bg-gray-200', 'loading="lazy"')}<div><div class="font-bold text-sm">${esc(item.title)}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${esc(item.type)} • ${esc(item.rating || '-')} ★</div></div></div>`;
             }).join('');
             list.innerHTML = html;
         };
@@ -2477,7 +2885,7 @@
 
             // Données utilisateur
             const bio = window.userProfile.bio || "Ajouter une biographie...";
-            const pinned = window.userProfile.pinned || [null, null, null]; 
+            const pinned = (window.userProfile.pinned || [null, null, null]).map(p => (p && HIDDEN_TYPES.includes(p.type)) ? null : p); 
             const myAvatar = safeImg(window.userProfile.avatar);
 
             container.innerHTML = `
@@ -2501,7 +2909,7 @@
                             if (item) {
                                 return `
                                 <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
-                                    <img src="${safeImg(item.img)}">
+                                    ${coverImg(item.img, item.title, '')}
                                     <div class="pinned-overlay"><i class="fa-solid fa-rotate text-white"></i></div>
                                     <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${esc(item.rating || '?')}</div>
                                 </div>`;
@@ -2716,13 +3124,13 @@
             // 2. Collection Ami
             const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
             // _fromFriend : ces œuvres appartiennent à l'ami, elles s'ouvrent en lecture seule
-            window.friendData = itemsSnap.docs.map(d => ({ ...d.data(), _fromFriend: true }));
+            window.friendData = itemsSnap.docs.map(d => ({ ...d.data(), _fromFriend: true })).filter(i => !HIDDEN_TYPES.includes(i.type));
 
             // 3. Status abonnement
             const isFollowing = (window.userProfile.following || []).includes(uid);
             
             const bio = prof.bio || "";
-            const pinned = Array.isArray(prof.pinned) ? prof.pinned : [null, null, null];
+            const pinned = (Array.isArray(prof.pinned) ? prof.pinned : [null, null, null]).map(p => (p && HIDDEN_TYPES.includes(p.type)) ? null : p);
             const hasPinned = pinned.some(p => p !== null);
 
             let buttonHTML = `<button onclick="window.toggleFollowFromProfile(${jsArg(uid)})" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
@@ -2743,7 +3151,7 @@
                         ${hasPinned ? `
                             <div class="mt-8 mb-2 px-1 text-left"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Ses Coups de ❤️</span></div>
                             <div class="pinned-grid">
-                                ${pinned.map(item => item ? `<div class="pinned-item filled"><img src="${safeImg(item.img)}"><div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${esc(item.rating || '?')}</div></div>` : `<div class="pinned-item opacity-20"></div>`).join('')}
+                                ${pinned.map(item => item ? `<div class="pinned-item filled">${coverImg(item.img, item.title, '')}<div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${esc(item.rating || '?')}</div></div>` : `<div class="pinned-item opacity-20"></div>`).join('')}
                             </div>
                         ` : ''}
                     </div>
@@ -2756,7 +3164,6 @@
                             <option value="Livre"> Livres</option>
                             <option value="Album"> Albums</option>
                             <option value="YouTube"> YouTube</option>
-                            <option value="Jeu"> Jeux</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
                             <i class="fa-solid fa-chevron-down text-xs"></i>
@@ -2893,7 +3300,7 @@ window.renderStatsView = () => {
         { type: 'Livre', key: 'goalLivre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${sumMetric('Livre')} pages` },
         { type: 'Album', key: 'goalAlbum', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
         { type: 'YouTube', key: 'goalYouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
-        { type: 'Jeu', key: 'goalJeu', icon: 'fa-gamepad', color: '#10B981', count: filteredItems.filter(i => i.type === 'Jeu').length, goal: window.userProfile.goalJeu || 10, sub: `${totalHeuresJeu}h` }
+
     ];
 
     const container = document.getElementById('main-content');
@@ -2970,7 +3377,7 @@ window.renderStatsView = () => {
 window.updateGoal = async (key, val) => {
     if(!window.currentUser) return;
     // Clé sans accent (l'ancienne version enregistrait "goalSérie", jamais relue)
-    const allowed = ['goalFilm', 'goalSerie', 'goalLivre', 'goalAlbum', 'goalYouTube', 'goalJeu'];
+    const allowed = ['goalFilm', 'goalSerie', 'goalLivre', 'goalAlbum', 'goalYouTube'];
     if (!allowed.includes(key)) return;
     const n = parseInt(val, 10);
     if (!Number.isFinite(n) || n < 1 || n > 100000) { window.renderStatsView(); return; }
@@ -2983,7 +3390,7 @@ window.updateGoal = async (key, val) => {
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v3.3 (lots 1 et 2)");
+        console.log("MaBiblio v3.4 (lots 1 à 3)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
