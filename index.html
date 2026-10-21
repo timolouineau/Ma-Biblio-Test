@@ -77,15 +77,14 @@
         .home-collapsible { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease, opacity .2s ease; }
         .home-collapsible > div { overflow: hidden; min-height: 0; }
         header.collapsed .home-collapsible { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
-        .home-hero { position: relative; overflow: hidden; border-radius: 28px; padding: 18px 20px 20px; background: var(--lav); transition: background .3s; }
-        .home-hero-kicker { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: rgba(22,21,26,.62); }
-        .home-hero-flower { position: absolute; right: -18px; top: -22px; width: 132px; height: 132px; pointer-events: none; opacity: .95; }
+        .home-hero { position: relative; overflow: hidden; border-radius: 24px; padding: 13px 18px 15px; background: var(--lav); transition: background .3s; }
+        .home-hero-kicker { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: rgba(22,21,26,.62); }
         .home-hero-sub { font-size: 13px; font-weight: 700; color: rgba(22,21,26,.72); margin-top: 2px; position: relative; }
         .header-select-wrapper { position: relative; display: inline-flex; align-items: center; margin: 2px 0 0; }
         .header-title-select {
             appearance: none; -webkit-appearance: none;
             background: transparent; border: none;
-            font-family: var(--font-display); font-size: 38px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+            font-family: var(--font-display); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
             color: var(--ink); padding-right: 30px; margin: 0;
             outline: none; width: auto; max-width: 100%; cursor: pointer;
         }
@@ -339,7 +338,6 @@
 
             <!-- Carte colorée de la catégorie affichée (menu déroulant conservé) -->
             <div class="home-hero" id="home-hero">
-                <svg class="home-hero-flower" viewBox="0 0 120 120" aria-hidden="true"><g id="home-hero-flower-fill" fill="#FF9A85"><circle cx="60" cy="30" r="22"/><circle cx="90" cy="60" r="22"/><circle cx="60" cy="90" r="22"/><circle cx="30" cy="60" r="22"/></g><circle cx="60" cy="60" r="15" fill="#16151A"/></svg>
                 <div class="home-hero-kicker">Ma bibliothèque</div>
                 <div class="header-select-wrapper">
                     <select class="header-title-select" id="header-type-select" onchange="window.switchType(this.value)" aria-label="Catégorie">
@@ -1323,10 +1321,16 @@
             // Carte colorée
             const hero = document.getElementById('home-hero');
             if (hero) hero.style.background = cat.c;
-            const flower = document.getElementById('home-hero-flower-fill');
-            if (flower) flower.setAttribute('fill', cat.accent);
             const sel = document.getElementById('header-type-select');
             if (sel && sel.value !== type) sel.value = type;
+            if (sel) {
+                // La petite flèche se cale juste après le nom de la catégorie
+                let m = document.getElementById('hero-measure');
+                if (!m) { m = document.createElement('span'); m.id = 'hero-measure'; m.className = 'header-title-select'; m.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;width:auto;left:-9999px'; document.body.appendChild(m); }
+                m.textContent = cat.label;
+                const w = m.offsetWidth;
+                sel.style.width = w ? (w + 6) + 'px' : ''; // la mesure inclut déjà la place de la flèche
+            }
             const sub = document.getElementById('home-hero-sub');
             if (sub) {
                 const mine = (window.myCollection || []).filter(i => i.type === type);
