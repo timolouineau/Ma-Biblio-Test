@@ -1087,6 +1087,7 @@
             window.currentType = type;
             // On met à jour le statut par défaut quand on change de type
             window.currentStatus = CONFIG[type].statuses[0];
+            if (window.updateLibrarySearchPlaceholder) window.updateLibrarySearchPlaceholder();
             window.renderPills(); 
             window.renderList();
             window.scrollMainTop();
@@ -1261,6 +1262,15 @@
                         item.countryCodes = (d.production_countries || []).map(c => c.iso_3166_1).concat(d.origin_country || []).filter((v, i, a) => v && a.indexOf(v) === i);
                         item.originalLanguage = d.original_language || '';
                         if (!item.desc && d.overview) item.desc = d.overview;
+                    } else if (item.type === 'Livre' && item.olKey) {
+                        // Résumé du livre depuis Open Library
+                        const r = await fetch(`https://openlibrary.org${String(item.olKey).replace(/[^A-Za-z0-9/]/g, '')}.json`);
+                        if (r.ok) {
+                            const d = await r.json();
+                            const desc = typeof d.description === 'string' ? d.description : (d.description && d.description.value) || '';
+                            if (!item.desc && desc) item.desc = desc.replace(/\(\[source\]\[\d+\]\)|\[\d+\]:.*$/gm, '').trim();
+                            if ((!item.genres || !item.genres.length) && Array.isArray(d.subjects)) item.genres = d.subjects.slice(0, 5);
+                        }
                     } else if (item.type === 'Album') {
                         const d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(item.id)}?`);
                         if (d && d.tracks && d.tracks.data) item.desc = d.tracks.data.slice(0, 5).map((t, i) => `${i + 1}. ${t.title}`).join('<br>');
@@ -1280,8 +1290,92 @@
             return item._detailsPromise;
         };
 
+        // ---------- Recherche de LIVRES : deux sources, le meilleur résultat, sans doublon ----------
+        const bookKey = (title, author) => {
+            const t = normTxtGlobal(title).replace(/\(.*?\)|\[.*?\]/g, '').split(/[:\-–—]/)[0].replace(/[^a-z0-9]+/g, ' ').trim();
+            const a = normTxtGlobal(String(author || '').split(',')[0]).replace(/[^a-z ]+/g, ' ').trim().split(/\s+/).pop() || '';
+            return t + '|' + a;
+        };
+        const normTxtGlobal = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+        const searchGoogleBooks = async (val) => {
+            const BOOKS_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco";
+            const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(val)}&maxResults=20&langRestrict=fr&printType=books&key=${BOOKS_KEY}`);
+            if (!r.ok) throw new Error('Google Livres ' + r.status);
+            const d = await r.json();
+            return (d.items || []).map(b => {
+                const v = b.volumeInfo || {};
+                return {
+                    id: b.id, title: v.subtitle && v.title && v.title.length < 25 ? `${v.title} : ${v.subtitle}` : v.title,
+                    img: v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail) ? (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail).replace('http:', 'https:') : '',
+                    desc: String(v.description || '').replace(/[\n\r]/g, " "), type: 'Livre', releaseDate: v.publishedDate || '',
+                    metricValue: v.pageCount || 0, author: v.authors ? v.authors.join(', ') : '',
+                    genres: v.categories || [], language: v.language || '',
+                    isbns: (v.industryIdentifiers || []).map(x => x.identifier), source: 'google'
+                };
+            }).filter(b => b.title);
+        };
+
+        const searchOpenLibrary = async (val) => {
+            const fields = 'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,isbn,language,subject';
+            const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(val)}&lang=fr&limit=20&fields=${fields}`);
+            if (!r.ok) throw new Error('Open Library ' + r.status);
+            const d = await r.json();
+            return (d.docs || []).map(o => ({
+                id: 'ol_' + String(o.key || '').replace('/works/', ''),
+                olKey: o.key || '',
+                title: o.title,
+                img: o.cover_i ? `https://covers.openlibrary.org/b/id/${o.cover_i}-M.jpg` : '',
+                desc: '', type: 'Livre', releaseDate: o.first_publish_year ? String(o.first_publish_year) : '',
+                metricValue: o.number_of_pages_median || 0, author: (o.author_name || []).slice(0, 3).join(', '),
+                genres: (o.subject || []).slice(0, 5), language: (o.language || []).includes('fre') ? 'fr' : ((o.language || [])[0] || ''),
+                isbns: (o.isbn || []).slice(0, 20), source: 'openlibrary', needsDetails: !!o.key
+            })).filter(b => b.title);
+        };
+
+        // Note de "complétude" d'une fiche : couverture, pages, résumé, français…
+        const bookScore = (b) => (b.img ? 3 : 0) + (b.metricValue ? 1 : 0) + (b.desc ? 1.5 : 0) + (b.language === 'fr' ? 2 : 0) + (b.author ? 1 : 0) + (b.source === 'google' ? 0.5 : 0);
+
+        window.searchBooks = async (val) => {
+            const [g, o] = await Promise.allSettled([searchGoogleBooks(val), searchOpenLibrary(val)]);
+            const google = g.status === 'fulfilled' ? g.value : [];
+            const open = o.status === 'fulfilled' ? o.value : [];
+            if (g.status === 'rejected' && o.status === 'rejected') throw g.reason;
+
+            // Regroupement des doublons (même titre + même auteur, ou ISBN en commun)
+            const groups = [];
+            const byKey = new Map(), byIsbn = new Map();
+            for (const b of [...google, ...open]) {
+                const k = bookKey(b.title, b.author);
+                let grp = byKey.get(k) || (b.isbns || []).map(i => byIsbn.get(i)).find(Boolean);
+                if (!grp) { grp = []; groups.push(grp); }
+                grp.push(b);
+                byKey.set(k, grp);
+                (b.isbns || []).forEach(i => byIsbn.set(i, grp));
+            }
+
+            // Pour chaque livre : la fiche la plus complète, complétée par les autres
+            return groups.map(grp => {
+                const best = { ...[...grp].sort((x, y) => bookScore(y) - bookScore(x))[0] };
+                for (const other of grp) {
+                    if (!best.img && other.img) best.img = other.img;
+                    if (!best.metricValue && other.metricValue) best.metricValue = other.metricValue;
+                    if (!best.desc && other.desc) best.desc = other.desc;
+                    if ((!best.genres || !best.genres.length) && other.genres && other.genres.length) best.genres = other.genres;
+                    if (!best.releaseDate && other.releaseDate) best.releaseDate = other.releaseDate;
+                    if (!best.olKey && other.olKey) best.olKey = other.olKey;
+                }
+                // Résumé encore manquant : on ira le chercher sur Open Library à l'ouverture de la fiche
+                best.needsDetails = !best.desc && !!best.olKey;
+                best.isbns = [...new Set(grp.flatMap(b => b.isbns || []))].slice(0, 20);
+                return best;
+            }).slice(0, 20);
+        };
+
         // Œuvre de MA bibliothèque correspondant à un résultat de recherche (même identifiant)
-        window.findInLibrary = (type, id) => (window.myCollection || []).find(i => i.docId === `${type}_${id}` || (i.type === type && String(i.id) === String(id)));
+        window.findInLibrary = (type, id, title, author) => (window.myCollection || []).find(i =>
+            i.docId === `${type}_${id}` || (i.type === type && String(i.id) === String(id)) ||
+            (type === 'Livre' && title && i.type === 'Livre' && bookKey(i.title, i.author) === bookKey(title, author)));
 
         let searchSeq = 0;
         window.handleSearch = (val) => { 
@@ -1345,20 +1439,9 @@
                         }
                     }
 
-                    // --- LIVRE (Google Livres) : tout arrive en une requête ---
+                    // --- LIVRE : Google Livres + Open Library en parallèle, fusionnés sans doublon ---
                     else if (type === 'Livre') { 
-                        const BOOKS_KEY = "AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco";
-                        const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(val)}&maxResults=15&langRestrict=fr&key=${BOOKS_KEY}`); 
-                        const d = await r.json(); 
-                        results = (d.items || []).map(b => {
-                            const v = b.volumeInfo || {};
-                            return { 
-                                id: b.id, title: v.title, img: v.imageLinks && v.imageLinks.thumbnail ? v.imageLinks.thumbnail.replace('http:', 'https:') : '', 
-                                desc: String(v.description || '').replace(/[\n\r]/g, " "), type: 'Livre', releaseDate: v.publishedDate || '', 
-                                metricValue: v.pageCount || 0, author: v.authors ? v.authors.join(', ') : '',
-                                genres: v.categories || [], language: v.language || ''
-                            };
-                        }); 
+                        results = await window.searchBooks(val);
                     } 
 
                     // --- FILM / SÉRIE (TMDB) : une seule requête, le détail se charge à l'ouverture ---
@@ -1381,7 +1464,7 @@
 
                 // Rendu (avec un badge si l'œuvre est déjà dans ma bibliothèque)
                 box.innerHTML = results.map(i => {
-                    const owned = window.findInLibrary(i.type, i.id);
+                    const owned = window.findInLibrary(i.type, i.id, i.title, i.author);
                     let unit = 'min';
                     if(i.type === 'Album') unit = 'titres';
                     if(i.type === 'Livre') unit = 'p.';
@@ -2602,13 +2685,19 @@
         // ---------- Recherche dans ma bibliothèque ----------
         window.libraryQuery = '';
         const normTxt = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        const TYPE_PLURAL = { 'Film': 'films', 'Série': 'séries', 'Livre': 'livres', 'Album': 'albums', 'YouTube': 'vidéos YouTube' };
+        // Le texte d'aide de la loupe suit la catégorie affichée
+        window.updateLibrarySearchPlaceholder = () => {
+            const input = document.getElementById('library-search');
+            if (input) input.placeholder = `Rechercher dans mes ${TYPE_PLURAL[window.currentType] || 'œuvres'}…`;
+        };
         window.toggleLibrarySearch = (force) => {
             const row = document.getElementById('library-search-row');
             const input = document.getElementById('library-search');
             if (!row || !input) return;
             const open = typeof force === 'boolean' ? force : row.style.display === 'none';
             row.style.display = open ? 'block' : 'none';
-            if (open) { input.focus(); }
+            if (open) { window.updateLibrarySearchPlaceholder(); input.focus(); }
             else { input.value = ''; window.libraryQuery = ''; window.renderList(); }
         };
         let libSearchTimer = null;
@@ -2621,9 +2710,9 @@
             if (!window.myCollection) return;
             const q = window.libraryQuery;
             const searching = q.length > 0;
-            // Filtrage : en recherche, on cherche dans TOUTE la bibliothèque (toutes catégories et listes)
+            // Filtrage : en recherche, on cherche dans la catégorie affichée (Films, Livres…), toutes listes confondues
             let filtered = searching
-                ? window.myCollection.filter(i => normTxt([i.title, i.author, i.cast, (i.genres || []).join(' ')].join(' ')).includes(q))
+                ? window.myCollection.filter(i => i.type === window.currentType && normTxt([i.title, i.author, i.cast, (i.genres || []).join(' ')].join(' ')).includes(q))
                 : window.myCollection.filter(i => i.type === window.currentType && i.status === window.currentStatus);
             
             // Tri
@@ -2639,7 +2728,7 @@
             const container = document.getElementById('main-content');
             if (!filtered.length) { 
                 container.innerHTML = searching
-                    ? `<div class="p-16 opacity-50 text-center"><i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i><div class="font-black">Aucune œuvre trouvée</div></div>`
+                    ? `<div class="p-16 opacity-50 text-center"><i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i><div class="font-black">Rien trouvé dans tes ${esc(TYPE_PLURAL[window.currentType] || window.currentType)}</div></div>`
                     : `<div class="p-24 opacity-30 text-center"><i class="fa-solid fa-layer-group text-6xl mb-6"></i><div class="font-black text-xl">Rien ici</div></div>`; 
                 window.updateSelectBar();
                 return; 
@@ -2661,7 +2750,7 @@
             let html = `<div class="px-4 pb-24 mt-4">`; 
 
             if (searching) {
-                html += `<div class="text-xs font-bold text-gray-400 uppercase mb-3">${filtered.length} résultat${filtered.length > 1 ? 's' : ''} dans toute ta bibliothèque</div><div style="${gridStyle}">`;
+                html += `<div class="text-xs font-bold text-gray-400 uppercase mb-3">${filtered.length} résultat${filtered.length > 1 ? 's' : ''} dans tes ${esc(TYPE_PLURAL[window.currentType] || window.currentType)}</div><div style="${gridStyle}">`;
                 filtered.forEach(item => html += window.generateGridItemHTML(item, cols, true));
                 html += `</div>`;
             } else if (window.extState.sort !== 'date') {
@@ -2813,7 +2902,7 @@
             return `
             <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95${selectable ? ' selectable' : ''}${selected ? ' is-selected' : ''}" onclick="window.gridItemClick(this, ${jsArg(itemKey)})">
                 ${selectable ? '<div class="sel-check"><i class="fa-solid fa-check"></i></div>' : ''}
-                ${showStatus ? `<div class="absolute top-1 left-1 z-[3] bg-black/60 text-white text-[8px] font-black px-1.5 py-0.5 rounded">${esc(item.type)} · ${esc(item.status)}</div>` : ''}
+                ${showStatus ? `<div class="absolute top-1 left-1 z-[3] bg-black/60 text-white text-[8px] font-black px-1.5 py-0.5 rounded">${esc(item.status)}</div>` : ''}
                 ${coverImg(item.img, item.title, 'w-full h-full object-cover transition-transform duration-500 ' + zoomClass, 'loading="lazy"')}
                 ${item.rating ? `<div class="grid-rating">${esc(item.rating)}</div>` : ''}
 
