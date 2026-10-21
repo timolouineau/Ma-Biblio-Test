@@ -354,7 +354,7 @@
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, terminate, clearIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- A.2 CONFIGURATION DU PROJET ---
            La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
@@ -373,7 +373,15 @@
         const auth = getAuth(app);
         // ignoreUndefinedProperties : une information manquante (ex. date de sortie absente chez Deezer,
         // livre sans couverture) n'empêche plus l'enregistrement — elle est simplement ignorée.
-        const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+        // Copie locale sur l'appareil : l'app s'affiche tout de suite avec les dernières données connues,
+        // même sans réseau, puis se met à jour. (Si l'appareil ne le permet pas : fonctionnement normal.)
+        let db;
+        try {
+            db = initializeFirestore(app, { ignoreUndefinedProperties: true, localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+        } catch (e) {
+            console.warn('Copie locale indisponible, fonctionnement en ligne uniquement', e);
+            db = initializeFirestore(app, { ignoreUndefinedProperties: true, localCache: memoryLocalCache() });
+        }
         // Nom du dossier des données dans Firestore (identique en test et en ligne, ne pas modifier)
         const appId = 'mabiblio-dc595';
 
@@ -949,7 +957,13 @@
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), activityData);
                 }
 
-                // 4. Fermeture UI
+                // 4. Petit message de confirmation, puis fermeture
+                const shared = share && status !== 'Wishlist' && status !== 'En cours';
+                window.ui.toast(
+                    status === 'Wishlist' ? 'Ajouté à ta wishlist ✓'
+                    : status === 'En cours' ? 'Ajouté à « En cours » ✓'
+                    : shared ? 'Enregistré et partagé avec tes amis ✓' : 'Enregistré ✓'
+                );
                 window.closeRatingSheet();
                 window.closePreview();
                 window.closeSearchModal();
@@ -966,22 +980,30 @@
 
             } catch (error) {
                 console.error("Erreur sauvegarde:", error);
-                alert("Erreur lors de la sauvegarde.");
+                window.ui.alert("L'enregistrement n'a pas pu se faire. Vérifie ta connexion et réessaie.");
             }
         };
 
         /* --- E.2 SUPPRESSION --- */
         window.deleteItem = async () => {
-            if (!confirm("Supprimer de votre collection ?")) return;
+            if (!(await window.ui.confirm(`Supprimer « ${window.tempItem.title || 'cette œuvre'} » de ta bibliothèque ?`, { okLabel: 'Supprimer', danger: true }))) return;
+            const removed = window.tempItem.docId ? (window.myCollection || []).find(i => i.docId === window.tempItem.docId) : null;
             const appId = 'mabiblio-dc595';
             
             try {
                 const docIdToDelete = window.tempItem.docId || `${window.tempItem.type}_${window.tempItem.id}`;
                 await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docIdToDelete));
                 window.closePreview();
+                if (removed) {
+                    const { docId, ...data } = removed;
+                    window.ui.toast('Œuvre supprimée', { actionLabel: 'Annuler', duration: 6000, onAction: async () => {
+                        try { await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', docId), data); window.ui.toast('Suppression annulée ✓'); }
+                        catch (e) { console.error(e); window.ui.alert("La restauration a échoué."); }
+                    } });
+                }
             } catch (e) {
                 console.error(e);
-                alert("Erreur suppression");
+                window.ui.alert("La suppression n'a pas pu se faire. Réessaie.");
             }
         };
 
@@ -1016,7 +1038,13 @@
         };
 
         /* --- E.4 DECONNEXION --- */
-        window.logout = () => signOut(auth).then(() => location.reload());
+        // Déconnexion : on efface aussi la copie locale (rien ne reste sur un appareil partagé)
+        window.logout = async () => {
+            if (!(await window.ui.confirm('Se déconnecter ?', { okLabel: 'Déconnexion' }))) return;
+            try { await signOut(auth); } catch (e) { console.error(e); }
+            try { await terminate(db); await clearIndexedDbPersistence(db); } catch (e) { console.warn('Copie locale non effacée', e); }
+            location.reload();
+        };
 
         // -----------------------------------------------------------
         // F. NAVIGATION & INTERFACE (UI)
@@ -1709,7 +1737,7 @@
             const title = document.getElementById('m-title').value; 
             const type = document.getElementById('m-type').value;
             
-            if (!title) return alert("Le titre est obligatoire."); 
+            if (!title.trim()) { window.ui.alert("Le titre est obligatoire."); return; }
             
             // Récupération sécurisée des champs dynamiques
             const authorInput = document.getElementById('m-author');
@@ -1741,7 +1769,7 @@
             const message = document.getElementById('fb-message').value;
             const statusDiv = document.getElementById('fb-status');
             const btn = document.getElementById('fb-send-btn');
-            if (!message || message.trim() === "") return alert("Message vide.");
+            if (!message || message.trim() === "") { window.ui.alert("Écris ton message avant d'envoyer."); return; }
             statusDiv.innerText = "Envoi..."; statusDiv.classList.remove('hidden'); btn.disabled = true;
             try {
                 await fetch("https://formsubmit.co/ajax/timo.appstudio@gmail.com", { method: "POST", headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ _subject: `MaBiblio: ${object}`, Objet: object, User: window.userProfile.name, Message: message }) });
@@ -1885,7 +1913,7 @@
                 });
             } catch (e) {
                 console.error(e);
-                alert("Le commentaire n'a pas pu être envoyé.");
+                window.ui.alert("Le commentaire n'a pas pu être envoyé.");
                 return;
             }
 
@@ -2047,7 +2075,7 @@
             if (!window.findAct(actId)) {
                 try {
                     const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId));
-                    if (!snap.exists()) { alert("Ce post a été supprimé."); return; }
+                    if (!snap.exists()) { window.ui.alert("Ce post a été supprimé."); return; }
                     window._extraActivity[actId] = { id: actId, ...snap.data() };
                 } catch (e) { console.error(e); return; }
             }
@@ -2356,7 +2384,7 @@
     };
 
     window.deleteComment = async (actId, commentTimestamp) => { 
-        if(!confirm("Supprimer ce commentaire ?")) return; 
+        if (!(await window.ui.confirm("Supprimer ce commentaire ?", { okLabel: 'Supprimer', danger: true }))) return; 
         const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId); 
         const uid = window.currentUser.uid;
         try {
@@ -2373,7 +2401,7 @@
             if (comments) updateCommentsLocally(actId, comments);
         } catch(e) { console.error(e); } 
     };
-    window.deleteActivity = async (actId) => { if(!confirm("Supprimer ce post ?")) return; try { const appId = 'mabiblio-dc595'; await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId)); if(window.socialFeed) { window.socialFeed = window.socialFeed.filter(a => a.id !== actId); window.renderSocialFeed(); } } catch (e) { console.error(e); } };
+    window.deleteActivity = async (actId) => { if (!(await window.ui.confirm("Supprimer ce post du fil d'actualité ?\n(L'œuvre reste dans ta bibliothèque.)", { okLabel: 'Supprimer', danger: true }))) return; try { const appId = 'mabiblio-dc595'; await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId)); if(window.socialFeed) { window.socialFeed = window.socialFeed.filter(a => a.id !== actId); window.renderSocialFeed(); } } catch (e) { console.error(e); } };
     window.sendNotification = async (targetUid, type, text, itemTitle, actId) => {
         // Jamais de notification vers moi-même ou vers un identifiant invalide
         if (!targetUid || typeof targetUid !== 'string' || !window.currentUser || targetUid === window.currentUser.uid) return;
@@ -2848,11 +2876,12 @@
                 window.userProfile.pinned = newPinned;
                 document.getElementById('pin-selector-modal').classList.remove('open');
                 window.renderProfile();
-            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
+                window.ui.toast(itemData ? 'Coup de cœur enregistré ✓' : 'Coup de cœur retiré');
+            } catch(e) { console.error(e); window.ui.alert("Le coup de cœur n'a pas pu être enregistré."); }
         };
 
         window.unfollowUser = async (id) => {
-             if (confirm("Ne plus suivre ?")) {
+             if (await window.ui.confirm("Ne plus suivre ce compte ?", { okLabel: 'Ne plus suivre' })) {
                  const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
                  await updateDoc(ref, { following: arrayRemove(id) });
              }
@@ -2992,7 +3021,7 @@
             const file = event.target.files && event.target.files[0];
             event.target.value = ''; // permet de re-choisir la même photo
             if (!file) return;
-            if (!file.type.startsWith('image/')) { alert("Ce fichier n'est pas une image."); return; }
+            if (!file.type.startsWith('image/')) { window.ui.alert("Ce fichier n'est pas une image."); return; }
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
@@ -3002,51 +3031,54 @@
                     window.userProfile.avatar = avatar;
                     window.rememberProfile(window.currentUser.uid, window.userProfile);
                     window.renderProfile();
-                } catch (err) { console.error(err); alert("La photo n'a pas pu être enregistrée."); }
+                    window.ui.toast('Photo de profil mise à jour ✓');
+                } catch (err) { console.error(err); window.ui.alert("La photo n'a pas pu être enregistrée."); }
             };
             reader.readAsDataURL(file);
         };
 
         window.updateProfileName = async () => {
             const current = window.userProfile.name || '';
-            const input = prompt("Ton pseudo (2 à 30 caractères) :", current);
+            const input = await window.ui.prompt("Ton pseudo (2 à 30 caractères)", current, { maxLength: 30 });
             if (input === null) return;
             const name = input.trim().replace(/\s+/g, ' ');
             if (name === current) return;
-            if (name.length < 2 || name.length > 30) { alert("Le pseudo doit faire entre 2 et 30 caractères."); return; }
+            if (name.length < 2 || name.length > 30) { window.ui.alert("Le pseudo doit faire entre 2 et 30 caractères."); return; }
             try {
                 const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
                 await updateDoc(ref, { name });
                 window.userProfile.name = name;
                 window.rememberProfile(window.currentUser.uid, window.userProfile);
                 window.renderProfile();
-            } catch (e) { console.error(e); alert("Le pseudo n'a pas pu être enregistré."); }
+                window.ui.toast('Pseudo mis à jour ✓');
+            } catch (e) { console.error(e); window.ui.alert("Le pseudo n'a pas pu être enregistré."); }
         };
         
         window.updateBio = async () => {
             const current = window.userProfile.bio || "";
-            const newBio = prompt("Entrez votre biographie (courte phrase) :", current);
+            const newBio = await window.ui.prompt("Ta bio (une courte phrase)", current, { maxLength: 150 });
             if (newBio !== null && newBio !== current) {
                 try {
                     const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
                     await updateDoc(ref, { bio: newBio });
                     window.userProfile.bio = newBio;
                     window.renderProfile();
-                } catch(e) { console.error(e); alert("Erreur sauvegarde bio."); }
+                    window.ui.toast('Bio mise à jour ✓');
+                } catch(e) { console.error(e); window.ui.alert("La bio n'a pas pu être enregistrée."); }
             }
         };
 
         // --- FONCTIONS BLOQUER / RETIRER ---
 
         window.removeFollower = async (targetUid) => {
-            if(!confirm("Retirer cet utilisateur de vos abonnés ?")) return;
+            if (!(await window.ui.confirm("Retirer cette personne de tes abonnés ?", { okLabel: 'Retirer' }))) return;
             try {
                 const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
                 await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
                 window._followersCache = null;
-                alert("Utilisateur retiré.");
+                window.ui.toast('Abonné retiré ✓');
                 window.renderProfile();
-            } catch (e) { console.error(e); alert("Impossible de modifier le profil distant (permissions)."); }
+            } catch (e) { console.error(e); window.ui.alert("Impossible de retirer cet abonné pour le moment."); }
         };
 
         // BLOCAGE : la personne bloquée…
@@ -3055,7 +3087,7 @@
         //  - n'apparaît plus dans mon fil, ma recherche, mes notifications et les commentaires.
         window.blockUser = async (targetUid) => {
             if (!targetUid || targetUid === window.currentUser.uid) return;
-            if(!confirm("BLOQUER ce compte ?\nIl ne pourra plus te suivre ni voir ton activité, et tu ne verras plus la sienne.")) return;
+            if (!(await window.ui.confirm("Bloquer ce compte ?\nIl ne pourra plus te suivre ni voir ton activité, et tu ne verras plus la sienne.", { okLabel: 'Bloquer', danger: true }))) return;
             try {
                 // 1. Je me retire de SES abonnements (autorisé par les règles : je ne retire que moi)
                 try {
@@ -3068,10 +3100,10 @@
                 await updateDoc(myRef, { blocked: arrayUnion(targetUid), following: arrayRemove(targetUid) });
                 
                 window._followersCache = null;
-                alert("Compte bloqué.");
+                window.ui.toast('Compte bloqué');
                 if (document.getElementById('public-profile-modal').classList.contains('open')) window.closePublicProfile();
                 if (window.currentView === 'profile') window.renderProfile();
-            } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
+            } catch (e) { console.error(e); window.ui.alert("Le blocage n'a pas pu se faire. Réessaie."); }
         };
 
         window.unblockUser = async (targetUid) => {
@@ -3081,7 +3113,8 @@
                 if (window.userProfile && Array.isArray(window.userProfile.blocked)) window.userProfile.blocked = window.userProfile.blocked.filter(u => u !== targetUid);
                 if (document.getElementById('public-profile-modal').classList.contains('open')) window.openPublicProfile(targetUid);
                 if (window.currentView === 'profile') window.renderProfile();
-            } catch (e) { console.error(e); alert("Erreur lors du déblocage."); }
+                window.ui.toast('Compte débloqué');
+            } catch (e) { console.error(e); window.ui.alert("Le déblocage n'a pas pu se faire. Réessaie."); }
         };
 
 
@@ -3235,22 +3268,23 @@
         const isFollowing = (window.userProfile.following || []).includes(uid);
         try {
             if (isFollowing) {
-                if(confirm("Ne plus suivre ?")) { 
+                if (await window.ui.confirm("Ne plus suivre ce compte ?", { okLabel: 'Ne plus suivre' })) { 
                     await updateDoc(myRef, { following: arrayRemove(uid) }); 
                     window.openPublicProfile(uid); 
                 }
             } else {
                 // Blocage : impossible de suivre un compte que j'ai bloqué, ou qui m'a bloqué
-                if (window.myBlocked().includes(uid)) { alert("Tu as bloqué ce compte. Débloque-le d'abord."); return; }
+                if (window.myBlocked().includes(uid)) { window.ui.alert("Tu as bloqué ce compte. Débloque-le d'abord."); return; }
                 const target = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
                 if (target.exists()) window.rememberProfile(uid, target.data());
-                if (window.hasBlockedMe(uid)) { alert("Ce compte n'est pas disponible."); window.openPublicProfile(uid); return; }
+                if (window.hasBlockedMe(uid)) { window.ui.alert("Ce compte n'est pas disponible."); window.openPublicProfile(uid); return; }
 
                 await updateDoc(myRef, { following: arrayUnion(uid) });
                 window.sendNotification(uid, 'follow', 'a commencé à vous suivre', 'Nouveau follower', null);
                 window.openPublicProfile(uid);
+                window.ui.toast('Abonnement ajouté ✓');
             }
-        } catch (e) { console.error(e); alert("L'action n'a pas pu être effectuée."); }
+        } catch (e) { console.error(e); window.ui.alert("L'action n'a pas pu être effectuée."); }
     };
 
     window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
@@ -3390,7 +3424,7 @@ window.updateGoal = async (key, val) => {
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v3.4 (lots 1 à 3)");
+        console.log("MaBiblio v3.5 (lots 1 à 4)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
