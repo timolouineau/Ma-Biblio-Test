@@ -332,7 +332,7 @@
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- A.2 CONFIGURATION DU PROJET ---
            La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
@@ -349,7 +349,9 @@
         /* --- A.3 INITIALISATION DES SERVICES --- */
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // ignoreUndefinedProperties : une information manquante (ex. date de sortie absente chez Deezer,
+        // livre sans couverture) n'empêche plus l'enregistrement — elle est simplement ignorée.
+        const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
         // Nom du dossier des données dans Firestore (identique en test et en ligne, ne pas modifier)
         const appId = 'mabiblio-dc595';
 
@@ -689,6 +691,9 @@
             };
             
             delete itemToSave.docId;
+            // Champs parfois absents des API (Deezer, Google Livres) : valeurs vides plutôt que rien
+            if (itemToSave.releaseDate === undefined || itemToSave.releaseDate === null) itemToSave.releaseDate = '';
+            if (!itemToSave.img) itemToSave.img = '';
             // Marqueurs internes d'affichage : ne jamais les enregistrer
             delete itemToSave._fromFeed;
             delete itemToSave._fromFriend;
@@ -708,7 +713,7 @@
                         userName: window.userProfile.name,
                         userAvatar: window.userProfile.avatar || '',
                         itemTitle: itemToSave.title,
-                        itemImg: itemToSave.img,
+                        itemImg: itemToSave.img || '',
                         itemDesc: itemToSave.desc || '', // Important pour le feed
                         type: itemToSave.type,
                         rating: rating,
