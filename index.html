@@ -332,21 +332,26 @@
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
         import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /* --- A.2 CONFIGURATION DU PROJET --- */
-        const firebaseConfig = {
-            apiKey: "AIzaSyDo4sqS3BIW1DmNxWA1IJtlD9GRFs4rd_g",
-            authDomain: "mabiblio-dc595.firebaseapp.com",
-            projectId: "mabiblio-dc595",
-            storageBucket: "mabiblio-dc595.firebasestorage.app",
-            messagingSenderId: "683284434520",
-            appId: "1:683284434520:web:0c72c547703843781f442d"
-        };
+        /* --- A.2 CONFIGURATION DU PROJET ---
+           La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
+           Il est DIFFÉRENT dans le dépôt test et dans le dépôt en ligne :
+           ne JAMAIS copier config.js d'un dépôt à l'autre. */
+        import { firebaseConfig } from "./config.js";
 
         /* --- A.3 INITIALISATION DES SERVICES --- */
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        // Nom du dossier des données dans Firestore (identique en test et en ligne, ne pas modifier)
         const appId = 'mabiblio-dc595';
+
+        // Bandeau "VERSION TEST" : visible dès que l'app n'est PAS branchée sur la vraie base
+        if (firebaseConfig.projectId !== 'mabiblio-dc595') {
+            const testBadge = document.createElement('div');
+            testBadge.textContent = 'VERSION TEST';
+            testBadge.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top) + 4px);left:50%;transform:translateX(-50%);z-index:99999;background:#FF9500;color:#fff;font:800 11px -apple-system,sans-serif;letter-spacing:1px;padding:3px 10px;border-radius:999px;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.2);';
+            document.body.appendChild(testBadge);
+        }
 
        // -----------------------------------------------------------
         // B. ETAT GLOBAL DE L'APPLICATION
