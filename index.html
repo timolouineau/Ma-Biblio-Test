@@ -62,7 +62,8 @@
         .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
 
         /* --- ACCUEIL : EN-TÊTE --- */
-        header { padding: 18px 16px 6px; background: var(--ground); }
+        header { display: contents; }
+        .page-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
         .home-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .home-hello { display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 0; cursor: pointer; min-width: 0; text-align: left; }
         .home-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--lav); color: var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 18px; overflow: hidden; flex-shrink: 0; box-shadow: 0 0 0 3px #fff; }
@@ -74,9 +75,9 @@
         .round-btn:active { transform: scale(0.9); }
         .round-btn.is-on { background: var(--ink); color: #fff; }
 
-        .home-collapsible { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease, opacity .2s ease; }
-        .home-collapsible > div { overflow: hidden; min-height: 0; }
-        header.collapsed .home-collapsible { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
+        .home-fold { padding: 44px 16px 0; }
+        .home-sticky { position: sticky; top: 0; z-index: 20; background: var(--ground); padding: 10px 16px 4px; }
+        .home-sticky .home-tools { margin-top: 0; }
         .home-hero { position: relative; overflow: hidden; border-radius: 24px; padding: 13px 18px 15px; background: var(--lav); transition: background .3s; }
         .home-hero-kicker { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: rgba(22,21,26,.62); }
         .home-hero-sub { font-size: 13px; font-weight: 700; color: rgba(22,21,26,.72); margin-top: 2px; position: relative; }
@@ -111,8 +112,8 @@
         .pill { height: 44px; padding: 0 22px; display: inline-flex; align-items: center; border-radius: 22px; font-size: 15px; font-weight: 800; background: #fff; color: var(--ink); white-space: nowrap; cursor: pointer; flex-shrink: 0; }
         .pill.active { background: var(--ink); color: #fff; }
 
-        .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
-        .year-divider { margin-left: -16px; margin-right: -16px; padding: 12px 20px 8px; font-family: var(--font-display); font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); background: var(--ground); position: sticky; top: -1px; z-index: 10; }
+        .scroll-area { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+        .year-divider { margin-left: -16px; margin-right: -16px; padding: 12px 20px 8px; font-family: var(--font-display); font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); background: var(--ground); position: sticky; top: var(--sticky-h, 0px); z-index: 10; }
         .items-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 4px 24px; }
 
         /* Mini-affiches */
@@ -324,9 +325,11 @@
     </div>
 
     <div class="app-shell">
-        <header id="app-header" class="relative">
-            <!-- Partie haute repliable : se range quand on fait défiler la bibliothèque -->
-            <div class="home-collapsible"><div>
+        <!-- Toute la page défile d'un seul bloc : le haut (bonjour, carte, catégories) part naturellement
+             avec le défilement, la barre d'outils reste accrochée en haut. -->
+        <div class="page-scroll" id="page-scroll">
+        <header id="app-header">
+            <div class="home-fold">
             <!-- Bonjour + photo de profil + cloche des notifications -->
             <div class="home-top">
                 <button type="button" class="home-hello" onclick="window.switchView('profile')" aria-label="Mon profil">
@@ -351,11 +354,13 @@
                 </div>
                 <div class="home-hero-sub" id="home-hero-sub"></div>
             </div>
-            </div></div>
 
             <!-- Catégories en pastilles -->
             <div class="type-chips" id="type-chips"></div>
+            </div>
 
+            <!-- Barre accrochée en haut pendant le défilement -->
+            <div class="home-sticky" id="home-sticky">
             <!-- Outils : tri, loupe, sélection, colonnes -->
             <div class="home-tools">
                 <label class="sort-pill"><i class="fa-solid fa-arrow-down-wide-short"></i><span>Trier :</span>
@@ -377,9 +382,11 @@
 
             <!-- Vu / Wishlist / En cours -->
             <div class="status-pills" id="status-container"></div>
+            </div>
         </header>
 
         <div class="scroll-area" id="main-content"></div>
+        </div>
 
         <nav class="tab-bar" aria-label="Navigation principale">
             <div id="nav-home" class="nav-btn active" role="button" aria-label="Accueil" onclick="window.switchView('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></div>
@@ -1278,9 +1285,9 @@
         window.scrollMainTop = () => {
             const main = document.getElementById('main-content');
             if (main) main.scrollTop = 0;
+            const page = document.getElementById('page-scroll');
+            if (page) page.scrollTop = 0;
             window.scrollTo(0, 0);
-            const hdr = document.getElementById('app-header');
-            if (hdr) hdr.classList.remove('collapsed');
         };
 
         window.switchType = (type) => {
@@ -1373,7 +1380,7 @@
             
             // Affichage conditionnel du header (seulement sur l'accueil)
             const appHeader = document.getElementById('app-header');
-            if(appHeader) appHeader.style.display = (view === 'home' ? 'block' : 'none');
+            if(appHeader) appHeader.style.display = (view === 'home' ? '' : 'none');
             
             if (view !== 'friends') {
                 try { localStorage.setItem('mabiblio_last_check', Date.now()); } catch (e) {}
@@ -2782,21 +2789,13 @@
         const sortSelInit = document.getElementById('sort-select');
         if (sortSelInit) sortSelInit.value = window.extState.sort;
 
-        // En faisant défiler la bibliothèque, le haut (bonjour + carte colorée) se range pour laisser
-        // plus de place aux affiches ; il revient dès qu'on remonte tout en haut.
+        // Les titres d'année s'accrochent juste sous la barre d'outils (dont la hauteur peut varier)
         (() => {
-            const main = document.getElementById('main-content');
-            const hdr = document.getElementById('app-header');
-            if (!main || !hdr) return;
-            main.addEventListener('scroll', () => {
-                const room = main.scrollHeight - main.clientHeight;
-                const collapsed = hdr.classList.contains('collapsed');
-                const fold = hdr.querySelector('.home-collapsible');
-                const foldH = fold ? fold.offsetHeight : 0;
-                // On ne replie que s'il reste assez à faire défiler (sinon l'en-tête clignoterait)
-                if (!collapsed && main.scrollTop > 90 && room > foldH + 120) hdr.classList.add('collapsed');
-                else if (collapsed && main.scrollTop < 12) hdr.classList.remove('collapsed');
-            }, { passive: true });
+            const bar = document.getElementById('home-sticky');
+            if (!bar) return;
+            const apply = () => document.documentElement.style.setProperty('--sticky-h', (bar.offsetHeight - 1) + 'px');
+            apply();
+            if (window.ResizeObserver) new ResizeObserver(apply).observe(bar);
         })();
 
         window.setSort = (val) => {
@@ -3687,7 +3686,7 @@ window.updateGoal = async (key, val) => {
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v4.0 (lots 1 à 4 + nouvelle direction artistique)");
+        console.log("MaBiblio v4.1 (nouvelle DA, défilement fluide)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
