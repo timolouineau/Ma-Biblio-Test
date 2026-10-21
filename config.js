@@ -3,7 +3,7 @@
 //  Ce fichier reste dans le dépôt de test. Ne JAMAIS le copier
 //  dans le dépôt en ligne (Timoappsstudio/MaBiblio).
 // ============================================================
-export const firebaseConfig = {
+window.MABIBLIO_FIREBASE_CONFIG = {
     apiKey: "AIzaSyCtwQ8lF5_c1SiTMz1MDNKV9lzUG3T1bwk",
     authDomain: "mabiblio-test.firebaseapp.com",
     projectId: "mabiblio-test",

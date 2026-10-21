@@ -13,6 +13,8 @@
     <link rel="apple-touch-icon" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
     
+    <!-- Configuration Firebase : fichier séparé, DIFFÉRENT dans le dépôt test et le dépôt en ligne -->
+    <script src="config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -336,7 +338,13 @@
            La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
            Il est DIFFÉRENT dans le dépôt test et dans le dépôt en ligne :
            ne JAMAIS copier config.js d'un dépôt à l'autre. */
-        import { firebaseConfig } from "./config.js";
+        const firebaseConfig = window.MABIBLIO_FIREBASE_CONFIG;
+        if (!firebaseConfig || !firebaseConfig.projectId) {
+            // Sans configuration, on s'arrête net : l'app ne se branche sur AUCUNE base.
+            document.body.style.opacity = '1';
+            document.body.innerHTML = '<div style="padding:40px 24px;font-family:-apple-system,sans-serif;text-align:center"><h1 style="font-size:22px;font-weight:800">Fichier config.js introuvable</h1><p style="color:#666;margin-top:8px">Il doit être placé dans le même dossier que index.html.</p></div>';
+            throw new Error('config.js manquant');
+        }
 
         /* --- A.3 INITIALISATION DES SERVICES --- */
         const app = initializeApp(firebaseConfig);
