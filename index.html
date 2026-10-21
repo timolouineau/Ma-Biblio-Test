@@ -1632,7 +1632,9 @@
                 const q = query(collectionGroup(db, 'profile'), limit(100));
                 const snapshot = await getDocs(q);
                 
-                const allUsers = snapshot.docs.map(doc => doc.data());
+                // L'identifiant est lu dans le chemin du document (users/{uid}/profile/info) :
+                // les profils récents ne l'enregistrent pas dans leurs données.
+                const allUsers = snapshot.docs.map(d => ({ ...d.data(), uid: d.ref.parent.parent.id }));
                 
                 // Le filtre magique : convertit les deux en minuscules et vérifie si ça "contient" le texte
                 const matches = allUsers.filter(u => 
