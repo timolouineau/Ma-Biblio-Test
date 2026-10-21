@@ -332,7 +332,7 @@
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- A.2 CONFIGURATION DU PROJET ---
            La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
@@ -360,6 +360,51 @@
             testBadge.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top) + 4px);left:50%;transform:translateX(-50%);z-index:99999;background:#FF9500;color:#fff;font:800 11px -apple-system,sans-serif;letter-spacing:1px;padding:3px 10px;border-radius:999px;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.2);';
             document.body.appendChild(testBadge);
         }
+
+        /* --- A.4 SÉCURITÉ : AFFICHAGE SANS RISQUE DES TEXTES ---
+           Tout texte venant d'un utilisateur ou d'une API (pseudo, titre, commentaire, bio…)
+           passe par esc() avant d'être inséré dans la page : il s'affiche comme du texte
+           et ne peut jamais être exécuté comme du code. */
+        const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]);
+        // Valeur à passer à une fonction dans un onclick="..." : fn(${jsArg(valeur)})
+        const jsArg = (v) => esc(JSON.stringify(v === undefined ? null : v));
+        // Adresse d'image : seulement http(s) ou image intégrée, sinon rien
+        const safeImg = (u) => { const s = String(u ?? ''); return /^(https?:\/\/|data:image\/)/i.test(s) ? esc(s) : ''; };
+        // Première lettre d'un nom (pour les avatars sans photo)
+        const initial = (name) => esc((String(name ?? '').trim()[0] || '?').toUpperCase());
+        // Nombre affichable (note, durée…) : jamais de texte arbitraire
+        const num = (v, def = 0) => { const n = Number(v); return Number.isFinite(n) ? n : def; };
+        // Description : texte échappé, retours à la ligne et <br> d'origine conservés
+        const escMultiline = (v) => esc(v).replace(/&lt;br\s*\/?&gt;/gi, '<br>').replace(/\n/g, '<br>');
+        window.esc = esc; window.jsArg = jsArg; window.safeImg = safeImg;
+
+        // "Il y a 5 min", "Il y a 3 h", "Il y a 2 j", puis la date
+        window.timeAgo = (ts) => {
+            const t = num(ts, NaN);
+            if (!Number.isFinite(t)) return '';
+            const m = Math.floor(Math.max(0, Date.now() - t) / 60000);
+            if (m < 1) return "À l'instant";
+            if (m < 60) return `Il y a ${m} min`;
+            const h = Math.floor(m / 60);
+            if (h < 24) return `Il y a ${h} h`;
+            const d = Math.floor(h / 24);
+            if (d < 7) return `Il y a ${d} j`;
+            return new Date(t).toLocaleDateString('fr-FR');
+        };
+
+        // Registre des œuvres affichées : le clic passe une simple clé au lieu de tout l'objet
+        // (plus sûr, et la page est beaucoup plus légère).
+        const itemRegistry = new Map();
+        let itemSeq = 0;
+        const regItem = (obj) => {
+            const key = 'k' + (++itemSeq);
+            itemRegistry.set(key, obj);
+            if (itemRegistry.size > 3000) itemRegistry.delete(itemRegistry.keys().next().value);
+            return key;
+        };
+        window.openPreviewKey = (key) => { const it = itemRegistry.get(key); if (it) window.openPreview(it); };
+        window.savePinKey = (key) => { const it = itemRegistry.get(key); if (it) window.savePin(it); };
 
        // -----------------------------------------------------------
         // B. ETAT GLOBAL DE L'APPLICATION
@@ -485,17 +530,26 @@
         };
 
         /* --- C.4 OBSERVATEUR D'ÉTAT (SESSION) --- */
+        // Chaque écoute en temps réel est rangée ici sous un nom : on ne l'ouvre qu'une seule fois
+        // (avant, elles s'empilaient à chaque modification du profil et multipliaient les lectures).
+        window._listeners = {};
+        const stopAllListeners = () => {
+            Object.values(window._listeners).forEach(unsub => { try { unsub(); } catch (e) {} });
+            window._listeners = {};
+        };
+
         onAuthStateChanged(auth, (user) => {
             document.body.style.opacity = "1";
             
             if (user) {
+                if (window.currentUser && window.currentUser.uid !== user.uid) stopAllListeners();
                 window.currentUser = user;
                 document.getElementById('auth-screen').style.display = 'none';
                 document.querySelector('.app-shell').style.display = 'flex';
                 window.renderPills();
-                loadUserData();
-                setupSocialListeners();
+                window.loadUserData();
             } else {
+                stopAllListeners();
                 window.currentUser = null;
                 document.getElementById('auth-screen').style.display = 'flex';
                 document.querySelector('.app-shell').style.display = 'none';
@@ -508,12 +562,13 @@
         /* --- D.1 PROFIL UTILISATEUR & COLLECTION --- */
         window.loadUserData = async () => {
             if (!window.currentUser) return;
-            const appId = 'mabiblio-dc595'; // Ton ID spécifique
+            if (window._listeners.profile) return; // déjà en écoute
             const userRoot = `artifacts/${appId}/users/${window.currentUser.uid}`;
+            let lastFollowingKey = null;
 
-            // 1. Charger le Profil
+            // 1. Écouter le Profil
             const profileRef = doc(db, userRoot, 'profile', 'info');
-            onSnapshot(profileRef, (docSnap) => {
+            window._listeners.profile = onSnapshot(profileRef, (docSnap) => {
                 if (docSnap.exists()) {
                     window.userProfile = docSnap.data();
                     window.following = window.userProfile.following || [];
@@ -532,83 +587,82 @@
                     };
                     setDoc(profileRef, window.userProfile);
                 }
-                // Lancer les autres écoutes
+                // Les autres écoutes ne sont lancées qu'une seule fois
                 window.listenToMyCollection(userRoot);
                 window.setupSocialListeners();
-            });
+
+                // Les profils des amis ne sont rechargés que si la liste d'abonnements a changé
+                const followingKey = JSON.stringify(window.following);
+                if (followingKey !== lastFollowingKey) {
+                    lastFollowingKey = followingKey;
+                    window.loadFollowingProfiles();
+                    window.applyFeedFilter();
+                }
+            }, (err) => console.error('Écoute profil', err));
         };
 
         /* --- D.2 ÉCOUTE DE MA COLLECTION (TEMPS RÉEL) --- */
         window.listenToMyCollection = (userRoot) => {
-            // C'est ici qu'on remet le bon chemin 'items'
+            if (window._listeners.items) return; // déjà en écoute
             const q = query(collection(db, userRoot, 'items'));
             
-            onSnapshot(q, (snapshot) => {
+            window._listeners.items = onSnapshot(q, (snapshot) => {
                 window.myCollection = snapshot.docs.map(doc => ({
                     docId: doc.id,
                     ...doc.data()
                 }));
                 window.refreshCurrentView();
-            });
+            }, (err) => console.error('Écoute bibliothèque', err));
         };
 
-        /* --- D.3 ÉCOUTE SOCIALE (FOLLOWING) & NOTIFICATIONS --- */
+        /* --- D.3 ÉCOUTE SOCIALE (FIL) & NOTIFICATIONS --- */
+        window._allActivity = [];
+        // Garde uniquement mes posts et ceux de mes abonnements
+        window.applyFeedFilter = () => {
+            const following = (window.userProfile && window.userProfile.following) || [];
+            window.socialFeed = window._allActivity.filter(act =>
+                act.userId === window.currentUser.uid || following.includes(act.userId)
+            );
+            if (window.currentView === 'friends') window.renderSocialFeed();
+        };
+
         window.setupSocialListeners = () => {
-            const appId = 'mabiblio-dc595';
-            
-            // 1. Récupérer les infos des profils suivis
-            if (window.userProfile.following && window.userProfile.following.length > 0) {
-                // On doit faire une requête spéciale car tes profils sont sous 'artifacts'
-                // Pour simplifier, on boucle (ou on utilise un index spécifique si tu en as un)
-                // Ici, on va recharger manuellement les profils suivis comme dans ton ancien code
-                window.loadFollowingProfiles();
-            } else {
-                window.followingData = [];
+            if (!window.extState) window.extState = {};
+
+            // 1. Écouter l'activité publique (Feed) — une seule écoute
+            if (!window._listeners.activity) {
+                const qActivity = query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), orderBy('timestamp', 'desc'), limit(50));
+                window._listeners.activity = onSnapshot(qActivity, (snap) => {
+                    window._allActivity = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    window.applyFeedFilter();
+                    if (window.currentView !== 'friends') window.refreshCurrentView();
+                }, (err) => console.error('Écoute fil', err));
             }
 
-            // 2. Écouter l'activité publique (Feed)
-            // Chemin: artifacts/{appId}/public/data/activity
-            const qActivity = query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), orderBy('timestamp', 'desc'), limit(50));
-            onSnapshot(qActivity, (snap) => {
-                const allActivity = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                
-                window.socialFeed = allActivity.filter(act => 
-                    act.userId === window.currentUser.uid || 
-                    (window.userProfile.following && window.userProfile.following.includes(act.userId))
-                );
-                
-                window.refreshCurrentView();
-            });
-
-            // CORRECTION : 3. Écouter les notifications en temps réel
-            if (!window.extState) window.extState = {};
-            const qNotifs = query(collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications'), orderBy('timestamp', 'desc'), limit(30));
-            onSnapshot(qNotifs, (snap) => {
-                window.extState.notifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                
-                // Mettre à jour la petite cloche s'il y a des notifications non lues
-                if (window.updateNotifBadge) {
-                    window.updateNotifBadge();
-                }
-                
-                // Si l'utilisateur est déjà sur la page des notifications, on la rafraîchit en direct
-                if (window.currentView === 'notifications') {
-                    window.openNotifications();
-                }
-            });
+            // 2. Écouter les notifications en temps réel — une seule écoute
+            if (!window._listeners.notifications) {
+                const qNotifs = query(collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'notifications'), orderBy('timestamp', 'desc'), limit(30));
+                window._listeners.notifications = onSnapshot(qNotifs, (snap) => {
+                    window.extState.notifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    if (window.updateNotifBadge) window.updateNotifBadge();
+                    if (window.currentView === 'notifications') window.openNotifications();
+                }, (err) => console.error('Écoute notifications', err));
+            }
         };
 
-        // Helper pour charger les profils amis (structure complexe artifacts)
+        // Charge les profils des personnes suivies (en parallèle, et seul le dernier chargement compte)
+        let followingLoadSeq = 0;
         window.loadFollowingProfiles = async () => {
-            const appId = 'mabiblio-dc595';
-            const profiles = [];
-            for (const uid of window.userProfile.following) {
+            const token = ++followingLoadSeq;
+            const uids = [...new Set((window.userProfile.following || []).filter(u => typeof u === 'string' && u))];
+            const results = await Promise.all(uids.map(async (uid) => {
                 try {
                     const d = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
-                    if (d.exists()) profiles.push({ ...d.data(), id: uid, uid: uid });
-                } catch (e) { console.error(e); }
-            }
-            window.followingData = profiles;
+                    return d.exists() ? { ...d.data(), id: uid, uid: uid } : null;
+                } catch (e) { console.error(e); return null; }
+            }));
+            if (token !== followingLoadSeq) return; // un chargement plus récent a pris le relais
+            window.followingData = results.filter(Boolean);
             window.refreshCurrentView();
         };
 
@@ -629,12 +683,15 @@
                 comment: comment || "",
                 finishDate: finishDate || "",
                 date: new Date().toISOString(),
-                metricValue: metricValue || 0,
+                metricValue: num(metricValue),
                 platform: platform || "",
                 lastUpdate: Date.now()
             };
             
-            delete itemToSave.docId; 
+            delete itemToSave.docId;
+            // Marqueurs internes d'affichage : ne jamais les enregistrer
+            delete itemToSave._fromFeed;
+            delete itemToSave._fromFriend;
 
             try {
                 // 2. Sauvegarde dans artifacts/.../items
@@ -787,6 +844,8 @@
         /* --- F.4 NAVIGATION PRINCIPALE (VUES) --- */
         window.switchView = (view) => {
             window.currentView = view;
+            // Les abonnés sont relus à chaque arrivée sur la page Profil (et seulement à ce moment-là)
+            if (view === 'profile') window._followersCache = null;
             
             // CORRECTION : Forcer le retour en haut de la page au changement de vue
             window.scrollTo(0, 0);
@@ -1013,16 +1072,16 @@
                     if(i.type === 'Album') unit = 'titres';
                     if(i.type === 'Livre') unit = 'p.';
                     if(i.type === 'Série') unit = 'sais.';
-                    const sub = i.subInfo ? `• ${i.subInfo}` : '';
-                    const safeItem = JSON.stringify(i).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                    const sub = i.subInfo ? `• ${esc(i.subInfo)}` : '';
+                    const key = regItem(i);
 
                     return `
-                    <div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick='window.openPreview(${safeItem})'>
-                        <img src="${i.img || ''}" class="w-12 h-18 rounded-lg object-cover bg-gray-200">
+                    <div class="flex items-center gap-4 py-3 border-b cursor-pointer" onclick="window.openPreviewKey(${jsArg(key)})">
+                        <img src="${safeImg(i.img)}" class="w-12 h-18 rounded-lg object-cover bg-gray-200">
                         <div class="flex-1 font-black text-xs">
-                            ${i.title}
+                            ${esc(i.title)}
                             <div class="text-[10px] text-gray-400 font-normal mt-0.5">
-                                ${i.releaseDate ? i.releaseDate.split('-')[0] : ''} ${i.author ? '• ' + i.author : ''} • ${i.metricValue || 0} ${unit} ${sub}
+                                ${i.releaseDate ? esc(String(i.releaseDate).split('-')[0]) : ''} ${i.author ? '• ' + esc(i.author) : ''} • ${num(i.metricValue)} ${unit} ${sub}
                             </div>
                         </div>
                     </div>`;
@@ -1036,10 +1095,14 @@
             window.tempItem = item; 
             document.getElementById('preview-modal').classList.add('open'); 
             
+            // Lecture seule = l'œuvre vient du fil ou du profil d'un ami (pas de ma bibliothèque).
+            // Une œuvre de MA bibliothèque a toujours un docId : elle n'est jamais en lecture seule,
+            // même si elle a été ajoutée depuis le fil (identifiant terminé par "_public").
+            const isMine = !!item.docId && !item._fromFriend;
             const isPublicProfileOpen = document.getElementById('public-profile-modal').classList.contains('open');
-            const isFeedItem = item.id && typeof item.id === 'string' && item.id.endsWith('_public');
-            const isReadOnly = isPublicProfileOpen || isFeedItem;
-            const showDelete = (item.docId && !isReadOnly) ? true : false;
+            const isFeedItem = !!item._fromFeed;
+            const isReadOnly = !isMine && (isPublicProfileOpen || isFeedItem || !!item._fromFriend);
+            const showDelete = isMine;
             
             // --- 1. LOGIQUE DE FORMAT DE L'IMAGE (DESIGN ADAPTATIF) ---
             let imageClass = 'w-44 h-64'; // Format Poster par défaut (Film, Livre...)
@@ -1065,12 +1128,13 @@
 
             let commentHtml = '';
             if (item.comment && item.comment.trim() !== '') {
-                commentHtml = `<div class="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl mb-8 text-left border border-white/5"><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-quote-left text-blue-500"></i><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avis</span></div><p class="text-white font-medium text-sm italic leading-relaxed">"${item.comment}"</p></div>`;
+                commentHtml = `<div class="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl mb-8 text-left border border-white/5"><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-quote-left text-blue-500"></i><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Avis</span></div><p class="text-white font-medium text-sm italic leading-relaxed">"${esc(item.comment)}"</p></div>`;
             }
 
-            const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${item.platform}</span>` : '';
-            const year = item.releaseDate ? item.releaseDate.split('-')[0] : 'Inconnue';
-            let metricDisplay = `${item.metricValue || 0} ${CONFIG[item.type] ? CONFIG[item.type].metric : ''}`;
+            const platformBadge = item.platform ? `<span class="opacity-60 ml-2">• ${esc(item.platform)}</span>` : '';
+            const year = item.releaseDate ? esc(String(item.releaseDate).split('-')[0]) : 'Inconnue';
+            const metricValue = num(item.metricValue);
+            let metricDisplay = `${metricValue} ${CONFIG[item.type] ? CONFIG[item.type].metric : ''}`;
 
             // Méta-Infos
             let metaInfos = '';
@@ -1080,14 +1144,14 @@
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex-1">
                             <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="${iconClass} ${iconColor} mr-1"></i> ${authorLabel}</div>
-                            <div class="text-sm font-bold text-white leading-tight">${item.author || 'Inconnu'}</div>
+                            <div class="text-sm font-bold text-white leading-tight">${esc(item.author || 'Inconnu')}</div>
                         </div>
                         <div class="text-right">
                             <div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid fa-calendar-day mr-1"></i> Année</div>
                             <div class="text-sm font-bold text-white">${year}</div>
                         </div>
                     </div>
-                    ${item.cast ? `<div class="pt-3 border-t border-white/10"><div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid fa-users mr-1"></i> Avec</div><div class="text-xs text-gray-300 leading-snug">${item.cast}</div></div>` : ''}
+                    ${item.cast ? `<div class="pt-3 border-t border-white/10"><div class="text-[10px] text-gray-500 font-bold uppercase mb-1"><i class="fa-solid fa-users mr-1"></i> Avec</div><div class="text-xs text-gray-300 leading-snug">${esc(item.cast)}</div></div>` : ''}
                 </div>`;
             } else {
                 metaInfos = `<div class="mb-6 text-gray-400 font-bold text-xs uppercase">Sortie en ${year}</div>`;
@@ -1097,24 +1161,22 @@
             const actionLabel = CONFIG[item.type] ? CONFIG[item.type].action : 'Terminé !';
 
             if (isReadOnly) {
-                actionButtonsHtml = `<div class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 flex flex-col items-center justify-center"><div class="text-orange-500 text-4xl mb-2 drop-shadow-lg"><i class="fa-solid fa-star"></i></div><div class="text-4xl font-black text-white tracking-tight">${item.rating || '-'} <span class="text-lg text-gray-500 font-bold">/ 10</span></div><div class="text-gray-400 text-[10px] font-bold uppercase mt-2 tracking-widest">Note de l'utilisateur</div></div><div class="w-full pt-6 border-t border-white/10 mb-6"><p class="text-center text-gray-500 text-[10px] font-bold uppercase mb-4 tracking-widest">Ajouter à ma bibliothèque</p><div class="space-y-3"><button onclick="window.tempItem.docId = null; window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${actionLabel} </button>${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">En cours</button>` : ''}<button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Wishlist</button></div></div>`;
+                actionButtonsHtml = `<div class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 flex flex-col items-center justify-center"><div class="text-orange-500 text-4xl mb-2 drop-shadow-lg"><i class="fa-solid fa-star"></i></div><div class="text-4xl font-black text-white tracking-tight">${esc(item.rating || '-')} <span class="text-lg text-gray-500 font-bold">/ 10</span></div><div class="text-gray-400 text-[10px] font-bold uppercase mt-2 tracking-widest">Note de l'utilisateur</div></div><div class="w-full pt-6 border-t border-white/10 mb-6"><p class="text-center text-gray-500 text-[10px] font-bold uppercase mb-4 tracking-widest">Ajouter à ma bibliothèque</p><div class="space-y-3"><button onclick="window.startAddFromOther()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${actionLabel} </button>${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">En cours</button>` : ''}<button onclick="window.saveItem('Wishlist', null, null, null, ${metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Wishlist</button></div></div>`;
             } else {
                 const isEdited = item.rating || (CONFIG[item.type] && CONFIG[item.type].statuses.includes(item.status) && item.status !== 'Wishlist' && item.status !== 'En cours');
                 const mainBtnText = isEdited ? "Modifier ma note" : actionLabel;
-                actionButtonsHtml = `<div class="w-full space-y-3 mb-8"><button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${mainBtnText}</button>${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}<button onclick="window.saveItem('Wishlist', null, null, null, ${item.metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}</div>`;
+                actionButtonsHtml = `<div class="w-full space-y-3 mb-8"><button onclick="window.openNotation()" class="w-full bg-blue-600 p-4 rounded-[20px] font-black text-lg text-white shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">${mainBtnText}</button>${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${metricValue}, false)" class="w-full bg-white/20 p-4 rounded-[20px] font-bold text-white hover:bg-white/30 transition-colors">En cours</button>` : ''}<button onclick="window.saveItem('Wishlist', null, null, null, ${metricValue}, false)" class="w-full bg-white/10 p-4 rounded-[20px] font-bold text-white hover:bg-white/20 transition-colors">Plus tard (Wishlist)</button>${showDelete ? `<button onclick="window.deleteItem()" class="w-full bg-red-500/10 p-4 rounded-[20px] font-bold text-red-500 mt-4 border border-red-500/20 hover:bg-red-500/20 transition-colors">Supprimer de ma collection</button>` : ''}</div>`;
             }
 
-            let contentHtml = item.desc || "Aucun résumé.";
-            if (item.type !== 'Album' && item.type !== 'YouTube') {
-                contentHtml = contentHtml.replace(/\n/g, '<br>');
-            }
+            // Description échappée (les <br> des listes de titres d'albums et les retours à la ligne sont conservés)
+            let contentHtml = item.desc ? escMultiline(item.desc) : "Aucun résumé.";
 
             document.getElementById('preview-content').innerHTML = `
                 <div class="px-6 pt-24 pb-20 flex flex-col items-center">
-                    <img src="${item.img || ''}" class="${imageClass} rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
-                    <h2 class="text-2xl font-black mb-2 text-center text-white leading-tight">${item.title}</h2>
+                    <img src="${safeImg(item.img)}" class="${imageClass} rounded-[24px] shadow-2xl mb-6 object-cover bg-gray-800">
+                    <h2 class="text-2xl font-black mb-2 text-center text-white leading-tight">${esc(item.title)}</h2>
                     <p class="text-blue-400 font-bold mb-6 text-sm uppercase">
-                        ${item.type} • ${metricDisplay} ${platformBadge}
+                        ${esc(item.type)} • ${metricDisplay} ${platformBadge}
                     </p>
                     ${metaInfos}
                     ${actionButtonsHtml}
@@ -1124,6 +1186,14 @@
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+
+        // Ajouter à MA bibliothèque une œuvre vue chez un ami : on repart d'une fiche vierge
+        // (sans la note, l'avis ni la date de l'ami).
+        window.startAddFromOther = () => {
+            const t = window.tempItem || {};
+            window.tempItem = { ...t, docId: null, rating: null, comment: '', finishDate: undefined, platform: undefined, status: undefined };
+            window.openNotation();
+        };
 
         /* --- G.3 SYSTÈME DE NOTATION (SHEET) --- */
         window.openNotation = () => { 
@@ -1187,7 +1257,7 @@
                 // Compression et affichage
                 window.tempManualImage = await compressImage(e.target.result);
                 const container = document.getElementById('manual-preview-container');
-                container.innerHTML = `<img src="${window.tempManualImage}" class="w-full h-full object-cover rounded-xl shadow-md">`;
+                container.innerHTML = `<img src="${safeImg(window.tempManualImage)}" class="w-full h-full object-cover rounded-xl shadow-md">`;
                 container.classList.remove('border-2', 'border-dashed', 'bg-gray-50'); 
             };
             reader.readAsDataURL(file);
@@ -1377,36 +1447,38 @@
             if (!actData) return;
 
             const container = document.getElementById('comments-list-container');
-            const comments = actData.comments || [];
+            const comments = Array.isArray(actData.comments) ? actData.comments : [];
             
             let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Soyez le premier à commenter</div>' : '';
             
             comments.forEach(c => {
-                 // Transformation des mentions @Pseudo en liens cliquables
-                 const textWithMentions = c.text.replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
+                 if (!c || typeof c !== 'object') return;
+                 // Texte échappé PUIS mise en couleur des mentions @Pseudo
+                 const textWithMentions = esc(c.text).replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
                  const isMyComment = c.userId === window.currentUser.uid;
-                 const likes = c.likes || [];
+                 const likes = Array.isArray(c.likes) ? c.likes : [];
                  const isLiked = likes.includes(window.currentUser.uid);
-                 
+                 const avatar = safeImg(c.userAvatar);
+
                  html += `
                     <div class="flex gap-3 mb-4">
-                        <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0 cursor-pointer" onclick="window.goToProfileFromComment('${c.userId}')">
-                            ${c.userAvatar ? `<img src="${c.userAvatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${c.userName[0]}</div>`}
+                        <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0 cursor-pointer" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">
+                            ${avatar ? `<img src="${avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${initial(c.userName)}</div>`}
                         </div>
                         <div class="flex-1">
                             <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm relative group">
-                                <div class="font-bold text-xs mb-1 cursor-pointer hover:underline" onclick="window.goToProfileFromComment('${c.userId}')">${c.userName}</div>
+                                <div class="font-bold text-xs mb-1 cursor-pointer hover:underline" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">${esc(c.userName)}</div>
                                 <div class="text-sm text-gray-800 leading-snug">${textWithMentions}</div>
-                                
+
                                 <div class="flex items-center justify-end gap-3 mt-2 border-t pt-2 border-gray-100">
-                                    ${isMyComment ? `<button onclick="window.deleteComment('${actId}', ${c.timestamp})" class="text-[10px] text-gray-400 font-bold uppercase hover:text-red-500">Supprimer</button>` : ''}
-                                    <button onclick="window.toggleCommentLike('${actId}', ${c.timestamp})" class="flex items-center gap-1 text-[10px] font-bold ${isLiked ? 'text-red-500' : 'text-gray-400'}">
+                                    ${isMyComment ? `<button onclick="window.deleteComment(${jsArg(actId)}, ${jsArg(c.timestamp)})" class="text-[10px] text-gray-400 font-bold uppercase hover:text-red-500">Supprimer</button>` : ''}
+                                    <button onclick="window.toggleCommentLike(${jsArg(actId)}, ${jsArg(c.timestamp)})" class="flex items-center gap-1 text-[10px] font-bold ${isLiked ? 'text-red-500' : 'text-gray-400'}">
                                         <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
                                         <span>${likes.length > 0 ? likes.length : ''}</span>
                                     </button>
                                 </div>
                             </div>
-                            <div class="text-[10px] text-gray-400 font-bold mt-1 ml-2">Il y a ${Math.floor((Date.now() - c.timestamp) / 60000)} min</div>
+                            <div class="text-[10px] text-gray-400 font-bold mt-1 ml-2">${window.timeAgo(c.timestamp)}</div>
                         </div>
                     </div>
                  `;
@@ -1441,14 +1513,14 @@
             if (lastWord.startsWith('@') && lastWord.length > 1) {
                 const search = lastWord.substring(1).toLowerCase();
                 // Recherche dans la liste des abonnements
-                const matches = window.followingData.filter(u => u.name.toLowerCase().includes(search));
-                
+                const matches = (window.followingData || []).filter(u => String(u.name || '').toLowerCase().includes(search));
+
                 if (matches.length > 0) {
                     suggestionBox.style.display = 'block';
                     suggestionBox.innerHTML = matches.map(u => `
-                        <div class="suggestion-item" onclick="window.insertMention('${u.name}')">
-                            <div class="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">`: ''}</div>
-                            <div class="font-bold text-sm">${u.name}</div>
+                        <div class="suggestion-item" onclick="window.insertMention(${jsArg(String(u.name || ''))})">
+                            <div class="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">${safeImg(u.avatar) ? `<img src="${safeImg(u.avatar)}" class="w-full h-full object-cover">`: ''}</div>
+                            <div class="font-bold text-sm">${esc(u.name)}</div>
                         </div>
                     `).join('');
                 } else {
@@ -1471,16 +1543,18 @@
 
         /* --- 3. ENVOI DE COMMENTAIRE & NOTIFICATIONS --- */
         window.postCommentFromModal = async () => {
-            if (!window.currentCommentActId) return;
+            const actId = window.currentCommentActId;
+            if (!actId) return;
             const input = document.getElementById('comment-modal-input');
-            const text = input.value.trim();
+            const text = input.value.trim().slice(0, 1000);
             if(!text) return;
             
-            const actData = window.socialFeed.find(a => a.id === window.currentCommentActId);
-            const appId = 'mabiblio-dc595'; // CORRECTION : Déclaration de l'ID Firebase
+            const actData = (window.socialFeed || []).find(a => a.id === actId);
+            if (!actData) return;
+            const myUid = window.currentUser.uid;
 
             const newComment = { 
-                userId: window.currentUser.uid, 
+                userId: myUid, 
                 userName: window.userProfile.name, 
                 userAvatar: window.userProfile.avatar || '', 
                 text: text, 
@@ -1488,32 +1562,42 @@
                 likes: [] 
             };
 
-            // Mise à jour Firestore (Ajout du commentaire)
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', window.currentCommentActId), { 
-                comments: arrayUnion(newComment) 
-            });
+            try {
+                // Ajout du commentaire (on ajoute à la liste sans réécrire les autres)
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { 
+                    comments: arrayUnion(newComment) 
+                });
+            } catch (e) {
+                console.error(e);
+                alert("Le commentaire n'a pas pu être envoyé.");
+                return;
+            }
 
-            // Notification pour l'auteur du post
-            window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actData.id);
+            // Notification pour l'auteur du post (sauf si c'est moi)
+            if (actData.userId !== myUid) {
+                window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actId);
+            }
             
-            // Notification pour les personnes mentionnées
+            // Notification pour les personnes mentionnées (une seule fois chacune, jamais à moi-même)
             const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
             if (mentions) {
+                const notified = new Set([myUid, actData.userId]);
                 mentions.forEach(m => {
                     const name = m.substring(1);
-                    const user = window.followingData.find(u => u.name === name);
-                    if (user) {
-                        window.sendNotification(user.uid, 'mention', 'vous a mentionné', actData.itemTitle, actData.id);
+                    const user = (window.followingData || []).find(u => u.name === name);
+                    if (user && !notified.has(user.uid)) {
+                        notified.add(user.uid);
+                        window.sendNotification(user.uid, 'mention', 'vous a mentionné', actData.itemTitle, actId);
                     }
                 });
             }
 
             input.value = "";
             
-            // CORRECTION : Affichage instantané du commentaire et rafraîchissement de la modale
-            if (!actData.comments) actData.comments = [];
+            // Affichage instantané du commentaire et rafraîchissement de la modale
+            if (!Array.isArray(actData.comments)) actData.comments = [];
             actData.comments.push(newComment);
-            window.openCommentModal(window.currentCommentActId);
+            window.openCommentModal(actId);
             
             // On force le scroll tout en bas pour voir le nouveau commentaire
             setTimeout(() => {
@@ -1565,18 +1649,16 @@
                 // Rendu des résultats
                 container.innerHTML = matches.map(u => {
                     const isFollowing = (window.following || []).includes(u.uid);
-                    // On échappe les caractères pour éviter les bugs d'affichage
-                    const safeName = u.name.replace(/'/g, "&apos;");
-                    const safeUid = u.uid;
+                    const avatar = safeImg(u.avatar);
 
                     return `
-                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl mb-2 shadow-sm" onclick="window.openPublicProfile('${safeUid}')">
+                    <div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl mb-2 shadow-sm" onclick="window.openPublicProfile(${jsArg(u.uid)})">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center border border-gray-100">
-                                ${u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-black text-blue-600 text-xs">${safeName[0]}</span>`}
+                                ${avatar ? `<img src="${avatar}" class="w-full h-full object-cover">` : `<span class="font-black text-blue-600 text-xs">${initial(u.name)}</span>`}
                             </div>
                             <div class="flex flex-col text-left">
-                                <span class="font-bold text-sm text-gray-900 leading-tight">${safeName}</span>
+                                <span class="font-bold text-sm text-gray-900 leading-tight">${esc(u.name)}</span>
                                 <span class="text-[10px] text-gray-400 font-medium">Membre</span>
                             </div>
                         </div>
@@ -1614,10 +1696,16 @@
             window.switchView('friends');
             setTimeout(() => {
                 const el = document.getElementById('act-' + actId);
-                if(el) { 
+                if(el) {
                     el.scrollIntoView({behavior: 'smooth', block: 'center'});
                 }
-            }, 600); 
+            }, 600);
+        };
+
+        window.goToActivityComments = (actId) => {
+            if(!actId) return;
+            window.switchView('friends');
+            setTimeout(() => window.openCommentModal(actId), 200);
         };
         
         // Ancienne fonction conservée pour éviter les erreurs si appelée ailleurs
@@ -1675,9 +1763,9 @@
 
             if (sortedFeed.length > 0) {
                 sortedFeed.forEach(act => {
-                    const likes = act.likes || [];
+                    const likes = Array.isArray(act.likes) ? act.likes : [];
                     const isLiked = likes.includes(window.currentUser.uid);
-                    const commentsCount = (act.comments || []).length;
+                    const commentsCount = Array.isArray(act.comments) ? act.comments.length : 0;
                     
                     let iconClass = 'fa-solid fa-film'; 
                     if (act.type === 'Livre') iconClass = 'fa-solid fa-book'; 
@@ -1699,69 +1787,70 @@
                         firstLikers.forEach(uid => {
                             let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
                             if(uid === window.currentUser.uid) u = window.userProfile;
-                            const avatarUrl = u ? u.avatar : '';
+                            const avatarUrl = u ? safeImg(u.avatar) : '';
                             if(avatarUrl) { facesHtml += `<img src="${avatarUrl}" class="w-5 h-5 rounded-full border border-white object-cover shadow-sm">`; } 
                             else { facesHtml += `<div class="w-5 h-5 rounded-full border border-white bg-gray-100 flex items-center justify-center text-[8px] text-gray-400 shadow-sm"><i class="fa-solid fa-user"></i></div>`; }
                         });
                         facesHtml += '</div>';
                     }
 
-                    const previewData = { id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: act.metricValue || 0, desc: act.itemDesc || '', platform: act.platform, releaseDate: null };
-                    const previewJson = JSON.stringify(previewData).replace(/'/g, "&apos;");
-                    const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${act.platform}</span>` : '';
+                    const previewData = { id: act.id + '_public', title: act.itemTitle, img: act.itemImg, type: act.type, metricValue: num(act.metricValue), desc: act.itemDesc || '', platform: act.platform, rating: act.rating, releaseDate: null, _fromFeed: true };
+                    const previewKey = regItem(previewData);
+                    const platformBadge = act.platform ? `<span class="opacity-50 font-normal ml-1">• ${esc(act.platform)}</span>` : '';
+                    const actAvatar = safeImg(act.userAvatar);
 
                     feedHtml += `
-                    <div class="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-5 mb-6 shadow-sm border border-gray-100/50 transition-all hover:shadow-md" id="act-${act.id}">
+                    <div class="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-5 mb-6 shadow-sm border border-gray-100/50 transition-all hover:shadow-md" id="act-${esc(act.id)}">
                         <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center gap-3 cursor-pointer group" onclick="window.openPublicProfile('${act.userId}')">
+                            <div class="flex items-center gap-3 cursor-pointer group" onclick="window.openPublicProfile(${jsArg(act.userId)})">
                                 <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center font-black overflow-hidden border border-white shadow-sm group-hover:scale-105 transition-transform">
-                                    ${act.userAvatar ? `<img src="${act.userAvatar}" class="w-full h-full object-cover">` : (act.userName ? act.userName[0] : '?')}
+                                    ${actAvatar ? `<img src="${actAvatar}" class="w-full h-full object-cover">` : initial(act.userName)}
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="font-bold text-sm text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">${act.userName}</span>
+                                    <span class="font-bold text-sm text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">${esc(act.userName)}</span>
                                     <div class="flex items-center gap-2 mt-1">
-                                        <span class="text-[10px] text-gray-400 font-bold uppercase">${new Date(act.timestamp).toLocaleDateString()}</span>
+                                        <span class="text-[10px] text-gray-400 font-bold uppercase">${new Date(num(act.timestamp)).toLocaleDateString('fr-FR')}</span>
                                         <span class="bg-gray-100/80 text-gray-500 px-2 py-0.5 rounded-full text-[9px] font-black uppercase flex items-center gap-1 border border-gray-50">
-                                            <i class="${iconClass}"></i> ${act.type} ${platformBadge}
+                                            <i class="${iconClass}"></i> ${esc(act.type)} ${platformBadge}
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity('${act.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>` : ''}
+                            ${act.userId === window.currentUser.uid ? `<button onclick="window.deleteActivity(${jsArg(act.id)})" class="text-gray-300 hover:text-red-500 p-2 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>` : ''}
                         </div>
 
-                        <div class="flex items-start gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick='window.openPreview(${previewJson})'>
+                        <div class="flex items-start gap-4 bg-gray-50/80 rounded-2xl p-3 mb-4 cursor-pointer group hover:bg-gray-100/80 transition-all border border-gray-50/50" onclick="window.openPreviewKey(${jsArg(previewKey)})">
                             <div class="relative ${thumbClass} shrink-0 rounded-xl overflow-hidden shadow-sm group-active:scale-95 transition-transform">
-                                <img src="${act.itemImg}" class="w-full h-full object-cover bg-gray-200 ${act.type === 'YouTube' ? 'scale-[1.35]' : ''}">
-                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-md">${act.rating || '-'}</div>
+                                <img src="${safeImg(act.itemImg)}" class="w-full h-full object-cover bg-gray-200 ${act.type === 'YouTube' ? 'scale-[1.35]' : ''}">
+                                <div class="absolute top-1 right-1 bg-black/60 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-md">${esc(act.rating || '-')}</div>
                             </div>
                             <div class="flex-1 py-1 min-w-0">
-                                <h3 class="font-black text-sm text-gray-900 leading-tight mb-1 truncate">${act.itemTitle}</h3>
+                                <h3 class="font-black text-sm text-gray-900 leading-tight mb-1 truncate">${esc(act.itemTitle)}</h3>
                                 <p class="text-xs text-gray-500 line-clamp-3 leading-relaxed cursor-pointer hover:text-gray-800 transition-colors" onclick="event.stopPropagation(); this.classList.toggle('line-clamp-3')">
-                                    ${act.comment ? `<span class="italic text-gray-600">"${act.comment}"</span>` : '<span class="opacity-50">A noté cette œuvre.</span>'}
+                                    ${act.comment ? `<span class="italic text-gray-600">"${esc(act.comment)}"</span>` : '<span class="opacity-50">A noté cette œuvre.</span>'}
                                 </p>
                             </div>
                         </div>
                         
                         <div class="flex items-center justify-between pl-1 pr-1 border-t border-gray-50/50 pt-3">
                             <div class="flex items-center gap-4">
-                                <button onclick="window.toggleLike('${act.id}')" class="flex items-center gap-2 transition-all active:scale-75 group">
+                                <button onclick="window.toggleLike(${jsArg(act.id)})" class="flex items-center gap-2 transition-all active:scale-75 group">
                                     <i class="${isLiked ? 'fa-solid text-red-500 drop-shadow-sm' : 'fa-regular text-gray-400'} fa-heart text-xl group-hover:text-red-400 transition-colors"></i>
                                 </button>
-                                <button onclick="window.openCommentModal('${act.id}')" class="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition-colors active:scale-90">
+                                <button onclick="window.openCommentModal(${jsArg(act.id)})" class="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition-colors active:scale-90">
                                     <i class="fa-regular fa-comment text-xl"></i>
                                 </button>
                             </div>
                             
                             <div class="flex items-center gap-3">
                                 ${likes.length > 0 ? `
-                                    <div class="flex items-center cursor-pointer hover:opacity-70 transition-opacity" onclick="window.showLikesList('${act.id}')">
+                                    <div class="flex items-center cursor-pointer hover:opacity-70 transition-opacity" onclick="window.showLikesList(${jsArg(act.id)})">
                                         ${facesHtml}
                                         <span class="text-[10px] font-bold text-gray-500 ml-2 hover:underline">${likesText}</span>
                                     </div>
                                 ` : ''}
                                 
-                                ${commentsCount > 0 ? `<span class="text-[10px] font-bold text-gray-400 cursor-pointer hover:text-blue-600" onclick="window.openCommentModal('${act.id}')">${commentsCount} com.</span>` : ''}
+                                ${commentsCount > 0 ? `<span class="text-[10px] font-bold text-gray-400 cursor-pointer hover:text-blue-600" onclick="window.openCommentModal(${jsArg(act.id)})">${commentsCount} com.</span>` : ''}
                             </div>
                         </div>
                     </div>`
@@ -1785,16 +1874,15 @@
     /* --- 2. FONCTION TOGGLE LIKE --- */
     window.toggleLike = async (actId) => {
         if (!window.currentUser) return;
-        const appId = 'mabiblio-dc595'; 
         const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+        const uid = window.currentUser.uid;
+        const act = (window.socialFeed || []).find(a => a.id === actId);
+        const alreadyLiked = !!(act && Array.isArray(act.likes) && act.likes.includes(uid));
         try {
-            const snap = await getDoc(actRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                let likes = data.likes || [];
-                const uid = window.currentUser.uid;
-                if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); if (data.userId !== uid) { window.sendNotification(data.userId, 'like', `a aimé votre activité sur ${data.itemTitle}`, data.itemTitle, actId); } }
-                await updateDoc(actRef, { likes: likes });
+            // On ne touche qu'au champ "likes", en ajoutant ou retirant SEULEMENT mon identifiant
+            await updateDoc(actRef, { likes: alreadyLiked ? arrayRemove(uid) : arrayUnion(uid) });
+            if (!alreadyLiked && act && act.userId !== uid) {
+                window.sendNotification(act.userId, 'like', `a aimé votre activité sur ${act.itemTitle}`, act.itemTitle, actId);
             }
         } catch (e) { console.error(e); }
     };
@@ -1812,12 +1900,14 @@
         const close = () => { overlay.classList.add('opacity-0'); overlay.querySelector('.modal-box').classList.add('scale-95', 'opacity-0'); setTimeout(() => document.body.removeChild(overlay), 300); };
         overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
+        window.closeLikesPopup = close;
         let listHtml = act.likes.map(uid => {
             let u = (window.followingData || []).find(f => f.uid === uid || f.id === uid);
             if (uid === window.currentUser.uid) u = window.userProfile;
             const name = u ? u.name : 'Utilisateur';
-            const avatar = u && u.avatar ? `<img src="${u.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-400 text-xs">${name[0]}</span>`;
-            return `<div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition-colors active:scale-98" onclick="window.openPublicProfile('${uid}'); close()"><div class="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-50 shadow-sm">${avatar}</div><span class="font-bold text-sm text-gray-900">${name}</span></div>`;
+            const avatarUrl = u ? safeImg(u.avatar) : '';
+            const avatar = avatarUrl ? `<img src="${avatarUrl}" class="w-full h-full object-cover">` : `<span class="font-bold text-gray-400 text-xs">${initial(name)}</span>`;
+            return `<div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition-colors active:scale-98" onclick="window.closeLikesPopup(); window.openPublicProfile(${jsArg(uid)})"><div class="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-50 shadow-sm">${avatar}</div><span class="font-bold text-sm text-gray-900">${esc(name)}</span></div>`;
         }).join('');
 
         overlay.innerHTML = `
@@ -1855,13 +1945,13 @@
                 
                 let action = '';
                 if (isFollow) {
-                    action = `window.openPublicProfile('${n.fromUid}')`;
+                    action = `window.openPublicProfile(${jsArg(n.fromUid)})`;
                 } else if (isLikePost) {
                     // On bascule sur le Feed, et on scrolle doucement jusqu'au post
-                    action = `window.switchView('friends'); setTimeout(() => { const post = document.getElementById('act-${n.actId}'); if(post) post.scrollIntoView({behavior: 'smooth', block: 'center'}); }, 200);`;
+                    action = `window.goToActivity(${jsArg(n.actId)})`;
                 } else {
                     // Pour les commentaires / like de commentaire : on bascule sur le Feed et on ouvre la modale
-                    action = `window.switchView('friends'); setTimeout(() => window.openCommentModal('${n.actId}'), 200);`;
+                    action = `window.goToActivityComments(${jsArg(n.actId)})`;
                 }
                 
                 let icon = '<i class="fa-solid fa-comment"></i>'; 
@@ -1869,8 +1959,8 @@
                 if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'text-green-500'; } 
                 else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'text-red-500'; } 
                 else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'text-purple-500'; } 
-                const content = isFollow ? `<span class="font-bold text-gray-800">${n.message}</span>` : `<span class="font-black">${n.user || 'Quelqu\'un'}</span> ${n.text || n.message}`; 
-                const subText = isFollow ? 'Voir le profil' : `Sur ${n.itemTitle || 'un post'}`; 
+                const content = isFollow ? `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> <span class="font-bold text-gray-800">${esc(n.message)}</span>` : `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> ${esc(n.text || n.message)}`;
+                const subText = isFollow ? 'Voir le profil' : `Sur ${esc(n.itemTitle || 'un post')}`;
                 return `<div class="notif-item cursor-pointer flex items-start gap-3 py-3 border-b border-gray-50" onclick="${action}">
                     <div class="notif-icon ${color} text-lg w-8 pt-1">${icon}</div>
                     <div class="flex-1">
@@ -1884,25 +1974,68 @@
     };
     
     /* --- 5. FONCTIONS UTILITAIRES (LIKES COMMENTAIRES, DELETE, NOTIFS) --- */
-    window.toggleCommentLike = async (actId, commentTimestamp) => {
-        const appId = 'mabiblio-dc595'; 
-        const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
-        try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const comments = data.comments || []; const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp); if (cIndex > -1) { const comment = comments[cIndex]; let likes = comment.likes || []; const uid = window.currentUser.uid; let isNewLike = false; if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); isNewLike = true; } comment.likes = likes; comments[cIndex] = comment; await updateDoc(actRef, { comments: comments }); if (isNewLike && comment.userId !== window.currentUser.uid) { window.sendNotification(comment.userId, 'like_comment', 'a aimé votre commentaire', data.itemTitle, actId); }
+    // Les commentaires sont rangés dans une liste à l'intérieur du post : on les modifie dans une
+    // "transaction" (lecture + écriture d'un seul bloc) pour qu'un like ou une suppression
+    // simultanés ne s'écrasent jamais l'un l'autre.
+    const updateCommentsLocally = (actId, comments) => {
+        const actData = (window.socialFeed || []).find(a => a.id === actId);
+        if (actData) actData.comments = comments;
         window.openCommentModal(actId);
-        } } } catch (e) { console.error(e); }
     };
+
+    window.toggleCommentLike = async (actId, commentTimestamp) => {
+        const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
+        const uid = window.currentUser.uid;
+        try {
+            const result = await runTransaction(db, async (tx) => {
+                const snap = await tx.get(actRef);
+                if (!snap.exists()) return null;
+                const data = snap.data();
+                const comments = Array.isArray(data.comments) ? data.comments.map(c => ({ ...c })) : [];
+                const comment = comments.find(c => c && c.timestamp === commentTimestamp);
+                if (!comment) return null;
+                const likes = Array.isArray(comment.likes) ? comment.likes : [];
+                const isNewLike = !likes.includes(uid);
+                comment.likes = isNewLike ? [...likes, uid] : likes.filter(id => id !== uid);
+                tx.update(actRef, { comments });
+                return { comments, isNewLike, author: comment.userId, itemTitle: data.itemTitle };
+            });
+            if (!result) return;
+            if (result.isNewLike && result.author !== uid) {
+                window.sendNotification(result.author, 'like_comment', 'a aimé votre commentaire', result.itemTitle, actId);
+            }
+            updateCommentsLocally(actId, result.comments);
+        } catch (e) { console.error(e); }
+    };
+
     window.deleteComment = async (actId, commentTimestamp) => { 
         if(!confirm("Supprimer ce commentaire ?")) return; 
-        const appId = 'mabiblio-dc595'; 
         const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId); 
-        try { const snap = await getDoc(actRef); if (snap.exists()) { const data = snap.data(); const newComments = (data.comments || []).filter(c => c.timestamp !== commentTimestamp); await updateDoc(actRef, { comments: newComments }); 
-        const actData = window.socialFeed.find(a => a.id === actId); if(actData) actData.comments = newComments;
-        window.openCommentModal(actId);
-        } } catch(e) { console.error(e); } 
+        const uid = window.currentUser.uid;
+        try {
+            const comments = await runTransaction(db, async (tx) => {
+                const snap = await tx.get(actRef);
+                if (!snap.exists()) return null;
+                const current = Array.isArray(snap.data().comments) ? snap.data().comments : [];
+                // On ne supprime que MON commentaire, jamais celui de quelqu'un d'autre
+                const next = current.filter(c => !(c && c.timestamp === commentTimestamp && c.userId === uid));
+                if (next.length === current.length) return null;
+                tx.update(actRef, { comments: next });
+                return next;
+            });
+            if (comments) updateCommentsLocally(actId, comments);
+        } catch(e) { console.error(e); } 
     };
     window.deleteActivity = async (actId) => { if(!confirm("Supprimer ce post ?")) return; try { const appId = 'mabiblio-dc595'; await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId)); if(window.socialFeed) { window.socialFeed = window.socialFeed.filter(a => a.id !== actId); window.renderSocialFeed(); } } catch (e) { console.error(e); } };
-    window.sendNotification = async (targetUid, type, text, itemTitle, actId) => { try { const appId = 'mabiblio-dc595';  
-    const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications'); await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null }); } catch(e) { console.error(e); } };
+    window.sendNotification = async (targetUid, type, text, itemTitle, actId) => {
+        // Jamais de notification vers moi-même ou vers un identifiant invalide
+        if (!targetUid || typeof targetUid !== 'string' || !window.currentUser || targetUid === window.currentUser.uid) return;
+        try {
+            const notifRef = collection(db, 'artifacts', appId, 'users', targetUid, 'notifications');
+            // fromUid = mon identifiant : les règles de sécurité refusent toute notification "usurpée"
+            await addDoc(notifRef, { type: type, title: 'Nouvelle activité', message: text, text: text, user: window.userProfile.name, fromUid: window.currentUser.uid, itemTitle: itemTitle || '', actId: actId || null, timestamp: Date.now(), read: false, img: window.userProfile.avatar || null });
+        } catch(e) { console.error(e); }
+    };
     
 
        // -----------------------------------------------------------
@@ -2039,7 +2172,7 @@
             
             // Tri
             if (window.extState.sort === 'rating') { filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); } 
-            else if (window.extState.sort === 'name') { filtered.sort((a, b) => a.title.localeCompare(b.title)); } 
+            else if (window.extState.sort === 'name') { filtered.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))); } 
             else {
                 filtered.sort((a, b) => {
                     const dateA = a.finishDate || a.lastUpdate || a.date || '0';
@@ -2093,7 +2226,7 @@
         };
 
         window.generateGridItemHTML = (item, cols) => {
-            const itemData = JSON.stringify(item).replace(/'/g, "&apos;");
+            const itemKey = regItem(item);
             
             // --- LOGIQUE VISUELLE ---
             let aspectClass = 'aspect-[2/3]'; 
@@ -2106,7 +2239,7 @@
             let dateDisplay = '';
             if (item.finishDate) {
                 const d = new Date(item.finishDate);
-                dateDisplay = `<div class="grid-date-overlay"><i class="fa-regular fa-calendar-check mr-1"></i>${d.getDate()}/${d.getMonth()+1}</div>`;
+                if (!isNaN(d)) dateDisplay = `<div class="grid-date-overlay"><i class="fa-regular fa-calendar-check mr-1"></i>${d.getDate()}/${d.getMonth()+1}</div>`;
             }
             
             let unit = '';
@@ -2120,58 +2253,65 @@
             const zoomClass = item.type === 'YouTube' ? 'scale-110 group-hover:scale-125' : 'group-hover:scale-105';
 
             return `
-            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95" onclick='window.openPreview(${itemData})'>
-                <img src="${item.img || ''}" class="w-full h-full object-cover transition-transform duration-500 ${zoomClass}">
-                ${item.rating ? `<div class="grid-rating">${item.rating}</div>` : ''}
-                
+            <div class="grid-item relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-200 cursor-pointer group shadow-sm transition-all active:scale-95" onclick="window.openPreviewKey(${jsArg(itemKey)})">
+                <img src="${safeImg(item.img)}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 ${zoomClass}">
+                ${item.rating ? `<div class="grid-rating">${esc(item.rating)}</div>` : ''}
+
                 <div class="grid-item-overlay">
                     <div class="flex justify-between items-start">
-                        <div class="${titleSize} font-black truncate text-white uppercase leading-tight pr-1 shadow-black drop-shadow-md">${item.title}</div>
+                        <div class="${titleSize} font-black truncate text-white uppercase leading-tight pr-1 shadow-black drop-shadow-md">${esc(item.title)}</div>
                     </div>
                     <div class="flex flex-col mt-1">
                         ${dateDisplay}
                         <div class="flex justify-between items-center">
-                            <span class="text-[8px] font-bold text-gray-200">${item.releaseDate ? item.releaseDate.split('-')[0] : ''}</span>
-                            <span class="text-[8px] font-black text-white px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md">${item.metricValue || 0} ${unit}</span>
+                            <span class="text-[8px] font-bold text-gray-200">${item.releaseDate ? esc(String(item.releaseDate).split('-')[0]) : ''}</span>
+                            <span class="text-[8px] font-black text-white px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md">${num(item.metricValue)} ${unit}</span>
                         </div>
                     </div>
                 </div>
             </div>`;
         };
 
-        /* --- J.2.bis GESTION DES FAVORIS (PINS) --- */
+        /* --- J.2.bis GESTION DES FAVORIS (PINS) --- (version unique, les anciens doublons ont été supprimés) */
+        const isFinished = (i) => i && i.status && i.status !== 'Wishlist' && i.status !== 'En cours';
+
+        window.renderPinList = (items) => {
+            const list = document.getElementById('pin-selector-list');
+            const slotIndex = window.currentPinSlot;
+            let html = '';
+            if (window.userProfile.pinned && window.userProfile.pinned[slotIndex]) {
+                html += `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>`;
+            }
+            if (items.length === 0) {
+                list.innerHTML = html + '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Terminez des œuvres d\'abord !</div>';
+                return;
+            }
+            html += items.map(item => {
+                const key = regItem({ id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type });
+                return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick="window.savePinKey(${jsArg(key)})"><img src="${safeImg(item.img)}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${esc(item.title)}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${esc(item.type)} • ${esc(item.rating || '-')} ★</div></div></div>`;
+            }).join('');
+            list.innerHTML = html;
+        };
+
         window.openPinSelector = (slotIndex) => {
             window.currentPinSlot = slotIndex;
-            const modal = document.getElementById('pin-selector-modal');
-            const list = document.getElementById('pin-selector-list');
-            modal.classList.add('open');
-            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu' || i.status === 'Joué' || i.status === 'Écouté');
-            
-            window.renderPinList = (items) => {
-                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Terminez des œuvres d\'abord !</div>'; return; }
-                list.innerHTML = items.map(item => {
-                    const safeItem = { id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type };
-                    const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
-                    return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'><img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${item.title}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div></div></div>`;
-                }).join('');
-                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { 
-                    list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer</div>` + list.innerHTML; 
-                }
-            };
-            window.renderPinList(candidates);
+            document.getElementById('pin-selector-modal').classList.add('open');
+            const search = document.getElementById('pin-search');
+            if (search) search.value = '';
+            window.renderPinList((window.myCollection || []).filter(isFinished));
         };
 
         window.filterPinSelector = (query) => {
-            const term = query.toLowerCase();
-            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu' || i.status === 'Joué' || i.status === 'Écouté') && i.title.toLowerCase().includes(term));
-            window.renderPinList(filtered);
+            const term = String(query || '').toLowerCase();
+            window.renderPinList((window.myCollection || []).filter(i => isFinished(i) && String(i.title || '').toLowerCase().includes(term)));
         };
 
         window.savePin = async (itemData) => {
             try {
                 const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                let newPinned = window.userProfile.pinned || [null, null, null];
-                newPinned[window.currentPinSlot] = itemData;
+                const newPinned = [...(window.userProfile.pinned || [null, null, null])];
+                while (newPinned.length < 3) newPinned.push(null);
+                newPinned[window.currentPinSlot] = itemData || null;
                 await updateDoc(ref, { pinned: newPinned });
                 window.userProfile.pinned = newPinned;
                 document.getElementById('pin-selector-modal').classList.remove('open');
@@ -2186,41 +2326,46 @@
              }
         };
 
-        window.removeFollower = async (targetUid) => {
-            if(!confirm("Retirer ?")) return;
-            alert("Action impossible directement.");
-        };
 
-        /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ) --- */
+        /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ) ---
+           Les abonnés sont chargés UNE fois à l'ouverture de la page Profil (mis en cache),
+           au lieu d'être relus à chaque mise à jour de la bibliothèque ou du fil. */
+        window._followersCache = null;
         window.renderProfile = async () => {
             const container = document.getElementById('main-content');
             const following = window.followingData || [];
             
-            // 1. Récupération des données
-            let followers = [];
-            try {
-                const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
-                const snap = await getDocs(q);
-                followers = snap.docs.map(doc => ({ ...doc.data(), id: doc.ref.parent.parent.id })); 
-            } catch (e) {}
+            // 1. Récupération des abonnés (une seule fois tant qu'on reste sur la page)
+            if (window._followersCache === null) {
+                window._followersCache = [];
+                try {
+                    const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
+                    const snap = await getDocs(q);
+                    window._followersCache = snap.docs.map(d => ({ ...d.data(), id: d.ref.parent.parent.id }));
+                } catch (e) { console.error('Abonnés', e); }
+            }
+            // Si l'utilisateur a changé de page pendant le chargement, on n'écrase pas la nouvelle page
+            if (window.currentView !== 'profile') return;
+            const followers = window._followersCache;
 
             // Données utilisateur
             const bio = window.userProfile.bio || "Ajouter une biographie...";
             const pinned = window.userProfile.pinned || [null, null, null]; 
+            const myAvatar = safeImg(window.userProfile.avatar);
 
             container.innerHTML = `
                 <div class="pt-28 px-6 pb-32 text-center">
                     
                     <div class="avatar-container">
-                        <div class="avatar-img">${window.userProfile.avatar ? `<img src="${window.userProfile.avatar}" class="w-full h-full object-cover">` : (window.userProfile.name ? window.userProfile.name[0] : '?')}</div>
+                        <div class="avatar-img">${myAvatar ? `<img src="${myAvatar}" class="w-full h-full object-cover">` : initial(window.userProfile.name)}</div>
                         <label class="avatar-edit-btn"><i class="fa-solid fa-camera text-blue-600 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
                     </div>
                     
                     <div class="mt-4 flex items-center justify-center gap-2">
-                        <h2 class="text-3xl font-black">${window.userProfile.name}</h2>
+                        <h2 class="text-3xl font-black">${esc(window.userProfile.name)}</h2>
                         <button onclick="window.updateProfileName()" class="text-blue-600 text-lg"><i class="fa-solid fa-pen-to-square"></i></button>
                     </div>
-                    <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${bio} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
+                    <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${esc(bio)} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
 
                     <div class="text-left mt-8 mb-2 px-1"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Mes 3 Coups de ❤️</span></div>
                     <div class="pinned-grid">
@@ -2229,9 +2374,9 @@
                             if (item) {
                                 return `
                                 <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
-                                    <img src="${item.img}">
+                                    <img src="${safeImg(item.img)}">
                                     <div class="pinned-overlay"><i class="fa-solid fa-rotate text-white"></i></div>
-                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div>
+                                    <div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${esc(item.rating || '?')}</div>
                                 </div>`;
                             } else {
                                 return `
@@ -2249,31 +2394,31 @@
 
                     <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${following.length > 0 ? following.map(p => `
+                            ${following.length > 0 ? following.map(p => { const pid = p.uid || p.id; const av = safeImg(p.avatar); return `
                                 <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${p.uid || p.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${p.avatar ? `<img src="${p.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${p.name[0]}</span>`}</div>
-                                        <span class="font-bold text-sm">${p.name}</span>
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile(${jsArg(pid)})">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${av ? `<img src="${av}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${initial(p.name)}</span>`}</div>
+                                        <span class="font-bold text-sm">${esc(p.name)}</span>
                                     </div>
-                                    <button onclick="event.stopPropagation(); window.unfollowUser('${p.uid || p.id}')" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
-                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                                    <button onclick="event.stopPropagation(); window.unfollowUser(${jsArg(pid)})" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
+                                </div>`; }).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
                         </div>
                     </div>
 
                     <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
                         <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${followers.length > 0 ? followers.map(f => `
+                            ${followers.length > 0 ? followers.map(f => { const av = safeImg(f.avatar); return `
                                 <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile('${f.id}')">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${f.avatar ? `<img src="${f.avatar}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${f.name ? f.name[0] : '?'}</span>`}</div>
-                                        <span class="font-bold text-sm max-w-[80px] truncate">${f.name}</span>
+                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile(${jsArg(f.id)})">
+                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${av ? `<img src="${av}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${initial(f.name)}</span>`}</div>
+                                        <span class="font-bold text-sm max-w-[80px] truncate">${esc(f.name)}</span>
                                     </div>
                                     <div class="flex gap-3 items-center">
-                                        <button onclick="event.stopPropagation(); window.removeFollower('${f.id}')" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
+                                        <button onclick="event.stopPropagation(); window.removeFollower(${jsArg(f.id)})" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
                                         <div class="h-3 w-px bg-gray-300"></div>
-                                        <button onclick="event.stopPropagation(); window.blockUser('${f.id}')" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button>
+                                        <button onclick="event.stopPropagation(); window.blockUser(${jsArg(f.id)})" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button>
                                     </div>
-                                </div>`).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
+                                </div>`; }).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
                         </div>
                     </div>
 
@@ -2297,43 +2442,6 @@
             }
         };
 
-        window.openPinSelector = (slotIndex) => {
-            window.currentPinSlot = slotIndex;
-            const modal = document.getElementById('pin-selector-modal');
-            const list = document.getElementById('pin-selector-list');
-            modal.classList.add('open');
-            const candidates = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
-            
-            window.renderPinList = (items) => {
-                if(items.length === 0) { list.innerHTML = '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Ajoutez des films vus d\'abord !</div>'; return; }
-                list.innerHTML = items.map(item => {
-                    const safeItem = { id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type };
-                    const json = JSON.stringify(safeItem).replace(/'/g, "&apos;");
-                    return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick='window.savePin(${json})'><img src="${item.img}" class="w-10 h-14 object-cover rounded bg-gray-200"><div><div class="font-bold text-sm">${item.title}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${item.type} • ${item.rating || '-'} ★</div></div></div>`;
-                }).join('');
-                if(window.userProfile.pinned && window.userProfile.pinned[slotIndex]) { list.innerHTML = `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>` + list.innerHTML; }
-            };
-            window.renderPinList(candidates);
-        };
-
-        window.filterPinSelector = (query) => {
-            const term = query.toLowerCase();
-            const filtered = window.myCollection.filter(i => (i.status === 'Vu' || i.status === 'Lu') && i.title.toLowerCase().includes(term));
-            window.renderPinList(filtered);
-        };
-
-        window.savePin = async (itemData) => {
-            try {
-                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                let newPinned = window.userProfile.pinned || [null, null, null];
-                newPinned[window.currentPinSlot] = itemData;
-                await updateDoc(ref, { pinned: newPinned });
-                window.userProfile.pinned = newPinned;
-                document.getElementById('pin-selector-modal').classList.remove('open');
-                window.renderProfile();
-            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
-        };
-
         // --- FONCTIONS BLOQUER / RETIRER ---
 
         window.removeFollower = async (targetUid) => {
@@ -2341,6 +2449,7 @@
             try {
                 const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
                 await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
+                window._followersCache = null;
                 alert("Utilisateur retiré.");
                 window.renderProfile();
             } catch (e) { console.error(e); alert("Impossible de modifier le profil distant (permissions)."); }
@@ -2359,33 +2468,12 @@
                 const myRef = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
                 await updateDoc(myRef, { blocked: arrayUnion(targetUid) });
                 
+                window._followersCache = null;
                 alert("Utilisateur bloqué.");
                 window.renderProfile();
             } catch (e) { console.error(e); alert("Erreur lors du blocage."); }
         };
 
-        // 3. Filtrer la recherche dans la modale
-        window.filterPinSelector = (query) => {
-            const term = query.toLowerCase();
-            const all = window.myCollection.filter(i => i.status === 'Vu' || i.status === 'Lu');
-            const filtered = all.filter(i => i.title.toLowerCase().includes(term));
-            window.renderPinList(filtered);
-        };
-
-        // 4. Sauvegarder le choix
-        window.savePin = async (itemData) => {
-            try {
-                const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                let newPinned = window.userProfile.pinned || [null, null, null];
-                newPinned[window.currentPinSlot] = itemData; // itemData est null si on supprime
-                
-                await updateDoc(ref, { pinned: newPinned });
-                window.userProfile.pinned = newPinned; // Update local
-                
-                document.getElementById('pin-selector-modal').classList.remove('open');
-                window.renderProfile(); // Rafraîchir l'interface
-            } catch(e) { console.error(e); alert("Erreur sauvegarde."); }
-        };
 
    /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MENU DÉROULANT --- */
     window.friendData = [];
@@ -2407,16 +2495,17 @@
             
             // 2. Collection Ami
             const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
-            window.friendData = itemsSnap.docs.map(d => d.data());
+            // _fromFriend : ces œuvres appartiennent à l'ami, elles s'ouvrent en lecture seule
+            window.friendData = itemsSnap.docs.map(d => ({ ...d.data(), _fromFriend: true }));
 
             // 3. Status abonnement
             const isFollowing = (window.userProfile.following || []).includes(uid);
             
             const bio = prof.bio || "";
-            const pinned = prof.pinned || [null, null, null];
+            const pinned = Array.isArray(prof.pinned) ? prof.pinned : [null, null, null];
             const hasPinned = pinned.some(p => p !== null);
 
-            let buttonHTML = `<button onclick="window.toggleFollowFromProfile('${uid}')" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
+            let buttonHTML = `<button onclick="window.toggleFollowFromProfile(${jsArg(uid)})" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
 
             let html = `
                 <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
@@ -2424,16 +2513,16 @@
                 <div class="pt-24 bg-white relative z-10">
                     <div class="text-center px-6 pb-6 border-b border-gray-50">
                         <div class="w-24 h-24 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-4xl overflow-hidden shadow-lg border-4 border-white">
-                             ${prof.avatar ? `<img src="${prof.avatar}" class="w-full h-full object-cover">` : (prof.name ? prof.name[0] : '?')}
+                             ${safeImg(prof.avatar) ? `<img src="${safeImg(prof.avatar)}" class="w-full h-full object-cover">` : initial(prof.name)}
                         </div>
-                        <h1 class="text-2xl font-black mt-4">${prof.name}</h1>
-                        ${bio ? `<p class="bio-text mt-2">"${bio}"</p>` : ''}
+                        <h1 class="text-2xl font-black mt-4">${esc(prof.name)}</h1>
+                        ${bio ? `<p class="bio-text mt-2">"${esc(bio)}"</p>` : ''}
                         ${buttonHTML}
 
                         ${hasPinned ? `
                             <div class="mt-8 mb-2 px-1 text-left"><span class="text-xs font-black uppercase text-gray-400 tracking-widest">Ses Coups de ❤️</span></div>
                             <div class="pinned-grid">
-                                ${pinned.map(item => item ? `<div class="pinned-item filled"><img src="${item.img}"><div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${item.rating || '?'}</div></div>` : `<div class="pinned-item opacity-20"></div>`).join('')}
+                                ${pinned.map(item => item ? `<div class="pinned-item filled"><img src="${safeImg(item.img)}"><div class="absolute top-1 right-1 bg-black/60 text-white text-[8px] font-black px-1 rounded">${esc(item.rating || '?')}</div></div>` : `<div class="pinned-item opacity-20"></div>`).join('')}
                             </div>
                         ` : ''}
                     </div>
@@ -2617,7 +2706,7 @@ window.renderStatsView = () => {
                         </div>
                     </div>
                 </div>
-                ${showGoal ? `<input type="number" value="${s.goal}" onchange="window.updateGoal('goal${s.type}', this.value)" class="w-16 text-right bg-gray-50 text-gray-800 font-bold rounded-lg p-2 outline-none text-sm border border-gray-100 focus:border-blue-500 transition-colors">` : ''}
+                ${showGoal ? `<input type="number" value="${num(s.goal)}" onchange="window.updateGoal('goal${s.type}', this.value)" class="w-16 text-right bg-gray-50 text-gray-800 font-bold rounded-lg p-2 outline-none text-sm border border-gray-100 focus:border-blue-500 transition-colors">` : ''}
             </div>
             
             ${showGoal ? `
@@ -2667,28 +2756,7 @@ window.updateGoal = async (key, val) => {
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        window.handleCommentLike = async (actId, commentTimestamp) => {
-            const actRef = doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId);
-            try {
-                const snap = await getDoc(actRef);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const comments = data.comments || [];
-                    const cIndex = comments.findIndex(c => c.timestamp === commentTimestamp);
-                    if (cIndex > -1) {
-                        const comment = comments[cIndex];
-                        let likes = comment.likes || [];
-                        const uid = window.currentUser.uid;
-                        if (likes.includes(uid)) { likes = likes.filter(id => id !== uid); } else { likes.push(uid); }
-                        comment.likes = likes;
-                        comments[cIndex] = comment;
-                        await updateDoc(actRef, { comments: comments });
-                    }
-                }
-            } catch (e) { console.error("Erreur like commentaire", e); }
-        };
-
-        console.log("MaBiblio v3.1 Fixed");
+        console.log("MaBiblio v3.2 (lot 1 : sécurité)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();

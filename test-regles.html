@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>MaBiblio – Test des règles</title>
+    <script src="config.js"></script>
+    <style>
+        :root { --blue: #007AFF; --bg: #F2F2F7; --line: #E5E5EA; --ok: #1E7B34; --ko: #C0261B; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: #1C1C1E; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .card { max-width: 640px; margin: 0 auto; background: #fff; border-radius: 24px; padding: 28px 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        h1 { margin: 0 0 8px; font-size: 26px; font-weight: 800; }
+        .sub { margin: 0 0 20px; color: #48484A; line-height: 1.5; font-size: 15px; }
+        .badge { display: inline-block; background: #FFF3E0; color: #B35C00; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .5px; }
+        fieldset { border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 0 0 12px; }
+        legend { font-weight: 800; font-size: 14px; padding: 0 6px; }
+        input { width: 100%; padding: 12px; border: 1px solid var(--line); background: #F9F9F9; border-radius: 12px; font-size: 16px; margin-bottom: 8px; outline: none; }
+        input:focus { border-color: var(--blue); background: #fff; }
+        button { width: 100%; border: none; background: var(--blue); color: #fff; padding: 16px; border-radius: 16px; font-size: 17px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+        button:disabled { opacity: .5; cursor: default; }
+        .stop { background: #FDECEB; color: #8A1C14; padding: 16px; border-radius: 16px; font-weight: 600; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14px; }
+        td { padding: 9px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+        td.exp { color: #6E6E73; white-space: nowrap; font-size: 12px; }
+        td.res { font-weight: 800; white-space: nowrap; text-align: right; }
+        tr.ok td.res { color: var(--ok); }
+        tr.ko td.res { color: var(--ko); }
+        tr.ko { background: #FFF5F4; }
+        .summary { margin-top: 18px; padding: 16px; border-radius: 16px; font-weight: 700; line-height: 1.5; }
+        .summary.ok { background: #E8F7EC; color: #145C25; }
+        .summary.ko { background: #FDECEB; color: #8A1C14; }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+<main class="card">
+    <span class="badge">BASE DE TEST UNIQUEMENT</span>
+    <h1>Test des règles de sécurité</h1>
+    <p class="sub">Cette page joue le rôle de deux utilisateurs (A et B) et vérifie que B peut faire ce qui est permis
+        (liker, commenter…) et qu'il est <strong>bloqué</strong> pour tout le reste (modifier la bibliothèque de A, supprimer ses posts…).
+        Tout ce qu'elle crée est supprimé à la fin.</p>
+
+    <div id="stop" class="stop" hidden></div>
+
+    <section id="form">
+        <fieldset>
+            <legend>Compte de test A</legend>
+            <input type="email" id="emailA" placeholder="E-mail du compte A" autocomplete="off">
+            <input type="password" id="passA" placeholder="Mot de passe A" autocomplete="off">
+        </fieldset>
+        <fieldset>
+            <legend>Compte de test B</legend>
+            <input type="email" id="emailB" placeholder="E-mail du compte B" autocomplete="off">
+            <input type="password" id="passB" placeholder="Mot de passe B" autocomplete="off">
+        </fieldset>
+        <button id="run">Lancer le test</button>
+    </section>
+
+    <table id="results"></table>
+    <div id="summary" class="summary" hidden></div>
+</main>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { initializeAuth, inMemoryPersistence, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, collection, collectionGroup, query, where, limit, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const $ = (id) => document.getElementById(id);
+    const cfg = window.MABIBLIO_FIREBASE_CONFIG;
+    const APP = 'mabiblio-dc595'; // nom du dossier des données (identique en test et en ligne)
+
+    // Sécurité : cette page ne doit JAMAIS tourner sur la vraie base.
+    if (!cfg || cfg.projectId !== 'mabiblio-test') {
+        $('stop').hidden = false;
+        $('stop').textContent = "Arrêt de sécurité : cette page ne fonctionne qu'avec la base de test (mabiblio-test). Elle a détecté une autre configuration et ne fera rien.";
+        $('form').hidden = true;
+        throw new Error('Pas la base de test');
+    }
+
+    const appA = initializeApp(cfg, 'testeur-A');
+    const appB = initializeApp(cfg, 'testeur-B');
+    const authA = initializeAuth(appA, { persistence: inMemoryPersistence });
+    const authB = initializeAuth(appB, { persistence: inMemoryPersistence });
+    const dbA = getFirestore(appA);
+    const dbB = getFirestore(appB);
+
+    const rows = [];
+    function addRow(label, expected, passed, detail) {
+        rows.push(passed);
+        const tr = document.createElement('tr');
+        tr.className = passed ? 'ok' : 'ko';
+        const t1 = document.createElement('td'); t1.textContent = label;
+        const t2 = document.createElement('td'); t2.className = 'exp'; t2.textContent = expected === 'allow' ? 'doit marcher' : 'doit être bloqué';
+        const t3 = document.createElement('td'); t3.className = 'res'; t3.textContent = passed ? '✓' : ('✗ ' + (detail || ''));
+        tr.append(t1, t2, t3);
+        $('results').append(tr);
+    }
+
+    // Lance une opération et vérifie qu'elle est autorisée ("allow") ou bloquée ("deny")
+    async function expect(label, expected, fn) {
+        try {
+            await fn();
+            addRow(label, expected, expected === 'allow', expected === 'deny' ? 'PAS bloqué !' : '');
+        } catch (e) {
+            if (e && e.code === 'failed-precondition') {
+                // Pas un problème de règles : Firestore demande un "index" (voir les instructions)
+                addRow(label, expected, false, 'index manquant');
+                console.warn('Index manquant — ouvre le lien ci-dessous pour le créer :', e.message);
+                return;
+            }
+            const denied = e && (e.code === 'permission-denied' || /permission/i.test(e.message || ''));
+            if (expected === 'deny') addRow(label, expected, denied, denied ? '' : (e.code || e.message));
+            else addRow(label, expected, false, e.code || e.message);
+        }
+    }
+
+    $('run').addEventListener('click', async () => {
+        $('run').disabled = true;
+        $('results').innerHTML = '';
+        $('summary').hidden = true;
+        rows.length = 0;
+
+        let A, B;
+        try {
+            A = (await signInWithEmailAndPassword(authA, $('emailA').value.trim(), $('passA').value)).user;
+            B = (await signInWithEmailAndPassword(authB, $('emailB').value.trim(), $('passB').value)).user;
+        } catch (e) {
+            $('summary').hidden = false; $('summary').className = 'summary ko';
+            $('summary').textContent = 'Connexion impossible : ' + (e.code || e.message) + '. Vérifie les e-mails et mots de passe des comptes de test.';
+            $('run').disabled = false; return;
+        }
+        if (A.uid === B.uid) {
+            $('summary').hidden = false; $('summary').className = 'summary ko';
+            $('summary').textContent = 'A et B doivent être deux comptes différents.';
+            $('run').disabled = false; return;
+        }
+
+        const FAKE = 'utilisateur-fictif-test';
+        const profA = (db) => doc(db, 'artifacts', APP, 'users', A.uid, 'profile', 'info');
+        const itemA = (db) => doc(db, 'artifacts', APP, 'users', A.uid, 'items', 'Film_test_regles');
+        const notifA = (db) => collection(db, 'artifacts', APP, 'users', A.uid, 'notifications');
+        let originalProfile = null, postId = null, notifIds = [], extraPosts = [];
+
+        try {
+            // ---------- Préparation (en tant que A) ----------
+            const snapProf = await getDoc(profA(dbA));
+            originalProfile = snapProf.exists() ? snapProf.data() : null;
+            await setDoc(profA(dbA), { name: (originalProfile && originalProfile.name) || 'Testeur A', following: [B.uid, FAKE] }, { merge: true });
+            await setDoc(itemA(dbA), { id: 'test_regles', type: 'Film', title: 'Test règles', status: 'Vu', rating: 7 });
+            const post = await addDoc(collection(dbA, 'artifacts', APP, 'public', 'data', 'activity'),
+                { userId: A.uid, userName: 'Testeur A', itemTitle: 'Test règles', itemImg: '', type: 'Film', rating: 7, comment: '', timestamp: Date.now(), likes: [], comments: [] });
+            postId = post.id;
+            const postB = doc(dbB, 'artifacts', APP, 'public', 'data', 'activity', postId);
+
+            // ---------- Ce que B a le droit de faire ----------
+            await expect("B lit la bibliothèque de A", 'allow', () => getDocs(collection(dbB, 'artifacts', APP, 'users', A.uid, 'items')));
+            await expect("B lit le profil de A", 'allow', () => getDoc(profA(dbB)));
+            await expect("B like le post de A", 'allow', () => updateDoc(postB, { likes: arrayUnion(B.uid) }));
+            await expect("B retire son like", 'allow', () => updateDoc(postB, { likes: arrayRemove(B.uid) }));
+            await expect("B commente le post de A", 'allow', () => updateDoc(postB, { comments: arrayUnion({ userId: B.uid, userName: 'Testeur B', text: 'Commentaire 1', timestamp: Date.now(), likes: [] }) }));
+            await expect("B ajoute un 2ᵉ commentaire", 'allow', () => updateDoc(postB, { comments: arrayUnion({ userId: B.uid, userName: 'Testeur B', text: 'Commentaire 2', timestamp: Date.now() + 1, likes: [] }) }));
+            await expect("B envoie une notification signée de son nom à A", 'allow', async () => { const r = await addDoc(notifA(dbB), { type: 'like', fromUid: B.uid, user: 'Testeur B', text: 'test', timestamp: Date.now(), read: false }); notifIds.push(r.id); });
+            await expect("B cherche des profils (recherche d'amis)", 'allow', () => getDocs(query(collectionGroup(dbB, 'profile'), limit(5))));
+            await expect("B liste ses abonnés", 'allow', () => getDocs(query(collectionGroup(dbB, 'profile'), where('following', 'array-contains', B.uid))));
+            await expect("B se retire des abonnements de A (« Retirer »)", 'allow', () => updateDoc(profA(dbB), { following: arrayRemove(B.uid) }));
+
+            // ---------- Ce qui doit être bloqué ----------
+            await expect("B modifie une œuvre de A", 'deny', () => updateDoc(itemA(dbB), { rating: 1 }));
+            await expect("B supprime une œuvre de A", 'deny', () => deleteDoc(itemA(dbB)));
+            await expect("B ajoute une œuvre dans la bibliothèque de A", 'deny', () => setDoc(doc(dbB, 'artifacts', APP, 'users', A.uid, 'items', 'Film_intrus'), { title: 'Intrus' }));
+            await expect("B change le pseudo de A", 'deny', () => updateDoc(profA(dbB), { name: 'Piraté' }));
+            await expect("B retire quelqu'un d'autre des abonnements de A", 'deny', () => updateDoc(profA(dbB), { following: arrayRemove(FAKE) }));
+            await expect("B ajoute quelqu'un aux abonnements de A", 'deny', () => updateDoc(profA(dbB), { following: arrayUnion('quelqu-un') }));
+            await expect("B ajoute le like de quelqu'un d'autre", 'deny', () => updateDoc(postB, { likes: arrayUnion(A.uid) }));
+            await expect("B modifie le titre du post de A", 'deny', () => updateDoc(postB, { itemTitle: 'Piraté' }));
+            await expect("B efface tous les commentaires d'un coup", 'deny', () => updateDoc(postB, { comments: [] }));
+            await expect("B supprime le post de A", 'deny', () => deleteDoc(postB));
+            await expect("B publie un post au nom de A", 'deny', async () => { const r = await addDoc(collection(dbB, 'artifacts', APP, 'public', 'data', 'activity'), { userId: A.uid, itemTitle: 'Faux', timestamp: Date.now(), likes: [], comments: [] }); extraPosts.push(r.id); });
+            await expect("B envoie une notification en se faisant passer pour A", 'deny', async () => { const r = await addDoc(notifA(dbB), { type: 'like', fromUid: A.uid, text: 'faux', timestamp: Date.now(), read: false }); notifIds.push(r.id); });
+            await expect("B lit les notifications de A", 'deny', () => getDocs(notifA(dbB)));
+            await expect("B lit une zone inconnue de la base", 'deny', () => getDocs(collection(dbB, 'zone-inconnue')));
+        } catch (e) {
+            addRow('Préparation du test (compte A)', 'allow', false, e.code || e.message);
+        } finally {
+            // ---------- Nettoyage (en tant que A) ----------
+            try { if (postId) await deleteDoc(doc(dbA, 'artifacts', APP, 'public', 'data', 'activity', postId)); } catch (e) { console.error(e); }
+            try { await deleteDoc(itemA(dbA)); } catch (e) { console.error(e); }
+            try { await deleteDoc(doc(dbA, 'artifacts', APP, 'users', A.uid, 'items', 'Film_intrus')); } catch (e) { console.error(e); }
+            for (const id of extraPosts) { try { await deleteDoc(doc(dbA, 'artifacts', APP, 'public', 'data', 'activity', id)); } catch (e) { console.error(e); } }
+            for (const id of notifIds) { try { await deleteDoc(doc(dbA, 'artifacts', APP, 'users', A.uid, 'notifications', id)); } catch (e) { console.error(e); } }
+            try {
+                if (originalProfile) await setDoc(profA(dbA), originalProfile);
+                else await deleteDoc(profA(dbA));
+            } catch (e) { console.error(e); }
+        }
+
+        const passed = rows.filter(Boolean).length;
+        const s = $('summary');
+        s.hidden = false;
+        s.className = 'summary ' + (passed === rows.length ? 'ok' : 'ko');
+        s.textContent = passed === rows.length
+            ? `Parfait : ${passed}/${rows.length} vérifications réussies. Les règles protègent bien les données.`
+            : `${rows.length - passed} vérification(s) en échec sur ${rows.length} (lignes en rouge). Envoie-moi une capture de cette page.`;
+        $('run').disabled = false;
+    });
+</script>
+</body>
+</html>

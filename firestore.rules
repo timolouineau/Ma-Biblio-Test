@@ -1,0 +1,87 @@
+rules_version = '2';
+// =====================================================================
+//  RÈGLES DE SÉCURITÉ MABIBLIO — version "lot 1"
+//  À coller dans Firebase > Firestore Database > onglet Règles.
+//  Principe : tout ce qui n'est pas explicitement autorisé ici est interdit.
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isUser(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /artifacts/{appId} {
+
+      match /users/{userId} {
+
+        // Quelqu'un peut uniquement SE RETIRER lui-même de ma liste d'abonnements
+        // (boutons "Retirer" et "Bloquer"), sans rien toucher d'autre.
+        function onlyRemovesSelfFromFollowing() {
+          let before = resource.data.get('following', []).toSet();
+          let after = request.resource.data.get('following', []).toSet();
+          return signedIn()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['following'])
+            && after.difference(before).size() == 0
+            && before.difference(after).hasOnly([request.auth.uid]);
+        }
+
+        // PROFIL : lisible par les membres, modifiable seulement par son propriétaire
+        match /profile/{docId} {
+          allow read: if signedIn();
+          allow create, delete: if isUser(userId);
+          allow update: if isUser(userId) || onlyRemovesSelfFromFollowing();
+        }
+
+        // BIBLIOTHÈQUE : lisible par les membres, modifiable seulement par son propriétaire
+        match /items/{itemId} {
+          allow read: if signedIn();
+          allow write: if isUser(userId);
+        }
+
+        // NOTIFICATIONS : privées. Les autres peuvent seulement en déposer une,
+        // signée de leur propre identifiant (impossible d'usurper quelqu'un).
+        match /notifications/{notifId} {
+          allow read, update, delete: if isUser(userId);
+          allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
+        }
+      }
+
+      // FIL D'ACTUALITÉ
+      match /public/data/activity/{actId} {
+
+        // L'auteur du post peut le modifier (sans changer d'auteur)
+        function isOwnerUpdate() {
+          return resource.data.userId == request.auth.uid
+            && request.resource.data.userId == resource.data.userId;
+        }
+
+        // Les autres peuvent seulement : ajouter/retirer LEUR like,
+        // et ajouter/retirer/liker UN commentaire à la fois.
+        function isReactionUpdate() {
+          let likesBefore = resource.data.get('likes', []).toSet();
+          let likesAfter = request.resource.data.get('likes', []).toSet();
+          let countBefore = resource.data.get('comments', []).size();
+          let countAfter = request.resource.data.get('comments', []).size();
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'comments'])
+            && likesAfter.difference(likesBefore).hasOnly([request.auth.uid])
+            && likesBefore.difference(likesAfter).hasOnly([request.auth.uid])
+            && countAfter >= countBefore - 1
+            && countAfter <= countBefore + 1;
+        }
+
+        allow read: if signedIn();
+        allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+        allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+        allow update: if signedIn() && (isOwnerUpdate() || isReactionUpdate());
+      }
+    }
+
+    // Recherches transversales (recherche d'amis, liste des abonnés)
+    match /{path=**}/profile/{docId} {
+      allow read: if signedIn();
+    }
+    match /{path=**}/items/{itemId} {
+      allow read: if signedIn();
+    }
+  }
+}
