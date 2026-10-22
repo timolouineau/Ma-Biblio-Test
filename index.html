@@ -4342,8 +4342,8 @@ const statsFriends = () => (window.followingData || []).map(p => ({ uid: p.uid |
 /* Bibliothèques des amis pour les classements : TOUS les amis sont comparés, sans avoir à ouvrir leur profil.
    1. résumé publié dans son profil (ami déjà passé à la nouvelle version) : rien à lire de plus ;
    2. sinon sa bibliothèque est lue UNE fois en arrière-plan (2 amis à la fois), puis son résumé est
-      gardé 6 h sur ce téléphone : en revenant sur la page, plus aucune lecture. */
-const FRIEND_TTL = 6 * 3600 * 1000;
+      gardé 24 h sur ce téléphone : en revenant sur la page, plus aucune lecture. */
+const FRIEND_TTL = 24 * 3600 * 1000;
 const friendCacheKey = (uid) => `mabiblio_fsum_${window.currentUser ? window.currentUser.uid : ''}_${uid}`;
 const readFriendCache = (uid) => {
     try {
