@@ -1,0 +1,34 @@
+name: Icônes depuis le logo actuel
+on:
+  push:
+    paths: ['.github/workflows/logo.yml']
+permissions:
+  contents: write
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Télécharger le logo et fabriquer les icônes
+        run: |
+          curl -sSfL -o /tmp/logo.png "https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png"
+          identify /tmp/logo.png
+          BG=$(convert /tmp/logo.png -format '%[pixel:p{3,3}]' info:)
+          echo "fond: $BG"
+          convert /tmp/logo.png -background "$BG" -gravity center -extent "%[fx:max(w,h)]x%[fx:max(w,h)]" /tmp/square.png || cp /tmp/logo.png /tmp/square.png
+          mkdir -p icons
+          cp /tmp/logo.png icons/logo-original.png
+          convert /tmp/square.png -resize 512x512 icons/icon-512.png
+          convert /tmp/square.png -resize 192x192 icons/icon-192.png
+          convert /tmp/square.png -resize 180x180 icons/apple-touch-icon.png
+          convert /tmp/square.png -resize 64x64 icons/favicon-64.png
+          convert /tmp/square.png -resize 410x410 -background "$BG" -gravity center -extent 512x512 icons/icon-maskable-512.png
+          identify icons/*.png
+      - name: Enregistrer
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git rm -q .github/workflows/logo.yml
+          git add icons
+          git commit -m "Icônes de l'appli fabriquées à partir du logo actuel"
+          git push
