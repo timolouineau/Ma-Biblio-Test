@@ -38,6 +38,11 @@ service cloud.firestore {
           allow write: if isUser(userId);
         }
 
+        // TÉLÉPHONES où j'ai activé les notifications : privés (moi seul)
+        match /pushTokens/{tokenId} {
+          allow read, write: if isUser(userId);
+        }
+
         // NOTIFICATIONS : privées. Les autres peuvent seulement en déposer une,
         // signée de leur propre identifiant (impossible d'usurper quelqu'un).
         match /notifications/{notifId} {

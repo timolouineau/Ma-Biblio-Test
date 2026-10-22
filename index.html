@@ -1340,6 +1340,8 @@
         // Déconnexion : on efface aussi la copie locale (rien ne reste sur un appareil partagé)
         window.logout = async () => {
             if (!(await window.ui.confirm('Se déconnecter ?', { okLabel: 'Déconnexion' }))) return;
+            // Ce téléphone ne doit plus recevoir les notifications de ce compte
+            try { if (window.disablePush) await window.disablePush(true); } catch (e) { console.warn(e); }
             try { await signOut(auth); } catch (e) { console.error(e); }
             try { await terminate(db); await clearIndexedDbPersistence(db); } catch (e) { console.warn('Copie locale non effacée', e); }
             location.reload();
@@ -3390,6 +3392,7 @@
                     </div>` : ''}
 
                     ${window.installCardHtml ? window.installCardHtml() : ''}
+                    ${window.pushCardHtml ? window.pushCardHtml() : ''}
                     <div class="ios-group !mx-0 mt-8"><div class="ios-cell !border-0 cursor-pointer" onclick="window.openFeedbackModal()"><span class="cell-icon" style="background:var(--miel-tint)"><i class="fa-regular fa-envelope"></i></span><span class="font-bold text-sm flex-1 text-left">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></div></div>
                     <div class="ios-group !mx-0 mt-3"><div class="ios-cell !border-0 cursor-pointer justify-center" onclick="window.logout()"><span class="text-red-600 font-bold text-sm">Déconnexion</span></div></div>
                 </div>`;
@@ -4506,13 +4509,147 @@ window.startStatsEnrichment = async () => {
             window.ui.toast("Installe MaBiblio sur ton téléphone", { actionLabel: 'Comment ?', onAction: () => window.installApp(), duration: 9000 });
         }, 6000);
 
+        /* --- J.7 NOTIFICATIONS SUR LE TÉLÉPHONE (push) ---
+           Chaque notification de l'app (j'aime, commentaire, mention, abonnement, conseil) est envoyée
+           sur le téléphone par un petit programme Firebase (dossier functions/). Ici : l'abonnement du téléphone.
+           Le téléphone est enregistré dans users/{moi}/pushTokens (privé, lisible par moi seul).
+           Sans clé VAPID dans config.js, tout ce bloc reste inactif (aucun bouton affiché). */
+        const VAPID_KEY = window.MABIBLIO_VAPID_KEY || '';
+        const PUSH_LS = 'mabiblio_push_device';
+        const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        const pushPermission = () => ('Notification' in window) ? Notification.permission : 'unsupported';
+        const myPushDevice = () => { try { return localStorage.getItem(PUSH_LS) || ''; } catch (e) { return ''; } };
+        const sha = async (txt) => {
+            try {
+                const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+                return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+            } catch (e) { return String(txt).replace(/[^A-Za-z0-9_-]/g, '').slice(-40); }
+        };
+        let messagingMod = null;
+        const getPushToken = async () => {
+            const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, rej) => setTimeout(() => rej(new Error('service worker absent')), 8000))]);
+            if (!messagingMod) messagingMod = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js');
+            if (messagingMod.isSupported && !(await messagingMod.isSupported())) throw new Error('non pris en charge');
+            const messaging = messagingMod.getMessaging(app);
+            return messagingMod.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+        };
+        const saveDevice = async (token) => {
+            const id = await sha(token);
+            const ua = navigator.userAgent;
+            const platform = isIOS() ? 'iPhone/iPad' : /Android/i.test(ua) ? 'Android' : 'Ordinateur';
+            await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', id), { token, platform, createdAt: Date.now(), lastSeen: Date.now() });
+            try { localStorage.setItem(PUSH_LS, id); } catch (e) {}
+            return id;
+        };
+        window.enablePush = async () => {
+            if (!VAPID_KEY || !window.currentUser) return;
+            if (isIOS() && !isStandalone()) {
+                window.ui.alert("Sur iPhone, les notifications marchent seulement avec l'appli installée.\n\n1. Touche Partager (le carré avec une flèche)\n2. Choisis « Sur l'écran d'accueil »\n3. Ouvre MaBiblio depuis son icône, puis reviens ici.");
+                return;
+            }
+            if (!pushSupported()) {
+                window.ui.alert(isIOS()
+                    ? "Ton iPhone ne permet pas encore les notifications pour cette appli.\n\n• Vérifie qu'il est à jour (iOS 16.4 ou plus récent).\n• Si MaBiblio était déjà sur ton écran d'accueil avant cette version : supprime son icône puis ajoute-la à nouveau (Partager → Sur l'écran d'accueil). Ta bibliothèque n'est pas perdue, il faudra juste te reconnecter."
+                    : "Ce navigateur ne permet pas les notifications. Essaie avec Chrome, ou installe l'appli.");
+                return;
+            }
+            let perm = pushPermission();
+            if (perm === 'default') perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+                window.ui.alert("Les notifications sont refusées pour MaBiblio.\n\nPour les autoriser : Réglages du téléphone → Notifications → MaBiblio (ou les réglages du site dans ton navigateur).");
+                if (window.currentView === 'profile') window.renderProfile();
+                return;
+            }
+            try {
+                const token = await getPushToken();
+                if (!token) throw new Error('pas de jeton');
+                await saveDevice(token);
+                window.ui.toast('Notifications activées sur ce téléphone ✓');
+            } catch (e) {
+                console.error('Notifications', e);
+                window.ui.alert("Les notifications n'ont pas pu être activées. Vérifie ta connexion et réessaie.");
+            }
+            if (window.currentView === 'profile') window.renderProfile();
+        };
+        // Désactivation sur CE téléphone (aussi appelée à la déconnexion, pour ne plus recevoir les notifications du compte)
+        window.disablePush = async (silent = false) => {
+            const id = myPushDevice();
+            try { localStorage.removeItem(PUSH_LS); } catch (e) {}
+            try {
+                if (messagingMod) await messagingMod.deleteToken(messagingMod.getMessaging(app));
+            } catch (e) { /* jeton déjà invalide */ }
+            if (id && window.currentUser) {
+                try { await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', id)); } catch (e) { console.warn(e); }
+            }
+            if (!silent) { window.ui.toast('Notifications désactivées sur ce téléphone'); if (window.currentView === 'profile') window.renderProfile(); }
+        };
+        // À chaque ouverture : le jeton du téléphone est rafraîchi (il peut changer) — sans rien demander
+        window.refreshPushDevice = async () => {
+            if (!VAPID_KEY || !window.currentUser || !myPushDevice() || pushPermission() !== 'granted' || !pushSupported()) return;
+            try {
+                const token = await getPushToken();
+                if (!token) return;
+                const id = await sha(token);
+                if (id !== myPushDevice()) {
+                    try { await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', myPushDevice())); } catch (e) {}
+                    await saveDevice(token);
+                } else {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', id), { token, lastSeen: Date.now() }, { merge: true });
+                }
+            } catch (e) { console.warn('Rafraîchissement des notifications', e); }
+        };
+        window.pushCardHtml = () => {
+            if (!VAPID_KEY) return '';
+            const on = !!myPushDevice() && pushPermission() === 'granted';
+            const oldIOS = isIOS() && isStandalone() && !pushSupported();
+            const sub = on ? 'Activées sur ce téléphone' : oldIOS ? "Réinstalle l'appli pour les recevoir (10 secondes)" : pushPermission() === 'denied' ? 'Refusées dans les réglages du téléphone' : 'Likes, commentaires, abonnements, conseils…';
+            return `<div class="install-card" style="background:var(--mint);margin-top:12px" role="button" onclick="${on ? 'window.disablePush()' : 'window.enablePush()'}"><span class="cell-icon" style="background:#fff"><i class="fa-${on ? 'solid' : 'regular'} fa-bell"></i></span><span class="flex-1 text-left"><span class="block font-extrabold text-[15px]">${on ? 'Notifications activées' : 'Activer les notifications'}</span><span class="block text-xs font-semibold" style="color:#1F4D3B">${sub}</span></span><span class="text-xs font-extrabold">${on ? 'Désactiver' : '<i class="fa-solid fa-chevron-right"></i>'}</span></div>`;
+        };
+        // Ouverture depuis une notification du téléphone : on va directement au bon endroit
+        window.openFromPush = (notifId, tries = 0) => {
+            if (!notifId || typeof notifId !== 'string') return;
+            const list = (window.extState && window.extState.notifications) || [];
+            const n = list.find(x => x.id === notifId);
+            if (!n && tries < 12) { setTimeout(() => window.openFromPush(notifId, tries + 1), 500); return; }
+            if (!n) { window.openNotifications(); return; }
+            if (n.type === 'reco') window.openRecoNotif(n.id);
+            else if (n.type === 'follow') window.openPublicProfile(n.fromUid);
+            else if (n.type === 'like') window.goToActivity(n.actId);
+            else window.goToActivityComments(n.actId);
+        };
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (e) => {
+                if (e.data && e.data.type === 'open-notif') window.openFromPush(String(e.data.notifId || ''));
+            });
+        }
+        (() => {
+            // Appli lancée par un toucher sur une notification : ?notif=<id>
+            const m = location.search.match(/[?&]notif=([A-Za-z0-9_-]{1,64})/);
+            if (!m) return;
+            const notifId = m[1];
+            try { history.replaceState(null, '', location.pathname); } catch (e) {}
+            const go = () => window.currentUser ? window.openFromPush(notifId) : setTimeout(go, 400);
+            setTimeout(go, 600);
+        })();
+        // Proposition discrète d'activer les notifications (appli installée, une fois par mois au plus)
+        setTimeout(() => {
+            if (!VAPID_KEY || !window.currentUser) return;
+            window.refreshPushDevice();
+            if (myPushDevice() || pushPermission() !== 'default' || !isStandalone()) return;
+            let last = 0;
+            try { last = Number(localStorage.getItem('mabiblio_push_hint')) || 0; } catch (e) {}
+            if (Date.now() - last < 30 * 86400000) return;
+            try { localStorage.setItem('mabiblio_push_hint', String(Date.now())); } catch (e) {}
+            window.ui.toast('Reçois une notification quand tes amis réagissent', { actionLabel: 'Activer', onAction: () => window.enablePush(), duration: 10000 });
+        }, 4000);
+
         // Service worker : uniquement sur le vrai site (https), jamais en test local (fichier ou banc d'essai)
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location.hostname === 'localhost' && /[?&]swtest\b/.test(location.search)))) {
             const registerSW = () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker', e));
             if (document.readyState === 'complete') registerSW(); else window.addEventListener('load', registerSW);
         }
 
-        console.log("MaBiblio v5.0 (appli installable)");
+        console.log("MaBiblio v5.1 (appli installable + notifications)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();

@@ -3,7 +3,7 @@
    RÈGLE D'OR : la page elle-même (index.html, config.js…) vient TOUJOURS d'Internet quand il y en a.
    Personne ne peut donc rester bloqué sur une ancienne version. Le cache ne sert qu'en secours, hors ligne.
    Les données (Firebase) et les recherches (TMDB, Google Livres, Deezer…) ne passent JAMAIS par ce cache. */
-const VERSION = 'mabiblio-v1';
+const VERSION = 'mabiblio-v2';
 const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 // Fichiers externes qui ne changent jamais (versions figées) : servis depuis le cache une fois téléchargés
 const IMMUTABLE = [/^https:\/\/www\.gstatic\.com\/firebasejs\/\d+\.\d+\.\d+\//, /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/font-awesome\/\d/, /^https:\/\/fonts\.gstatic\.com\//];
@@ -54,4 +54,43 @@ self.addEventListener('fetch', (event) => {
     if (IMMUTABLE.some(r => r.test(url))) { event.respondWith(cacheFirst(req)); return; }
     if (NETWORK_FIRST.some(r => r.test(url))) { event.respondWith(networkFirst(req)); return; }
     // Tout le reste (Firebase, recherches, affiches…) : le navigateur s'en occupe normalement
+});
+
+/* --- Notifications reçues sur le téléphone ---
+   Le programme d'envoi (functions/index.js) transmet { title, body, url, tag } dans « data ».
+   Chaque message reçu est TOUJOURS affiché (obligatoire sur iPhone). */
+self.addEventListener('push', (event) => {
+    let d = {};
+    try {
+        const j = event.data ? event.data.json() : {};
+        d = (j && (j.data || j.notification)) || j || {};
+    } catch (e) {
+        try { d = { body: event.data ? event.data.text() : '' }; } catch (err) { d = {}; }
+    }
+    const title = String(d.title || 'MaBiblio').slice(0, 120);
+    const body = String(d.body || 'Nouvelle activité').slice(0, 240);
+    const url = /^\.\/\?notif=[A-Za-z0-9_-]{1,64}$/.test(String(d.url || '')) ? d.url : './';
+    event.waitUntil(self.registration.showNotification(title, {
+        body,
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-192.png',
+        tag: String(d.tag || '').slice(0, 64) || undefined,
+        data: { url }
+    }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || './';
+    const m = url.match(/notif=([A-Za-z0-9_-]{1,64})/);
+    event.waitUntil((async () => {
+        const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const win = wins.find(w => w.url.startsWith(self.registration.scope));
+        if (win) {
+            await win.focus();
+            if (m) win.postMessage({ type: 'open-notif', notifId: m[1] });
+            return;
+        }
+        await self.clients.openWindow(new URL(url, self.registration.scope).href);
+    })());
 });

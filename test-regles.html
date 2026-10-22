@@ -141,6 +141,7 @@
         const profA = (db) => doc(db, 'artifacts', APP, 'users', A.uid, 'profile', 'info');
         const itemA = (db) => doc(db, 'artifacts', APP, 'users', A.uid, 'items', 'Film_test_regles');
         const notifA = (db) => collection(db, 'artifacts', APP, 'users', A.uid, 'notifications');
+        const phoneA = (db) => doc(db, 'artifacts', APP, 'users', A.uid, 'pushTokens', 'test_regles');
         let originalProfile = null, postId = null, notifIds = [], extraPosts = [];
 
         try {
@@ -165,6 +166,7 @@
             await expect("B cherche des profils (recherche d'amis)", 'allow', () => getDocs(query(collectionGroup(dbB, 'profile'), limit(5))));
             await expect("B liste ses abonnés", 'allow', () => getDocs(query(collectionGroup(dbB, 'profile'), where('following', 'array-contains', B.uid))));
             await expect("B se retire des abonnements de A (« Retirer »)", 'allow', () => updateDoc(profA(dbB), { following: arrayRemove(B.uid) }));
+            await expect("A enregistre son téléphone pour les notifications", 'allow', () => setDoc(phoneA(dbA), { token: 'jeton-de-test-invalide', platform: 'test', createdAt: Date.now(), lastSeen: Date.now() }));
 
             // ---------- Ce qui doit être bloqué ----------
             await expect("B modifie une œuvre de A", 'deny', () => updateDoc(itemA(dbB), { rating: 1 }));
@@ -180,6 +182,8 @@
             await expect("B publie un post au nom de A", 'deny', async () => { const r = await addDoc(collection(dbB, 'artifacts', APP, 'public', 'data', 'activity'), { userId: A.uid, itemTitle: 'Faux', timestamp: Date.now(), likes: [], comments: [] }); extraPosts.push(r.id); });
             await expect("B envoie une notification en se faisant passer pour A", 'deny', async () => { const r = await addDoc(notifA(dbB), { type: 'like', fromUid: A.uid, text: 'faux', timestamp: Date.now(), read: false }); notifIds.push(r.id); });
             await expect("B lit les notifications de A", 'deny', () => getDocs(notifA(dbB)));
+            await expect("B lit les téléphones de A", 'deny', () => getDocs(collection(dbB, 'artifacts', APP, 'users', A.uid, 'pushTokens')));
+            await expect("B ajoute son téléphone dans le compte de A", 'deny', () => setDoc(doc(dbB, 'artifacts', APP, 'users', A.uid, 'pushTokens', 'intrus'), { token: 'x' }));
             await expect("B lit une zone inconnue de la base", 'deny', () => getDocs(collection(dbB, 'zone-inconnue')));
         } catch (e) {
             addRow('Préparation du test (compte A)', 'allow', false, e.code || e.message);
@@ -187,6 +191,7 @@
             // ---------- Nettoyage (en tant que A) ----------
             try { if (postId) await deleteDoc(doc(dbA, 'artifacts', APP, 'public', 'data', 'activity', postId)); } catch (e) { console.error(e); }
             try { await deleteDoc(itemA(dbA)); } catch (e) { console.error(e); }
+            try { await deleteDoc(phoneA(dbA)); } catch (e) { console.error(e); }
             try { await deleteDoc(doc(dbA, 'artifacts', APP, 'users', A.uid, 'items', 'Film_intrus')); } catch (e) { console.error(e); }
             for (const id of extraPosts) { try { await deleteDoc(doc(dbA, 'artifacts', APP, 'public', 'data', 'activity', id)); } catch (e) { console.error(e); } }
             for (const id of notifIds) { try { await deleteDoc(doc(dbA, 'artifacts', APP, 'users', A.uid, 'notifications', id)); } catch (e) { console.error(e); } }
