@@ -8,10 +8,16 @@
     <meta name="apple-mobile-web-app-title" content="MaBiblio">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
-    <link rel="icon" type="image/png" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <!-- Barre d'état claire avec texte foncé (lisible sur le fond crème de la nouvelle DA) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#F6F3EE">
+    <meta name="description" content="Ta bibliothèque de films, séries, livres, albums et vidéos, à partager avec tes amis.">
+
+    <!-- Appli installable : manifeste + icônes (fichiers à côté de index.html) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="icons/favicon-64.png">
     
     <!-- Configuration Firebase : fichier séparé, DIFFÉRENT dans le dépôt test et le dépôt en ligne -->
     <script src="config.js"></script>
@@ -153,6 +159,8 @@
         .pv-ring small { font-size: 10px; font-weight: 700; color: var(--muted); }
         .pv-title { font-family: var(--font-display); font-size: 30px; font-weight: 800; line-height: 1.05; margin: 0 0 8px; }
         .pv-meta { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 14px; }
+        .pv-metric-edit { font: inherit; color: inherit; background: var(--ground); border-radius: 10px; padding: 2px 8px; }
+        .pv-metric-edit i { font-size: 10px; margin-left: 2px; opacity: .7; }
         .pv-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 12px; font-size: 12px; font-weight: 700; background: var(--ground); }
         .pv-info { background: var(--ground); border-radius: 22px; padding: 16px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px 16px; margin-bottom: 18px; }
         .pv-label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
@@ -267,7 +275,101 @@
         .stat-bar > span { display: block; height: 100%; background: var(--ink); border-radius: 4px; transition: width 1s ease-out; }
         .goal-input { width: 44px; flex-shrink: 0; height: 30px; border-radius: 15px; border: none; background: rgba(255,255,255,.7); text-align: center; font-family: inherit; font-weight: 800; font-size: 12px; color: var(--ink); outline: none; }
         .goal-input:focus { background: #fff; }
+        .goal-input { padding: 0; -moz-appearance: textfield; appearance: textfield; }
+        .goal-input::-webkit-inner-spin-button, .goal-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        /* Petits écrans (iPhone SE, anciens Android) : cartes de stats un peu plus serrées */
+        @media (max-width: 370px) {
+            .stats-grid { gap: 8px; }
+            .stat-tile { padding: 12px; min-height: 160px; }
+            .stat-tile .big { font-size: 30px; }
+            .stat-tile .fa-solid, .stat-tile .fa-brands { display: none; }
+            .goal-input { width: 38px; font-size: 11px; }
+        }
 
+
+        /* --- STATISTIQUES DÉTAILLÉES --- */
+        .st-tabs { padding-top: 16px; padding-bottom: 6px; }
+        .st-card { background: #fff; border-radius: 26px; padding: 18px 16px; margin-bottom: 14px; }
+        .st-h { font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 12px; }
+        .st-h-out { margin: 22px 2px 12px; font-size: 22px; }
+        .st-empty { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
+        .st-note { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 0; }
+        .st-lead { font-size: 14px; font-weight: 700; margin: 4px 0 10px; }
+        .st-sub { display: flex; gap: 8px; margin: 2px 0 14px; }
+        .st-sub .type-chip { height: 36px; font-size: 13px; padding: 0 14px; }
+        .st-avg { margin-top: 12px; font-size: 13px; font-weight: 600; color: #C9C5D3; }
+        .st-avg i { color: var(--miel); margin-right: 2px; } .st-avg b { color: #fff; font-size: 15px; } .st-avg span { opacity: .8; }
+        .st-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .st-minis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .st-mini { border-radius: 20px; padding: 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .st-mini i { font-size: 13px; margin-bottom: 4px; }
+        .st-mini-big { font-family: var(--font-display); font-size: 22px; font-weight: 800; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .st-mini-l { font-size: 12px; font-weight: 700; color: #3B3842; }
+        .st-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .st-rank li { display: flex; gap: 10px; align-items: center; }
+        .st-rank-n { width: 26px; height: 26px; border-radius: 50%; background: var(--ground); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .st-rank-body { flex: 1; min-width: 0; }
+        .st-rank-line { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+        .st-rank-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .st-rank-val { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+        .st-rank-val b { color: var(--ink); }
+        .st-rank-bar { height: 6px; border-radius: 3px; background: var(--ground); margin-top: 5px; overflow: hidden; }
+        .st-rank-bar span { display: block; height: 100%; border-radius: 3px; }
+        .st-chart { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; height: 150px; align-items: end; }
+        .st-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+        .st-col-v { font-size: 10px; font-weight: 800; color: var(--muted); margin-bottom: 3px; min-height: 13px; }
+        .st-col-bar { width: 100%; max-width: 30px; border-radius: 8px 8px 4px 4px; overflow: hidden; display: flex; flex-direction: column-reverse; background: transparent; min-height: 0; }
+        .st-col-bar span { display: block; width: 100%; }
+        .st-col-l { font-size: 10px; font-weight: 700; color: var(--muted); margin-top: 5px; white-space: nowrap; }
+        .st-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--muted); }
+        .st-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+        .st-long { display: flex; gap: 14px; align-items: center; }
+        .st-long-img { width: 64px; height: 96px; border-radius: 14px; object-fit: cover; flex-shrink: 0; background: #E9E3DA; }
+        .st-long-pages { display: inline-block; margin-top: 8px; background: var(--miel); border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: 800; }
+        .st-big-line { display: flex; flex-direction: column; gap: 6px; }
+        .st-sentences { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .st-sentences li { display: flex; gap: 12px; align-items: center; font-size: 14px; line-height: 1.35; }
+        .st-score { width: 44px; height: 44px; border-radius: 14px; background: var(--miel-tint); font-family: var(--font-display); font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .st-pill { display: inline-flex; gap: 6px; align-items: center; height: 34px; padding: 0 14px; border-radius: 17px; font-size: 13px; font-weight: 700; }
+        .st-banner { background: var(--lav-tint); border-radius: 20px; padding: 12px 14px; margin: 10px 0 4px; font-size: 13px; font-weight: 700; }
+        .story.is-picked .story-name { font-weight: 800; }
+        .st-aff { background: var(--ink); color: #fff; border-radius: 30px; padding: 22px; text-align: center; margin: 4px 0 14px; }
+        .st-aff-pct { font-family: var(--font-display); font-size: 64px; font-weight: 800; line-height: 1; }
+        .st-aff-pct small { font-size: 30px; }
+        .st-aff-l { font-size: 15px; font-weight: 700; margin-top: 6px; }
+        .st-aff-s { font-size: 12px; font-weight: 600; color: #C9C5D3; margin-top: 4px; }
+        .st-duo-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: flex-end; font-size: 12px; font-weight: 700; color: var(--muted); margin: -4px 0 10px; }
+        .st-duo-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+        .st-duo-head { display: flex; justify-content: flex-end; gap: 6px; font-size: 11px; font-weight: 800; color: var(--muted); margin: -4px 0 6px; }
+        .st-duo-head span, .st-duo span { width: 40px; text-align: center; }
+        .st-commons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .st-common { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .st-common-img { width: 38px; height: 54px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #E9E3DA; }
+        .st-duo { display: flex; gap: 6px; flex-shrink: 0; }
+        .st-duo span { height: 30px; border-radius: 10px; background: var(--miel); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+        .st-duo span.is-friend, .st-duo-head span.is-friend { background: var(--lav); }
+        .st-duo-head span.is-friend { background: transparent; }
+        .st-recos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .st-reco { position: relative; cursor: pointer; min-width: 0; }
+        .st-reco-img { width: 100%; aspect-ratio: 2/3; border-radius: 14px; object-fit: cover; background: #E9E3DA; display: block; }
+        .st-reco-t { display: block; font-size: 12px; font-weight: 700; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .st-lead-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+        .st-lead-row { display: flex; gap: 12px; align-items: flex-start; }
+        .st-lead-av { width: 44px; height: 44px; border-radius: 50%; padding: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: var(--font-display); font-weight: 800; }
+        .st-lead-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .st-podium { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
+        .st-podium b { color: var(--ink); }
+        .st-medal { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; font-style: normal; font-size: 9px; font-weight: 800; align-items: center; justify-content: center; margin-right: 4px; background: #F1ECE4; color: var(--ink); }
+        .st-medal.m0 { background: var(--miel); } .st-medal.m1 { background: #E4DED4; } .st-medal.m2 { background: #F3C9A8; }
+        .st-hl { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+        .st-more { width: 100%; height: 44px; border-radius: 22px; background: var(--ground); font-weight: 800; font-size: 14px; margin-top: 12px; }
+        .st-reco-btn { height: 34px; padding: 0 14px; border-radius: 17px; background: var(--ink); color: #fff; font-weight: 800; font-size: 12px; flex-shrink: 0; white-space: nowrap; display: inline-flex; align-items: center; }
+        .st-reco-btn.is-sent { background: var(--mint-tint); color: #1F7A57; }
+        .st-reco-search { position: relative; margin-top: 14px; }
+        .st-reco-search i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #85808D; font-size: 13px; }
+        .st-reco-search input { width: 100%; height: 46px; border-radius: 23px; background: var(--ground); border: none; outline: none; padding: 0 16px 0 40px; font-family: inherit; font-weight: 600; font-size: 14px; }
+        .st-reco-note { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         /* Fenêtres et messages de l'app */
         .ui-overlay { position: fixed; inset: 0; z-index: 40000; background: rgba(22,21,26,.38); display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; transition: opacity .18s; }
         .ui-overlay.show { opacity: 1; }
@@ -289,6 +391,7 @@
         .grid-item.is-selected .sel-check { background: var(--ink); color: #fff; }
         .grid-item.is-selected { outline: 3px solid var(--lav-deep); outline-offset: -3px; }
         .grid-item.is-selected img { opacity: .75; }
+        .install-card { display: flex; align-items: center; gap: 12px; background: var(--lav); border-radius: 24px; padding: 14px 16px; margin-top: 28px; cursor: pointer; }
         .bio-text { font-size: 14px; color: var(--muted); margin-top: 8px; line-height: 1.45; padding: 0 20px; font-weight: 500; }
     </style>
 </head>
@@ -548,7 +651,7 @@
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, terminate, clearIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, terminate, clearIndexedDbPersistence, getCountFromServer } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- A.2 CONFIGURATION DU PROJET ---
            La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
@@ -979,6 +1082,7 @@
                     ...doc.data()
                 })).filter(i => !HIDDEN_TYPES.includes(i.type));
                 window.refreshCurrentView();
+                if (window.scheduleStatsSummary) window.scheduleStatsSummary(); // résumé pour les classements entre amis
             }, (err) => console.error('Écoute bibliothèque', err));
         };
 
@@ -1236,6 +1340,8 @@
         // Déconnexion : on efface aussi la copie locale (rien ne reste sur un appareil partagé)
         window.logout = async () => {
             if (!(await window.ui.confirm('Se déconnecter ?', { okLabel: 'Déconnexion' }))) return;
+            // Ce téléphone ne doit plus recevoir les notifications de ce compte
+            try { if (window.disablePush) await window.disablePush(true); } catch (e) { console.warn(e); }
             try { await signOut(auth); } catch (e) { console.error(e); }
             try { await terminate(db); await clearIndexedDbPersistence(db); } catch (e) { console.warn('Copie locale non effacée', e); }
             location.reload();
@@ -1415,6 +1521,12 @@
 
         window.openSearchModal = () => {
             const modal = document.getElementById('search-modal');
+            // Depuis une catégorie de la bibliothèque (ex. Livres), la recherche s'ouvre directement sur cette catégorie
+            if (window.currentView === 'home' && CONFIG[window.currentType] && searchType !== window.currentType) {
+                searchType = window.currentType;
+                document.getElementById('search-results').innerHTML = '';
+                document.getElementById('search-input').value = '';
+            }
             modal.classList.add('open');
             window.renderSearchTypeChips();
         };
@@ -1819,7 +1931,7 @@
                     ${item.rating ? `<div class="pv-ring" aria-label="Note"><span><b>${esc(item.rating)}</b><small>/ 10</small></span></div>` : ''}
                     <div class="${item.rating ? 'pr-24' : ''}">
                         <h2 class="pv-title">${esc(item.title)}</h2>
-                        <p class="pv-meta"><span class="cat-chip mr-1" style="background:${cat.c}">${esc(item.type)}</span> ${metricDisplay}${platformBadge}</p>
+                        <p class="pv-meta"><span class="cat-chip mr-1" style="background:${cat.c}">${esc(item.type)}</span> ${isMine ? `<button type="button" class="pv-metric-edit" onclick="window.editItemMetric()" aria-label="Corriger">${metricDisplay} <i class="fa-solid fa-pen"></i></button>` : metricDisplay}${platformBadge}</p>
                     </div>
                     ${chips.length ? `<div class="flex flex-wrap gap-1.5 mb-4">${chips.join('')}</div>` : ''}
                     ${metaInfos}
@@ -1832,6 +1944,23 @@
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+
+        // Corriger le nombre de pages d'un livre (souvent faux), la durée d'un film, le nombre de saisons…
+        window.editItemMetric = async () => {
+            const it = window.tempItem;
+            if (!it || !it.docId || it._fromFriend || !window.currentUser) return;
+            const label = { 'Livre': 'Nombre de pages', 'Série': 'Nombre de saisons vues', 'Album': 'Nombre de titres', 'Film': 'Durée (en minutes)', 'YouTube': 'Durée (en minutes)' }[it.type] || 'Valeur';
+            const v = await window.ui.prompt(label, String(num(it.metricValue) || ''), { maxLength: 6 });
+            if (v === null) return;
+            const n = parseInt(String(v).replace(/\s/g, ''), 10);
+            if (!Number.isFinite(n) || n < 0 || n > 100000) { window.ui.alert('Entre un nombre entre 0 et 100 000.'); return; }
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', it.docId), { metricValue: n });
+                it.metricValue = n;
+                if (document.getElementById('preview-modal').classList.contains('open') && window.tempItem === it) window.openPreview(it);
+                window.ui.toast('Corrigé ✓');
+            } catch (e) { console.error(e); window.ui.alert("La correction n'a pas pu être enregistrée."); }
+        };
 
         // Après ouverture d'un résultat de recherche : on charge le détail puis on rafraîchit la fiche
         const _openPreviewBase = window.openPreview;
@@ -2395,6 +2524,11 @@
             } else {
                 badge.classList.remove('active');
             }
+            // Pastille rouge sur l'icône de l'appli (écran d'accueil du téléphone)
+            try {
+                if (count > 0 && navigator.setAppBadge) navigator.setAppBadge(count).catch(() => {});
+                else if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+            } catch (e) {}
         };
 
         window.goToActivity = (actId) => {
@@ -2672,7 +2806,10 @@
                 const isLikePost = n.type === 'like'; // Action spécifique pour le "like" normal
                 
                 let action = '';
-                if (isFollow) {
+                const isReco = n.type === 'reco';
+                if (isReco) {
+                    action = `window.openRecoNotif(${jsArg(n.id)})`;
+                } else if (isFollow) {
                     action = `window.openPublicProfile(${jsArg(n.fromUid)})`;
                 } else if (isLikePost) {
                     // On bascule sur le Feed, et on scrolle doucement jusqu'au post
@@ -2687,8 +2824,9 @@
                 if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'background:#DDF6EC;color:#1F7A57'; } 
                 else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'background:#FFE4F0;color:#D6336C'; } 
                 else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'background:#FFF1D6;color:#8A5A00'; } 
+                else if (isReco) { icon = '<i class="fa-solid fa-hand-holding-heart"></i>'; color = 'background:#FFE5DE;color:#B23A22'; } 
                 const content = isFollow ? `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> <span class="font-bold text-gray-800">${esc(n.message)}</span>` : `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> ${esc(n.text || n.message)}`;
-                const subText = isFollow ? 'Voir le profil' : `Sur ${esc(n.itemTitle || 'un post')}`;
+                const subText = isFollow ? 'Voir le profil' : isReco ? (n.note ? `« ${esc(n.note)} »` : "Voir l'œuvre") : `Sur ${esc(n.itemTitle || 'un post')}`;
                 return `<div class="notif-item cursor-pointer flex items-start gap-3" onclick="${action}">
                     <div class="notif-icon" style="${color}">${icon}</div>
                     <div class="flex-1">
@@ -3258,6 +3396,8 @@
                             </div>`).join('')}
                     </div>` : ''}
 
+                    ${window.installCardHtml ? window.installCardHtml() : ''}
+                    ${window.pushCardHtml ? window.pushCardHtml() : ''}
                     <div class="ios-group !mx-0 mt-8"><div class="ios-cell !border-0 cursor-pointer" onclick="window.openFeedbackModal()"><span class="cell-icon" style="background:var(--miel-tint)"><i class="fa-regular fa-envelope"></i></span><span class="font-bold text-sm flex-1 text-left">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></div></div>
                     <div class="ios-group !mx-0 mt-3"><div class="ios-cell !border-0 cursor-pointer justify-center" onclick="window.logout()"><span class="text-red-600 font-bold text-sm">Déconnexion</span></div></div>
                 </div>`;
@@ -3551,65 +3691,165 @@
 
     window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
 
-        /* --- J.4 RENDU DES STATISTIQUES (CORRIGÉ LOGO YOUTUBE) --- */
+        /* --- J.4 STATISTIQUES DÉTAILLÉES ---
+           6 onglets : Vue d'ensemble, Films & séries, Livres, Musique, Habitudes, Affinité.
+           Les infos manquantes des œuvres déjà enregistrées (genres, réalisateur, acteurs, pays, langue,
+           durée…) sont complétées automatiquement en arrière-plan (voir J.4.a). */
 window.toggleStatsMode = (mode) => {
     if (!window.extState) window.extState = {};
     window.extState.statsMode = mode;
     window.renderStatsView();
 };
 
-window.renderStatsView = () => {
-    // Initialisation
-    if (!window.extState) window.extState = { statsMode: 'all' };
-    
-    const isYear = window.extState.statsMode === 'year';
-    const finished = (window.myCollection || []).filter(i => i.status !== 'Wishlist' && i.status !== 'En cours');
-    
-    let filteredItems = finished;
-    const curYear = new Date().getFullYear().toString();
-    
-    // Filtre Année
-    if (isYear) {
-        // Les œuvres "Non daté" ne comptent pas dans les statistiques de l'année (elles comptent dans "Toujours")
-        filteredItems = finished.filter(i => window.itemYear(i) === curYear);
+const ST = window._statsUI = { tab: 'overview', fs: 'both', friend: null, friendItems: {}, friendLoading: null };
+const STATS_TABS = [['overview', "Vue d'ensemble"], ['affinity', 'Amis'], ['screen', 'Films & séries'], ['books', 'Livres'], ['music', 'Musique']];
+window.setStatsTab = (t) => {
+    if (!STATS_TABS.some(([k]) => k === t)) return;
+    ST.tab = t;
+    window.renderStatsView();
+    const page = document.getElementById('page-scroll'); if (page) page.scrollTop = 0;
+};
+window.setStatsScreenFilter = (v) => { if (['both', 'Film', 'Série'].includes(v)) { ST.fs = v; window.renderStatsView(); } };
+
+// ---------- Outils de calcul ----------
+const isDone = (i) => i && i.status !== 'Wishlist' && i.status !== 'En cours';
+const ratingOf = (i) => { const r = num(i && i.rating, NaN); return Number.isFinite(r) && r > 0 ? r : null; };
+const yearOfRelease = (i) => { const m = String((i && i.releaseDate) || '').match(/^(1[89]\d\d|20\d\d)/); return m ? +m[1] : null; };
+const monthKeyOf = (i) => { const d = window.itemDateKey(i); return /^(19|20)\d\d-\d\d/.test(d) ? d.slice(0, 7) : null; };
+const fr1 = (n) => Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+const frInt = (n) => Math.round(Number(n) || 0).toLocaleString('fr-FR');
+const MONTHS_S = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const MONTHS_L = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const DNAMES = (() => { try { return { lang: new Intl.DisplayNames(['fr'], { type: 'language' }), region: new Intl.DisplayNames(['fr'], { type: 'region' }) }; } catch (e) { return null; } })();
+const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const langName = (c) => { const k = String(c || '').trim(); if (!k || k === 'xx') return ''; try { return cap(DNAMES ? DNAMES.lang.of(k) : k.toUpperCase()); } catch (e) { return k.toUpperCase(); } };
+const regionName = (c) => { const k = String(c || '').trim().toUpperCase(); if (!/^[A-Z]{2}$/.test(k)) return ''; try { return DNAMES ? DNAMES.region.of(k) : k; } catch (e) { return k; } };
+
+// Genres de livres : Google Livres et Open Library répondent en anglais → traduction des plus courants
+const BOOK_GENRES = {
+    'fiction': 'Fiction', 'literary': 'Littérature', 'literary fiction': 'Littérature', 'literature': 'Littérature', 'classics': 'Classiques',
+    'thrillers': 'Thriller', 'thriller': 'Thriller', 'suspense': 'Thriller', 'mystery & detective': 'Policier', 'mystery': 'Policier', 'detective and mystery stories': 'Policier', 'crime': 'Policier', 'true crime': 'Faits divers',
+    'science fiction': 'Science-fiction', 'fantasy': 'Fantasy', 'horror': 'Horreur', 'romance': 'Romance', 'love stories': 'Romance', 'historical': 'Historique', 'historical fiction': 'Historique',
+    'juvenile fiction': 'Jeunesse', 'juvenile nonfiction': 'Jeunesse', "children's stories": 'Jeunesse', 'young adult fiction': 'Young adult', 'young adult nonfiction': 'Young adult',
+    'comics & graphic novels': 'BD & romans graphiques', 'comic books, strips, etc.': 'BD & romans graphiques', 'graphic novels': 'BD & romans graphiques', 'manga': 'Manga',
+    'biography & autobiography': 'Biographie', 'biography': 'Biographie', 'autobiography': 'Biographie', 'history': 'Histoire', 'philosophy': 'Philosophie', 'psychology': 'Psychologie',
+    'self-help': 'Développement personnel', 'personal growth': 'Développement personnel', 'business & economics': 'Économie', 'economics': 'Économie', 'political science': 'Politique', 'politics': 'Politique',
+    'science': 'Sciences', 'nature': 'Nature', 'travel': 'Voyage', 'cooking': 'Cuisine', 'health & fitness': 'Santé & forme', 'sports & recreation': 'Sport', 'sports': 'Sport',
+    'political': 'Politique', 'personal memoirs': 'Mémoires', 'memoir': 'Mémoires', 'humor': 'Humour', 'poetry': 'Poésie', 'art': 'Art', 'music': 'Musique', 'religion': 'Religion', 'social science': 'Société', 'essays': 'Essai', 'drama': 'Théâtre',
+    'dystopias': 'Dystopie', 'dystopian': 'Dystopie', 'adventure': 'Aventure', 'action & adventure': 'Aventure', 'war & military': 'Guerre', 'short stories': 'Nouvelles', 'family life': 'Vie de famille'
+};
+const SKIP_GENRE = new Set(['general', 'fiction, general', 'open_syllabus_project', 'accessible book', 'protected daisy', 'in library', 'large type books', 'french fiction', 'american fiction', 'english fiction', 'french literature', 'nyt']);
+const bookGenreNames = (i) => {
+    const out = [];
+    for (const raw of (Array.isArray(i.genres) ? i.genres : [])) {
+        const s = String(raw || '').trim();
+        if (!s || s.includes(':') || s.length > 40) continue;
+        const parts = s.split('/').map(p => p.trim().toLowerCase()).filter(p => p && !SKIP_GENRE.has(p));
+        if (!parts.length) continue;
+        // On garde la partie la plus précise que l'on sait traduire (« Fiction / Thrillers » → Thriller)
+        const known = parts.map(p => BOOK_GENRES[p]).filter(Boolean);
+        const name = known.length ? known[known.length - 1] : (/^[a-z]/.test(parts[0]) && !/[a-z]{3,} [a-z]{3,} [a-z]{3,}/.test(parts[0]) ? null : cap(parts[0]));
+        if (name && !out.includes(name)) out.push(name);
+        if (out.length >= 3) break;
     }
+    return out;
+};
 
-    const sumMetric = (type) => filteredItems.filter(i => i.type === type).reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
-    
-    const totalMinutes = sumMetric('Film');
-    const totalMinutesYT = sumMetric('YouTube');
-    const totalHeuresJeu = sumMetric('Jeu');
+// Comptage : [{ name, count, avg }] trié du plus fréquent au moins fréquent
+const tally = (items, keysOf) => {
+    const m = new Map();
+    items.forEach(i => {
+        const keys = [...new Set((keysOf(i) || []).map(k => String(k || '').trim()).filter(Boolean))];
+        const r = ratingOf(i);
+        keys.forEach(k => { const e = m.get(k) || { name: k, count: 0, sum: 0, n: 0 }; e.count++; if (r !== null) { e.sum += r; e.n++; } m.set(k, e); });
+    });
+    return [...m.values()].map(e => ({ ...e, avg: e.n ? e.sum / e.n : null }))
+        .sort((a, b) => b.count - a.count || (b.avg || 0) - (a.avg || 0) || a.name.localeCompare(b.name));
+};
+const avgRating = (items) => { const rs = items.map(ratingOf).filter(r => r !== null); return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null; };
+const filmMinutes = (i) => num(i.metricValue) || num(i.durationMin);
+// Séries : saisons vues × épisodes par saison × durée d'un épisode (estimation, connue après complétion)
+const seriesMinutes = (i) => (num(i.episodesPerSeason) && num(i.episodeRunTime)) ? Math.max(1, num(i.metricValue) || 1) * num(i.episodesPerSeason) * num(i.episodeRunTime) : 0;
+const directorsOf = (i) => String(i.author || '').split(',').map(s => s.trim()).filter(s => s && s !== 'Inconnu');
+const actorsOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).slice(0, 5).map(s => String(s).trim());
+const countriesOf = (i) => (Array.isArray(i.countryCodes) && i.countryCodes.length ? i.countryCodes.map(regionName) : (Array.isArray(i.countries) ? i.countries : [])).filter(Boolean);
 
-    // Dictionnaire Pluriels
-    const pluralLabels = {
-        'Film': 'Films',
-        'Série': 'Séries',
-        'Livre': 'Livres',
-        'Album': 'Albums',
-        'YouTube': 'YouTube',
-        'Jeu': 'Jeux'
-    };
+// ---------- Petits blocs d'affichage ----------
+const sCard = (title, body, extra = '') => `<section class="st-card" ${extra}><h3 class="st-h">${title}</h3>${body}</section>`;
+const sEmpty = (txt) => `<p class="st-empty">${txt}</p>`;
+const rankList = (rows, color, opts = {}) => {
+    const max = opts.max || 5;
+    const list = rows.slice(0, max);
+    if (!list.length) return sEmpty(opts.empty || 'Pas encore assez d\'infos.');
+    const top = list[0].count || 1;
+    return `<ol class="st-rank">${list.map((r, k) => `
+        <li><span class="st-rank-n">${k + 1}</span><div class="st-rank-body"><div class="st-rank-line"><span class="st-rank-name">${esc(r.name)}</span><span class="st-rank-val">${r.count}${opts.unit ? ' ' + opts.unit(r.count) : ''}${opts.showAvg && r.avg !== null ? ` · <b>${fr1(r.avg)}</b>★` : ''}</span></div><div class="st-rank-bar"><span style="width:${Math.max(6, Math.round(r.count / top * 100))}%;background:${color}"></span></div></div></li>`).join('')}</ol>`;
+};
+// Histogramme vertical, éventuellement empilé par catégorie : cols = [{ label, parts: [{ v, color }] , title }]
+const barChart = (cols, opts = {}) => {
+    const totals = cols.map(c => c.parts.reduce((a, p) => a + p.v, 0));
+    const max = Math.max(1, ...totals);
+    return `<div class="st-chart" style="--n:${cols.length}">${cols.map((c, k) => `
+        <div class="st-col" title="${esc(c.title || '')}"><span class="st-col-v">${totals[k] ? (opts.fmt ? opts.fmt(totals[k]) : totals[k]) : ''}</span>
+            <div class="st-col-bar" style="height:${Math.round(totals[k] / max * 100)}%">${c.parts.filter(p => p.v > 0).map(p => `<span style="flex:${p.v};background:${p.color}"></span>`).join('')}</div>
+            <span class="st-col-l">${esc(c.label)}</span></div>`).join('')}</div>`;
+};
+const miniTile = (bg, icon, big, label) => `<div class="st-mini" style="background:${bg}"><i class="${icon}"></i><span class="st-mini-big">${big}</span><span class="st-mini-l">${label}</span></div>`;
+
+// Période choisie (cette année / toujours)
+const statsScope = () => {
+    if (!window.extState) window.extState = { statsMode: 'all' };
+    const isYear = window.extState.statsMode === 'year';
+    const curYear = String(new Date().getFullYear());
+    const finished = (window.myCollection || []).filter(isDone);
+    const items = isYear ? finished.filter(i => window.itemYear(i) === curYear) : finished;
+    return { isYear, curYear, finished, items };
+};
+// Graphique mois par mois (cette année) ou année par année (toujours)
+const timelineCols = (items, isYear, curYear, valueOf, colorOf) => {
+    const cols = [];
+    if (isYear) {
+        for (let m = 0; m < 12; m++) cols.push({ key: `${curYear}-${String(m + 1).padStart(2, '0')}`, label: MONTHS_S[m].replace('.', ''), title: `${MONTHS_L[m]} ${curYear}` });
+    } else {
+        const years = items.map(i => window.itemYear(i)).filter(Boolean).map(Number);
+        const last = years.length ? Math.max(...years) : +curYear;
+        const first = years.length ? Math.max(Math.min(...years), last - 7) : last;
+        for (let y = first; y <= last; y++) cols.push({ key: String(y), label: String(y), title: String(y) });
+    }
+    return cols.map(c => {
+        const inCol = items.filter(i => isYear ? monthKeyOf(i) === c.key : window.itemYear(i) === c.key);
+        const groups = new Map();
+        inCol.forEach(i => { const col = colorOf(i); groups.set(col, (groups.get(col) || 0) + valueOf(i)); });
+        return { label: c.label, title: c.title, parts: [...groups.entries()].map(([color, v]) => ({ color, v })) };
+    });
+};
+
+// ---------- Onglet 1 : vue d'ensemble ----------
+const statsOverview = (sc) => {
+    const { isYear, curYear, items } = sc;
+    const sumMetric = (type) => items.filter(i => i.type === type).reduce((acc, i) => acc + (num(i.metricValue) || 0), 0);
+    const byType = (t) => items.filter(i => i.type === t);
+    const filmMin = byType('Film').reduce((a, i) => a + filmMinutes(i), 0);
+    const series = byType('Série');
+    const seriesMin = series.reduce((a, i) => a + seriesMinutes(i), 0);
+    const seriesUnknown = series.filter(i => !seriesMinutes(i)).length;
+    const pages = sumMetric('Livre');
+    const musicMin = byType('Album').reduce((a, i) => a + num(i.durationMin), 0);
+    const ytMin = sumMetric('YouTube');
+    const avg = avgRating(items);
+    const rated = items.filter(i => ratingOf(i) !== null).length;
+    const total = items.length;
 
     const stats = [
-        { type: 'Film', key: 'goalFilm', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
-        { type: 'Série', key: 'goalSerie', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || window.userProfile['goalSérie'] || 10, sub: `${sumMetric('Série')} saisons` },
-        { type: 'Livre', key: 'goalLivre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${sumMetric('Livre')} pages` },
-        { type: 'Album', key: 'goalAlbum', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
-        { type: 'YouTube', key: 'goalYouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
-
+        { type: 'Film', key: 'goalFilm', icon: 'fa-film', count: byType('Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(filmMin / 60)}h ${filmMin % 60}m` },
+        { type: 'Série', key: 'goalSerie', icon: 'fa-tv', count: series.length, goal: window.userProfile.goalSerie || window.userProfile['goalSérie'] || 10, sub: `${sumMetric('Série')} saisons` },
+        { type: 'Livre', key: 'goalLivre', icon: 'fa-book-open', count: byType('Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${frInt(pages)} pages` },
+        { type: 'Album', key: 'goalAlbum', icon: 'fa-music', count: byType('Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
+        { type: 'YouTube', key: 'goalYouTube', icon: 'fa-youtube', count: byType('YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(ytMin / 60)}h` }
     ];
+    const pluralLabels = { 'Film': 'Films', 'Série': 'Séries', 'Livre': 'Livres', 'Album': 'Albums', 'YouTube': 'YouTube' };
 
-    const container = document.getElementById('main-content');
-    
-    const switcherHtml = `
-        <div class="stats-toggle" role="tablist" aria-label="Période">
-            <button role="tab" aria-selected="${isYear}" onclick="window.toggleStatsMode('year')" class="${isYear ? 'active' : ''}">Cette année</button>
-            <button role="tab" aria-selected="${!isYear}" onclick="window.toggleStatsMode('all')" class="${!isYear ? 'active' : ''}">Toujours</button>
-        </div>
-    `;
-
-    // Anneau de répartition par catégorie (une couleur par catégorie)
-    const total = filteredItems.length;
+    // Anneau de répartition
     const C = 2 * Math.PI * 40;
     let offset = 0;
     const ringSegs = total > 0 ? stats.filter(s => s.count > 0).map(s => {
@@ -3622,12 +3862,10 @@ window.renderStatsView = () => {
     const cardsHtml = stats.map(s => {
         const showGoal = isYear;
         const prog = showGoal ? Math.min(100, (s.count / (s.goal || 1)) * 100) : 0;
-        const label = pluralLabels[s.type] || s.type;
+        const label = pluralLabels[s.type];
         const iconStyle = s.type === 'YouTube' ? 'fa-brands' : 'fa-solid';
-        const cat = catOf(s.type);
-
         return `
-        <div class="stat-tile" style="background:${cat.c}">
+        <div class="stat-tile" style="background:${catOf(s.type).c}">
             <div class="flex items-center justify-between gap-2">
                 <span class="font-extrabold text-[14px] flex items-center gap-1.5 min-w-0"><i class="${iconStyle} ${s.icon} text-[13px]"></i><span class="truncate">${label}</span></span>
                 ${showGoal ? `<input type="number" value="${num(s.goal)}" onchange="window.updateGoal(${jsArg(s.key)}, this.value)" class="goal-input" aria-label="Objectif ${label}" title="Mon objectif">` : ''}
@@ -3644,33 +3882,410 @@ window.renderStatsView = () => {
         </div>`;
     }).join('');
 
+    const timeTiles = [
+        miniTile(catOf('Film').c, 'fa-solid fa-film', `${frInt(Math.floor(filmMin / 60))} h`, 'de films'),
+        miniTile(catOf('Série').c, 'fa-solid fa-tv', series.length ? `${seriesMin ? '≈ ' : ''}${frInt(Math.floor(seriesMin / 60))} h` : '0 h', 'de séries'),
+        miniTile(catOf('Livre').c, 'fa-solid fa-book-open', frInt(pages), 'pages lues'),
+        miniTile(catOf('Album').c, 'fa-solid fa-music', `${frInt(Math.floor(musicMin / 60))} h`, 'de musique'),
+    ].join('');
+
+    const chart = barChart(timelineCols(items, isYear, curYear, () => 1, i => catOf(i.type).c));
+    const legend = `<div class="st-legend">${['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => `<span><i style="background:${catOf(t).c}"></i>${catOf(t).label}</span>`).join('')}</div>`;
+
+    return `
+        <div class="bg-gray-900 text-white p-5 rounded-[30px] mb-3.5 flex items-center gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="font-extrabold uppercase text-[11px] tracking-widest mb-1.5" style="color:#C9C5D3">Total ${isYear ? curYear : 'global'}</div>
+                <div class="font-display text-[52px] font-extrabold leading-none">${total}</div>
+                <div class="text-sm font-semibold mt-1" style="color:#C9C5D3">œuvres terminées</div>
+                <div class="st-avg"><i class="fa-solid fa-star"></i> ${avg !== null ? `<b>${fr1(avg)}</b> / 10 de moyenne` : 'pas encore de note'}${rated ? ` <span>· ${rated} notée${rated > 1 ? 's' : ''}</span>` : ''}</div>
+            </div>
+            <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="Répartition par catégorie" class="shrink-0">
+                <circle cx="52" cy="52" r="40" fill="none" stroke="#2E2C35" stroke-width="14"/>
+                ${ringSegs}
+            </svg>
+        </div>
+        <h3 class="st-h st-h-out" style="margin-top:6px">${isYear ? 'Mes objectifs' : 'Par catégorie'}</h3>
+        <div class="stats-grid mb-3.5">${cardsHtml}</div>
+        ${sCard(isYear ? 'Mois par mois' : 'Année par année', chart + legend)}
+        ${statsHabits(sc)}`;
+};
+
+// ---------- Onglet 2 : films & séries ----------
+const statsScreen = (sc) => {
+    const pool = sc.items.filter(i => (i.type === 'Film' || i.type === 'Série') && (ST.fs === 'both' || i.type === ST.fs));
+    const films = pool.filter(i => i.type === 'Film');
+    const lav = catOf('Film').c, mint = catOf('Série').c;
+    const color = ST.fs === 'Série' ? mint : lav;
+    const filter = `<div class="st-sub">${[['both', 'Les deux'], ['Film', 'Films'], ['Série', 'Séries']].map(([v, l]) => `<button type="button" class="type-chip ${ST.fs === v ? 'active' : ''}" onclick="window.setStatsScreenFilter('${v}')">${l}</button>`).join('')}</div>`;
+    if (!pool.length) return filter + sEmpty('Aucun film ni série terminé sur cette période.');
+    const decades = tally(pool, i => { const y = yearOfRelease(i); return y ? [`${Math.floor(y / 10) * 10}`] : []; }).sort((a, b) => a.name.localeCompare(b.name));
+    const decadeChart = barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color }] })));
+    const plural = (n) => n > 1 ? 'œuvres' : 'œuvre';
+    return filter + `
+        <div class="st-minis st-minis-3 mb-3.5">
+            ${miniTile(lav, 'fa-solid fa-film', films.length, `film${films.length > 1 ? 's' : ''}`)}
+            ${miniTile(mint, 'fa-solid fa-tv', pool.length - films.length, `série${pool.length - films.length > 1 ? 's' : ''}`)}
+            ${miniTile('#fff', 'fa-solid fa-star', avgRating(pool) !== null ? fr1(avgRating(pool)) : '–', 'note moyenne')}
+        </div>
+        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tally(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film' })) : ''}
+        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tally(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série' })) : ''}
+        ${sCard('Top acteurs', rankList(tally(pool, actorsOf), color, { max: 8, unit: plural }))}
+        ${sCard('Genres préférés', rankList(tally(pool, i => i.genres), color, { max: 6, showAvg: true }))}
+        ${sCard('Pays les plus vus', rankList(tally(pool, countriesOf), color, { max: 6 }))}
+        ${sCard('Langues originales', rankList(tally(pool, i => [langName(i.originalLanguage)]), color, { max: 6 }))}
+        ${sCard('Décennies de sortie', decades.length ? decadeChart : sEmpty('Pas encore de dates de sortie.'))}
+        ${sCard('Plateformes', rankList(tally(pool, i => [i.platform]), color, { max: 6, empty: 'Aucune plateforme renseignée.' }))}`;
+};
+
+// ---------- Onglet 3 : livres ----------
+const statsBooks = (sc) => {
+    const books = sc.items.filter(i => i.type === 'Livre');
+    const miel = catOf('Livre').c;
+    if (!books.length) return sEmpty('Aucun livre terminé sur cette période.');
+    const pages = books.reduce((a, i) => a + num(i.metricValue), 0);
+    const longest = [...books].sort((a, b) => num(b.metricValue) - num(a.metricValue))[0];
+    const longestHtml = longest && num(longest.metricValue) ? `<div class="st-long">${coverImg(longest.img, longest.title, 'st-long-img', 'loading="lazy"')}<div class="min-w-0"><div class="font-display font-extrabold text-lg leading-tight">${esc(longest.title)}</div><div class="text-sm font-semibold text-gray-600 mt-0.5">${esc(longest.author || '')}</div><div class="st-long-pages">${frInt(longest.metricValue)} pages</div></div></div>` : sEmpty('Nombre de pages inconnu.');
+    return `
+        <div class="st-minis st-minis-3 mb-3.5">
+            ${miniTile(miel, 'fa-solid fa-book-open', books.length, `livre${books.length > 1 ? 's' : ''}`)}
+            ${miniTile('#FFF1D6', 'fa-solid fa-file-lines', frInt(pages), 'pages lues')}
+            ${miniTile('#fff', 'fa-solid fa-star', avgRating(books) !== null ? fr1(avgRating(books)) : '–', 'note moyenne')}
+        </div>
+        ${sCard(sc.isYear ? 'Pages par mois' : 'Pages par année', barChart(timelineCols(books, sc.isYear, sc.curYear, i => num(i.metricValue), () => miel), { fmt: (v) => v >= 1000 ? fr1(v / 1000) + 'k' : v }))}
+        ${sCard('Top auteurs', rankList(tally(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre' }))}
+        ${sCard('Genres', rankList(tally(books, bookGenreNames), miel, { max: 6, showAvg: true }))}
+        ${sCard('Le livre le plus long', longestHtml)}`;
+};
+
+// ---------- Onglet 4 : musique ----------
+const statsMusic = (sc) => {
+    const albums = sc.items.filter(i => i.type === 'Album');
+    const rose = catOf('Album').c;
+    if (!albums.length) return sEmpty('Aucun album écouté sur cette période.');
+    const mins = albums.reduce((a, i) => a + num(i.durationMin), 0);
+    const decades = tally(albums, i => { const y = yearOfRelease(i); return y ? [`${Math.floor(y / 10) * 10}`] : []; }).sort((a, b) => a.name.localeCompare(b.name));
+    return `
+        <div class="st-minis st-minis-3 mb-3.5">
+            ${miniTile(rose, 'fa-solid fa-compact-disc', albums.length, `album${albums.length > 1 ? 's' : ''}`)}
+            ${miniTile('#FFE4F0', 'fa-solid fa-headphones', `${frInt(mins / 60)} h`, "d'écoute")}
+            ${miniTile('#fff', 'fa-solid fa-star', avgRating(albums) !== null ? fr1(avgRating(albums)) : '–', 'note moyenne')}
+        </div>
+        ${sCard('Top artistes', rankList(tally(albums, i => [String(i.author || '').trim()]), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album' }))}
+        ${sCard('Genres', rankList(tally(albums, i => i.genres), rose, { max: 6, showAvg: true }))}
+        ${sCard('Albums par décennie', decades.length ? barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color: rose }] }))) : sEmpty('Pas encore de dates de sortie.'))}`;
+};
+
+// ---------- Habitudes (affichées dans la vue d'ensemble) ----------
+const statsHabits = (sc) => {
+    const { items } = sc;
+    if (!items.length) return '';
+    // Mois le plus chargé
+    const months = tally(items, i => [monthKeyOf(i)]);
+    let busiest = '';
+    if (months.length) {
+        const b = months[0];
+        const [y, m] = b.name.split('-');
+        const inMonth = items.filter(i => monthKeyOf(i) === b.name);
+        const parts = ['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => [t, inMonth.filter(i => i.type === t).length]).filter(([, n]) => n);
+        busiest = `<div class="st-big-line"><span class="font-display text-[34px] font-extrabold leading-none">${cap(MONTHS_L[+m - 1])} ${y}</span><span class="font-semibold text-gray-600">${b.count} œuvre${b.count > 1 ? 's' : ''} terminée${b.count > 1 ? 's' : ''}</span></div>
+            <div class="flex flex-wrap gap-1.5 mt-3">${parts.map(([t, n]) => `<span class="cat-chip" style="background:${catOf(t).c}">${n} ${esc(n > 1 ? catOf(t).label.toLowerCase() : ({ 'Film': 'film', 'Série': 'série', 'Livre': 'livre', 'Album': 'album', 'YouTube': 'vidéo YouTube' })[t])}</span>`).join('')}</div>`;
+    }
+    // Genres les mieux (et moins bien) notés : au moins 3 œuvres notées
+    const genreKeys = (i) => i.type === 'Livre' ? bookGenreNames(i) : (Array.isArray(i.genres) ? i.genres : []);
+    const genres = tally(items, genreKeys).filter(g => g.n >= 3 && g.avg !== null).sort((a, b) => b.avg - a.avg || b.n - a.n);
+    const sentence = (g) => `<li><span class="st-score">${fr1(g.avg)}</span><span>Tu mets en moyenne <b>${fr1(g.avg)}</b> au genre <b>${esc(g.name)}</b> <span class="text-gray-500">(${g.n} œuvres)</span></span></li>`;
+    const best = genres.slice(0, 5);
+    const worst = genres.length > 5 ? genres.slice(-3).reverse() : [];
+    // Répartition des notes
+    const dist = Array.from({ length: 10 }, (_, k) => ({ label: String(k + 1), title: `${k + 1}/10`, parts: [{ v: items.filter(i => Math.round(ratingOf(i) || 0) === k + 1).length, color: '#FFC567' }] }));
+    const typeAvg = ['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => [t, avgRating(items.filter(i => i.type === t))]).sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1));
+    return `
+        ${sCard('Ton mois le plus chargé', busiest || sEmpty('Pas de dates de fin sur cette période.'))}
+        ${sCard('Les genres que tu notes le mieux', best.length ? `<ul class="st-sentences">${best.map(sentence).join('')}</ul>` : sEmpty('Il faut au moins 3 œuvres notées dans un même genre.'))}
+        ${worst.length ? sCard('Ceux qui te plaisent moins', `<ul class="st-sentences">${worst.map(sentence).join('')}</ul>`) : ''}
+        ${sCard('Ta note moyenne par catégorie', `<div class="flex flex-wrap gap-2">${typeAvg.map(([t, a]) => `<span class="st-pill" style="background:${catOf(t).c}${a === null ? ';opacity:.55' : ''}">${esc(catOf(t).label)} <b>${a !== null ? fr1(a) : '–'}</b></span>`).join('')}</div>`)}
+        ${sCard('Tes notes', barChart(dist))}`;
+};
+
+// ---------- Onglet « Amis » : affinité, classements entre amis, conseils ----------
+const workKeys = (i) => {
+    const keys = [];
+    const id = String(i.id || '');
+    if (id && !/^manual_|_public$/.test(id)) keys.push(`${i.type}|id|${id}`);
+    const t = normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim();
+    if (t) keys.push(`${i.type}|t|${t}`);
+    return keys;
+};
+const FIRST = (n) => String(n || '').trim().split(/\s+/)[0] || '?';
+const LEAD_TYPES = ['Film', 'Série', 'Livre', 'Album', 'YouTube'];
+const TYPE_CODE = { 'Film': 'F', 'Série': 'S', 'Livre': 'L', 'Album': 'A', 'YouTube': 'Y' };
+const CODE_TYPE = { F: 'Film', S: 'Série', L: 'Livre', A: 'Album', Y: 'YouTube' };
+
+/* Résumé de MA bibliothèque, rangé dans mon profil : mes amis le lisent avec mon profil (déjà chargé),
+   ce qui permet les classements et les « œuvres en commun » sans relire des centaines d'œuvres. */
+const buildStatsSummary = (items) => {
+    const done = (items || []).filter(isDone);
+    const counts = {};
+    LEAD_TYPES.forEach(t => { counts[t] = done.filter(i => i.type === t).length; });
+    const works = done.filter(i => TYPE_CODE[i.type] && i.type !== 'YouTube').slice(0, 1500).map(i => {
+        const id = String(i.id || '');
+        const idPart = id && !/^manual_|_public$/.test(id) ? id.replace(/[~|]/g, '').slice(0, 40) : '';
+        const r = ratingOf(i);
+        return `${TYPE_CODE[i.type]}~${idPart}~${normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 32)}~${r !== null ? Math.round(r * 2) / 2 : ''}`;
+    }).join('|');
+    return { v: 1, counts, works };
+};
+const parseSummaryWorks = (s) => String((s && s.works) || '').split('|').filter(Boolean).map(w => {
+    const [c, id, title, r] = w.split('~');
+    return { type: CODE_TYPE[c], id: id || '', title: title || '', rating: r ? Number(r) : null, status: 'Vu' };
+}).filter(w => w.type && (w.id || w.title));
+let summaryTimer = null, lastSummary = null;
+window.scheduleStatsSummary = () => { clearTimeout(summaryTimer); summaryTimer = setTimeout(() => window.publishStatsSummary(), 8000); };
+window.publishStatsSummary = async () => {
+    if (!window.currentUser || !Array.isArray(window.myCollection)) return;
+    const s = buildStatsSummary(window.myCollection);
+    const key = JSON.stringify(s);
+    const cur = window.userProfile && window.userProfile.statsSummary;
+    if (key === lastSummary || (cur && JSON.stringify({ v: cur.v, counts: cur.counts, works: cur.works }) === key)) { lastSummary = key; return; }
+    try {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { statsSummary: { ...s, at: Date.now() } });
+        lastSummary = key;
+    } catch (e) { console.error('Résumé des stats', e); }
+};
+
+const statsFriends = () => (window.followingData || []).map(p => ({ uid: p.uid || p.id, name: p.name, avatar: p.avatar, summary: p.statsSummary && p.statsSummary.v === 1 ? p.statsSummary : null }))
+    .filter(f => f.uid && !window.isHiddenUser(f.uid));
+
+// Nombre d'œuvres terminées par catégorie d'un ami qui n'a pas encore de résumé : simples comptages
+// (1 lecture Firebase par comptage, au lieu de relire toute sa bibliothèque)
+ST.counts = ST.counts || {};
+const loadFriendCounts = (uid) => {
+    const c = ST.counts[uid];
+    if (c && (c.loading || Date.now() - c.at < 30 * 60 * 1000)) return;
+    ST.counts[uid] = { loading: true, at: Date.now(), data: c && c.data };
+    Promise.all(LEAD_TYPES.map(async t => {
+        const q = query(collection(db, 'artifacts', appId, 'users', uid, 'items'), where('type', '==', t), where('status', '==', CONFIG[t].statuses[0]));
+        const snap = await getCountFromServer(q);
+        return [t, snap.data().count];
+    })).then(rows => { ST.counts[uid] = { at: Date.now(), data: Object.fromEntries(rows) }; })
+      .catch(e => { console.error('Comptages', e); ST.counts[uid] = { at: Date.now(), data: null, error: true }; })
+      .finally(() => { if (window.currentView === 'stats' && ST.tab === 'affinity' && !ST.friend) window.renderStatsView(); });
+};
+const countsOf = (f) => f.summary ? f.summary.counts : (ST.counts[f.uid] && ST.counts[f.uid].data) || null;
+
+window.pickAffinityFriend = async (uid) => {
+    if (!uid || typeof uid !== 'string') return;
+    ST.friend = uid === ST.friend ? null : uid; // toucher à nouveau l'ami sélectionné revient aux classements
+    ST.commonShown = 10; ST.recoQuery = '';
+    if (!ST.friend) { window.renderStatsView(); return; }
+    const cached = ST.friendItems[uid];
+    if (!cached || Date.now() - cached.at > 5 * 60 * 1000) {
+        ST.friendLoading = uid;
+        window.renderStatsView();
+        try {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
+            ST.friendItems[uid] = { at: Date.now(), items: snap.docs.map(d => d.data()).filter(i => !HIDDEN_TYPES.includes(i.type)) };
+        } catch (e) { console.error('Affinité', e); ST.friendItems[uid] = { at: Date.now(), items: [], error: true }; }
+        ST.friendLoading = null;
+    }
+    if (window.currentView === 'stats' && ST.tab === 'affinity') window.renderStatsView();
+};
+window.showMoreCommon = () => { ST.commonShown = (ST.commonShown || 10) + 40; window.renderStatsView(); };
+
+window.computeAffinity = (mine, theirs) => {
+    const myDone = mine.filter(isDone), theirDone = theirs.filter(isDone);
+    const index = new Map();
+    myDone.forEach(i => workKeys(i).forEach(k => { if (!index.has(k)) index.set(k, i); }));
+    const common = [], seen = new Set();
+    theirDone.forEach(f => {
+        const m = workKeys(f).map(k => index.get(k)).find(Boolean);
+        if (m && !seen.has(m)) { seen.add(m); common.push({ mine: m, theirs: f }); }
+    });
+    const rated = common.filter(c => ratingOf(c.mine) !== null && ratingOf(c.theirs) !== null);
+    // Accord sur chaque œuvre : 100 % si même note, 0 % si 9 points d'écart ; lissé vers 50 % s'il y a peu d'œuvres
+    const agree = rated.map(c => 1 - Math.min(9, Math.abs(ratingOf(c.mine) - ratingOf(c.theirs))) / 9);
+    const K = 2;
+    const pct = rated.length ? Math.round(((agree.reduce((a, b) => a + b, 0) + 0.5 * K) / (rated.length + K)) * 100) : null;
+    // Suggestions d'après vos goûts : ce que l'un a adoré (8+) et que l'autre n'a pas encore terminé,
+    // classé selon la note et selon ce que l'autre pense habituellement de ces genres.
+    const theirIndex = new Map(); theirs.forEach(i => workKeys(i).forEach(k => theirIndex.set(k, i)));
+    const myAll = new Map(); mine.forEach(i => workKeys(i).forEach(k => myAll.set(k, i)));
+    const genreTaste = (items) => { const t = new Map(); tally(items.filter(isDone), i => i.genres).forEach(g => { if (g.n >= 2) t.set(g.name, g.avg); }); return t; };
+    const myTaste = genreTaste(mine), theirTaste = genreTaste(theirs);
+    const fit = (i, taste) => { const gs = (i.genres || []).map(g => taste.get(g)).filter(v => v !== undefined); return gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length - 7 : 0; };
+    const forMe = theirDone.filter(f => (ratingOf(f) || 0) >= 8 && !workKeys(f).some(k => { const m = myAll.get(k); return m && isDone(m); }))
+        .sort((a, b) => (ratingOf(b) + fit(b, myTaste)) - (ratingOf(a) + fit(a, myTaste)));
+    const forThem = myDone.filter(m => (ratingOf(m) || 0) >= 8 && !workKeys(m).some(k => { const t = theirIndex.get(k); return t && isDone(t); }))
+        .sort((a, b) => (ratingOf(b) + fit(b, theirTaste)) - (ratingOf(a) + fit(a, theirTaste)));
+    return { common, rated, pct, forMe, forThem };
+};
+
+// Conseiller une œuvre à un ami : elle arrive dans ses notifications (cloche)
+const recoSentKey = (uid, it) => `${uid}|${workKeys(it)[0] || ''}`;
+window.recommendTo = async (friendUid, key) => {
+    const it = itemRegistry.get(key);
+    if (!it || !friendUid || !window.currentUser || window.isHiddenUser(friendUid)) return;
+    const name = FIRST(window.liveUser(friendUid).name);
+    const note = await window.ui.prompt(`Conseiller « ${it.title} » à ${name}.\nUn petit mot ? (facultatif)`, '', { maxLength: 200, okLabel: 'Envoyer' });
+    if (note === null) return;
+    const clean = (v, n) => String(v || '').slice(0, n);
+    try {
+        await addDoc(collection(db, 'artifacts', appId, 'users', friendUid, 'notifications'), {
+            type: 'reco', title: 'Conseil', fromUid: window.currentUser.uid, user: window.userProfile.name || '',
+            message: `te conseille « ${clean(it.title, 120)} »`, text: `te conseille « ${clean(it.title, 120)} »`,
+            itemTitle: clean(it.title, 200), actId: null, note: clean(note.trim(), 200), rating: ratingOf(it),
+            item: { id: clean(it.id, 80), type: it.type, title: clean(it.title, 200), img: clean(it.img, 1000), author: clean(it.author, 200), releaseDate: clean(it.releaseDate, 30), desc: clean(it.desc, 600), genres: (Array.isArray(it.genres) ? it.genres : []).slice(0, 5).map(g => clean(g, 40)), metricValue: num(it.metricValue) },
+            timestamp: Date.now(), read: false
+        });
+        const k = recoSentKey(friendUid, it);
+        try { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { recosSent: arrayUnion(k) }); } catch (e) { /* simple mémo */ }
+        window.userProfile.recosSent = [...new Set([...(window.userProfile.recosSent || []), k])];
+        window.ui.toast(`Conseil envoyé à ${name} ✓`);
+        if (window.currentView === 'stats') window.renderStatsView();
+    } catch (e) { console.error(e); window.ui.alert("Le conseil n'a pas pu être envoyé. Réessaie."); }
+};
+window.setRecoQuery = (v) => {
+    ST.recoQuery = String(v || '');
+    const box = document.getElementById('reco-search-results');
+    if (box) box.innerHTML = recoSearchResults();
+};
+const recoButton = (it) => {
+    const sent = (window.userProfile.recosSent || []).includes(recoSentKey(ST.friend, it));
+    return sent ? `<span class="st-reco-btn is-sent">Conseillé ✓</span>` : `<button type="button" class="st-reco-btn" onclick="event.stopPropagation(); window.recommendTo(${jsArg(ST.friend)}, ${jsArg(regItem(it))})">Conseiller</button>`;
+};
+const recoSearchResults = () => {
+    const q = normTxt(ST.recoQuery.trim());
+    if (q.length < 2) return '';
+    const hits = (window.myCollection || []).filter(i => isDone(i) && normTxt([i.title, i.author].join(' ')).includes(q)).slice(0, 8);
+    if (!hits.length) return sEmpty('Rien trouvé dans ta bibliothèque.');
+    return `<ul class="st-commons mt-2">${hits.map(i => `<li class="st-common">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)}${ratingOf(i) !== null ? ` · ${fr1(ratingOf(i))}★` : ''}</div></div>${recoButton(i)}</li>`).join('')}</ul>`;
+};
+window.openRecoNotif = (notifId) => {
+    const n = (window.extState.notifications || []).find(x => x.id === notifId);
+    if (!n || !n.item || typeof n.item !== 'object') return;
+    const it = n.item;
+    window.openPreview({ id: String(it.id || 'reco_' + notifId), type: LEAD_TYPES.includes(it.type) ? it.type : 'Film', title: String(it.title || ''), img: String(it.img || ''), author: String(it.author || ''), releaseDate: String(it.releaseDate || ''), desc: String(it.desc || ''), genres: Array.isArray(it.genres) ? it.genres : [], metricValue: num(it.metricValue), rating: n.rating, comment: n.note || '', docId: null, _fromFriend: true });
+};
+
+// Page d'accueil de l'onglet : classements entre amis
+const statsFriendsBoard = (friends) => {
+    friends.filter(f => !f.summary).forEach(f => loadFriendCounts(f.uid));
+    const me = { uid: window.currentUser.uid, name: 'Toi', isMe: true, counts: buildStatsSummary(window.myCollection).counts };
+    const people = [me, ...friends.map(f => ({ uid: f.uid, name: FIRST(window.liveUser(f.uid, f.name).name), counts: countsOf(f) }))];
+    const verb = { 'Film': ['as vu le plus de films', 'a vu le plus de films'], 'Série': ['as vu le plus de séries', 'a vu le plus de séries'], 'Livre': ['as lu le plus de livres', 'a lu le plus de livres'], 'Album': ['as écouté le plus d\'albums', 'a écouté le plus d\'albums'], 'YouTube': ['as regardé le plus de vidéos YouTube', 'a regardé le plus de vidéos YouTube'] };
+    const avatarOf = (p) => { if (p.isMe) { const a = safeImg(window.userProfile.avatar); return a ? `<img src="${a}" alt="">` : initial(window.userProfile.name); } const a = safeImg(window.liveUser(p.uid).avatar); return a ? `<img src="${a}" alt="">` : initial(p.name); };
+    const rows = LEAD_TYPES.map(t => {
+        const ranked = people.filter(p => p.counts && num(p.counts[t]) > 0).sort((a, b) => num(b.counts[t]) - num(a.counts[t]));
+        if (!ranked.length) return '';
+        const w = ranked[0];
+        const sentence = w.isMe ? `C'est <b>toi</b> qui ${verb[t][0]}` : `C'est <b>${esc(w.name)}</b> qui ${verb[t][1]}`;
+        return `<li class="st-lead-row"><span class="st-lead-av" style="background:${catOf(t).c}">${avatarOf(w)}</span><div class="min-w-0 flex-1"><div class="text-[14px] leading-snug">${sentence} <span class="text-gray-500">(${num(w.counts[t])})</span></div>
+            <div class="st-podium">${ranked.slice(0, 3).map((p, k) => `<span><i class="st-medal m${k}">${k + 1}</i>${esc(p.name)} <b>${num(p.counts[t])}</b></span>`).join('')}</div></div></li>`;
+    }).join('');
+    // Œuvres en commun et affinité (résumés publiés, ou bibliothèques déjà ouvertes)
+    const myItems = window.myCollection || [];
+    const shared = friends.map(f => {
+        const theirs = (ST.friendItems[f.uid] && !ST.friendItems[f.uid].error) ? ST.friendItems[f.uid].items : (f.summary ? parseSummaryWorks(f.summary) : null);
+        if (!theirs) return null;
+        const a = window.computeAffinity(myItems, theirs);
+        return { f, n: a.common.length, pct: a.rated.length >= 3 ? a.pct : null };
+    }).filter(Boolean);
+    const byShared = [...shared].sort((a, b) => b.n - a.n);
+    const byPct = shared.filter(s => s.pct !== null).sort((a, b) => b.pct - a.pct);
+    const highlights = [];
+    if (byShared.length && byShared[0].n > 0) highlights.push(`<li><span class="st-hl" style="background:var(--lav)"><i class="fa-solid fa-link"></i></span><span>C'est avec <b>${esc(FIRST(window.liveUser(byShared[0].f.uid, byShared[0].f.name).name))}</b> que tu partages le plus d'œuvres <span class="text-gray-500">(${byShared[0].n})</span></span></li>`);
+    if (byPct.length) highlights.push(`<li><span class="st-hl" style="background:var(--rose)"><i class="fa-solid fa-heart"></i></span><span>Ta meilleure affinité : <b>${esc(FIRST(window.liveUser(byPct[0].f.uid, byPct[0].f.name).name))}</b> <span class="text-gray-500">(${byPct[0].pct} %)</span></span></li>`);
+    const sharedList = byShared.filter(s => s.n > 0).slice(0, 5);
+    const missing = friends.length - shared.length;
+    return `
+        ${highlights.length ? `<section class="st-card"><ul class="st-sentences">${highlights.join('')}</ul></section>` : ''}
+        ${sCard('Le match entre amis', rows ? `<ul class="st-lead-list">${rows}</ul>` : sEmpty('Les classements arrivent…'))}
+        ${sharedList.length ? sCard('Avec qui tu partages le plus', `<ul class="st-commons">${sharedList.map(s => `<li class="st-common" onclick="window.pickAffinityFriend(${jsArg(s.f.uid)})"><span class="feed-avatar" style="background:var(--lav-tint);width:38px;height:38px">${safeImg(window.liveUser(s.f.uid).avatar) ? `<img src="${safeImg(window.liveUser(s.f.uid).avatar)}" alt="">` : initial(s.f.name)}</span><div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] truncate">${esc(window.liveUser(s.f.uid, s.f.name).name)}</div><div class="text-[12px] text-gray-500 font-semibold">${s.n} œuvre${s.n > 1 ? 's' : ''} en commun</div></div>${s.pct !== null ? `<span class="st-pill" style="background:var(--miel-tint)"><b>${s.pct} %</b></span>` : ''}<i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></li>`).join('')}</ul>`) : ''}
+        ${missing > 0 ? `<p class="st-note">${missing} ami${missing > 1 ? 's' : ''} n'${missing > 1 ? 'ont' : 'a'} pas encore ouvert la nouvelle version : touche sa bulle pour comparer quand même.</p>` : ''}`;
+};
+
+// Détail avec un ami
+const statsFriendDetail = (friends) => {
+    const name = window.liveUser(ST.friend).name || 'Ton ami';
+    const first = esc(FIRST(name));
+    const data = ST.friendItems[ST.friend];
+    if (ST.friendLoading === ST.friend || !data) return `<div class="text-center py-10 text-gray-500 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Lecture de la bibliothèque de ${esc(name)}…</div>`;
+    if (data.error) return sEmpty("Sa bibliothèque n'a pas pu être lue. Réessaie dans un instant.");
+    const a = window.computeAffinity(window.myCollection || [], data.items);
+    const pctHtml = a.pct !== null && a.rated.length >= 3
+        ? `<div class="st-aff-pct">${a.pct}<small>%</small></div><div class="st-aff-l">d'affinité avec ${esc(name)}</div><div class="st-aff-s">calculée sur ${a.rated.length} œuvres notées par vous deux · ${a.common.length} en commun</div>`
+        : `<div class="st-aff-pct">–</div><div class="st-aff-l">Pas encore assez d'œuvres notées en commun</div><div class="st-aff-s">Il en faut au moins 3 (${a.rated.length} pour l'instant)</div>`;
+    const duo = (c) => `<div class="st-duo"><span title="Ma note">${ratingOf(c.mine) !== null ? fr1(ratingOf(c.mine)) : '–'}</span><span title="Sa note" class="is-friend">${ratingOf(c.theirs) !== null ? fr1(ratingOf(c.theirs)) : '–'}</span></div>`;
+    const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, c.mine.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div>${duo(c)}</li>`;
+    const head = `<div class="st-duo-legend"><span><i style="background:var(--miel)"></i>Ma note</span><span><i style="background:var(--lav)"></i>Note de ${first}</span></div>`;
+    // Les œuvres que vous avez le plus aimées tous les deux d'abord (500 œuvres en commun ne s'affichent pas d'un coup)
+    const both = (c) => Math.min(ratingOf(c.mine) ?? 0, ratingOf(c.theirs) ?? 0) * 100 + (ratingOf(c.mine) ?? 0) + (ratingOf(c.theirs) ?? 0);
+    const sortedCommon = [...a.common].sort((x, y) => both(y) - both(x));
+    const shown = Math.min(sortedCommon.length, ST.commonShown || 10);
+    const gaps = a.rated.map(c => ({ c, d: Math.abs(ratingOf(c.mine) - ratingOf(c.theirs)) })).filter(x => x.d >= 3).sort((x, y) => y.d - x.d).slice(0, 3);
+    // Conseils reçus de cet ami (notifications), sinon suggestions d'après ses goûts
+    const received = (window.extState.notifications || []).filter(n => n.type === 'reco' && n.fromUid === ST.friend && n.item);
+    const tile = (i, onclick, extra = '') => `<div class="st-reco" onclick="${onclick}">${coverImg(i.img, i.title, 'st-reco-img', 'loading="lazy"')}${ratingOf(i) !== null ? `<span class="feed-rating">${fr1(ratingOf(i))}</span>` : ''}<span class="st-reco-t">${esc(i.title)}</span>${extra}</div>`;
+    const receivedHtml = received.length ? `<div class="st-recos">${received.slice(0, 9).map(n => tile({ ...n.item, rating: n.rating }, `window.openRecoNotif(${jsArg(n.id)})`, n.note ? `<span class="st-reco-note">« ${esc(n.note)} »</span>` : '')).join('')}</div>` : '';
+    const suggestFor = a.forMe.slice(0, 6);
+    const forMeHtml = receivedHtml
+        || (suggestFor.length ? `<p class="st-note -mt-1 mb-3">${first} ne t'a encore rien conseillé : voici ce qu'il a adoré et que tu n'as pas vu, d'après tes goûts.</p><div class="st-recos">${suggestFor.map(i => tile(i, `window.openPreviewKey(${jsArg(regItem({ ...i, docId: null, _fromFriend: true }))})`)).join('')}</div>` : sEmpty("Rien de noté 8 ou plus que tu n'aies pas déjà vu."));
+    const forThem = a.forThem.slice(0, 6);
+    const forThemHtml = `
+        ${forThem.length ? `<p class="st-note -mt-1 mb-3">D'après ses goûts, ces œuvres que tu as adorées pourraient lui plaire :</p><ul class="st-commons">${forThem.map(i => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(i))})">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)} · ${fr1(ratingOf(i))}★</div></div>${recoButton(i)}</li>`).join('')}</ul>` : sEmpty('Rien à lui suggérer automatiquement pour le moment.')}
+        <div class="st-reco-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Choisir une autre œuvre de ma bibliothèque…" value="${esc(ST.recoQuery || '')}" oninput="window.setRecoQuery(this.value)" autocomplete="off"></div>
+        <div id="reco-search-results">${recoSearchResults()}</div>`;
+    return `
+        <div class="st-aff">${pctHtml}</div>
+        ${sCard(a.common.length ? 'Vos coups de cœur communs' : 'Œuvres en commun', a.common.length ? `${head}<ul class="st-commons">${sortedCommon.slice(0, shown).map(row).join('')}</ul>${sortedCommon.length > shown ? `<button type="button" class="st-more" onclick="window.showMoreCommon()">Voir plus (${sortedCommon.length - shown} autres)</button>` : ''}` : sEmpty('Aucune œuvre terminée en commun pour le moment.'))}
+        ${gaps.length ? sCard('Vos plus gros désaccords', `${head}<ul class="st-commons">${gaps.map(x => row(x.c)).join('')}</ul>`) : ''}
+        ${sCard(`${first} te conseille`, forMeHtml)}
+        ${sCard(`Conseiller une œuvre à ${first}`, forThemHtml)}`;
+};
+
+const statsAffinity = () => {
+    const friends = statsFriends();
+    if (!friends.length) return sEmpty('Abonne-toi à des amis pour comparer vos goûts.');
+    if (ST.friend && !friends.some(f => f.uid === ST.friend)) ST.friend = null;
+    const pickers = `<div class="stories">${friends.map(f => {
+        const u = window.liveUser(f.uid, f.name, f.avatar);
+        const av = safeImg(u.avatar);
+        return `<button type="button" class="story ${ST.friend === f.uid ? 'is-picked' : ''}" onclick="window.pickAffinityFriend(${jsArg(f.uid)})"><span class="story-ring" style="background:${ST.friend === f.uid ? '#16151A' : '#E4DED4'}"><span>${av ? `<img src="${av}" alt="">` : initial(f.name)}</span></span><span class="story-name">${esc(FIRST(u.name))}</span></button>`;
+    }).join('')}</div>`;
+    return pickers + (ST.friend ? statsFriendDetail(friends) : `<p class="st-note -mt-1 mb-3">Touche un ami pour voir vos stats à deux.</p>${statsFriendsBoard(friends)}`);
+};
+
+// ---------- Rendu de la page ----------
+window.renderStatsView = () => {
+    const sc = statsScope();
+    const container = document.getElementById('main-content');
+    // Complétion des anciennes œuvres : lancée à l'ouverture des stats, en arrière-plan
+    if (window.currentView === 'stats' && window.startStatsEnrichment) setTimeout(() => window.startStatsEnrichment(), 0);
+    const E = window._enrich || {};
+    // La barre ne s'affiche que pour la grosse complétion (première fois) ; les nouvelles œuvres se complètent sans bruit
+    const banner = E.running && E.total >= 10
+        ? `<div class="st-banner"><div class="flex items-center justify-between gap-2"><span><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Je complète tes œuvres déjà enregistrées…</span><b>${E.done}/${E.total}</b></div><div class="stat-bar mt-2" style="background:rgba(22,21,26,.12)"><span style="width:${Math.round(E.done / E.total * 100)}%"></span></div></div>`
+        : '';
+    const switcherHtml = ST.tab === 'affinity' ? '' : `
+        <div class="stats-toggle" role="tablist" aria-label="Période">
+            <button role="tab" aria-selected="${sc.isYear}" onclick="window.toggleStatsMode('year')" class="${sc.isYear ? 'active' : ''}">Cette année</button>
+            <button role="tab" aria-selected="${!sc.isYear}" onclick="window.toggleStatsMode('all')" class="${!sc.isYear ? 'active' : ''}">Toujours</button>
+        </div>`;
+    const tabs = `<div class="type-chips st-tabs" role="tablist" aria-label="Rubriques">${STATS_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${ST.tab === k}" class="type-chip ${ST.tab === k ? 'active' : ''}" onclick="window.setStatsTab('${k}')">${l}</button>`).join('')}</div>`;
+    let body = '';
+    try {
+        body = ST.tab === 'screen' ? statsScreen(sc) : ST.tab === 'books' ? statsBooks(sc) : ST.tab === 'music' ? statsMusic(sc)
+            : ST.tab === 'affinity' ? statsAffinity() : statsOverview(sc);
+    } catch (e) { console.error('Stats', e); body = sEmpty("Une statistique n'a pas pu être calculée."); }
     container.innerHTML = `
         <div class="pt-16 px-4 pb-32">
             <h1 class="page-title">Statistiques</h1>
-            <p class="text-gray-500 font-semibold text-sm mt-1.5 mb-4">Ta consommation culturelle</p>
-            
+            <p class="text-gray-500 font-semibold text-sm mt-1.5 mb-1">Ta consommation culturelle</p>
+            ${tabs}
+            ${banner}
             ${switcherHtml}
-            
-            <div class="bg-gray-900 text-white p-5 rounded-[30px] mb-3.5 flex items-center gap-4">
-                <div class="flex-1 min-w-0">
-                    <div class="font-extrabold uppercase text-[11px] tracking-widest mb-1.5" style="color:#C9C5D3">Total ${isYear ? curYear : 'global'}</div>
-                    <div class="font-display text-[52px] font-extrabold leading-none">${total}</div>
-                    <div class="text-sm font-semibold mt-1" style="color:#C9C5D3">œuvres terminées</div>
-                </div>
-                <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="Répartition par catégorie" class="shrink-0">
-                    <circle cx="52" cy="52" r="40" fill="none" stroke="#2E2C35" stroke-width="14"/>
-                    ${ringSegs}
-                </svg>
-            </div>
-
-            <div class="stats-grid">
-                ${cardsHtml}
-                <div class="stat-tile" style="background:#fff;border:2px dashed #D9D2C6;justify-content:space-between">
-                    <span class="font-extrabold text-[15px]">Stats détaillées</span>
-                    <span class="text-[12px] font-semibold text-gray-500">Réalisateurs, pays, acteurs, artistes, genres…</span>
-                    <span class="self-start bg-gray-900 text-white rounded-xl px-2.5 py-1 text-[11px] font-extrabold">Bientôt</span>
-                </div>
-            </div>
+            ${body}
         </div>
     `;
 };
@@ -3686,12 +4301,387 @@ window.updateGoal = async (key, val) => {
         const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
         await setDoc(ref, { [key]: n }, { merge: true });
         if(window.userProfile) window.userProfile[key] = n;
-        window.renderStatsView(); 
+        window.renderStatsView();
     } catch(e) { console.error("Erreur updateGoal", e); }
 };
 
+        /* --- J.4.a COMPLÉTION DES ŒUVRES DÉJÀ ENREGISTRÉES ---
+           Pour chaque œuvre sans « metaV », on va chercher les infos qui lui manquent (TMDB, Google Livres /
+           Open Library, Deezer) et on les AJOUTE au document. Règles de sécurité :
+             - on n'ajoute que des champs vides : notes, avis, dates, statut, affiche ne sont jamais touchés ;
+             - updateDoc uniquement : une œuvre supprimée entre-temps n'est jamais recréée ;
+             - une erreur réseau ne marque rien (on réessaiera à la prochaine ouverture des stats). */
+const META_V = 1;
+const ENRICH_TYPES = ['Film', 'Série', 'Livre', 'Album'];
+window._enrich = { running: false, done: 0, total: 0 };
+const isEmptyVal = (v) => v === undefined || v === null || v === '' || v === 0 || (Array.isArray(v) && v.length === 0);
+const fill = (patch, item, key, val) => { if (isEmptyVal(item[key]) && !isEmptyVal(val)) patch[key] = val; };
+const titleKey = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim();
+const httpJson = async (url) => {
+    const r = await fetch(url);
+    if (r.status === 404) return null;               // introuvable : on n'insistera pas
+    if (!r.ok) throw new Error('HTTP ' + r.status);    // quota, panne : on réessaiera plus tard
+    return r.json();
+};
+
+const enrichScreen = async (it) => {
+    const ep = it.type === 'Film' ? 'movie' : 'tv';
+    let tid = /^\d+$/.test(String(it.tmdbId || '')) ? String(it.tmdbId) : (/^\d+$/.test(String(it.id || '')) ? String(it.id) : null);
+    const patch = {};
+    if (!tid) {
+        // Œuvre ajoutée à la main ou depuis le fil : on la retrouve par son titre
+        const y = yearOfRelease(it);
+        const s = await httpJson(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${encodeURIComponent(it.title || '')}&language=fr-FR`);
+        const want = titleKey(it.title);
+        const hit = ((s && s.results) || []).find(r => [r.title, r.name, r.original_title, r.original_name].some(t => titleKey(t) === want) && (!y || String(r.release_date || r.first_air_date || '').startsWith(String(y))));
+        if (!hit) return { metaV: META_V, metaMissing: true };
+        tid = String(hit.id);
+        patch.tmdbId = tid;
+    }
+    const d = await httpJson(`https://api.themoviedb.org/3/${ep}/${tid}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`);
+    if (!d) return { ...patch, metaV: META_V, metaMissing: true };
+    const credits = d.credits || {};
+    const castList = (credits.cast || []).slice(0, 8).map(c => c.name).filter(Boolean);
+    fill(patch, it, 'castList', castList);
+    fill(patch, it, 'cast', castList.slice(0, 4).join(', '));
+    if (it.type === 'Film') {
+        const dir = (credits.crew || []).filter(x => x.job === 'Director').map(x => x.name);
+        fill(patch, it, 'author', dir.join(', '));
+        fill(patch, it, 'metricValue', d.runtime || 0);
+        fill(patch, it, 'durationMin', d.runtime || 0);
+    } else {
+        fill(patch, it, 'author', (d.created_by || []).map(c => c.name).join(', '));
+        const seasons = d.number_of_seasons || 0;
+        const runtimes = (d.episode_run_time || []).filter(n => n > 0);
+        const lastEp = d.last_episode_to_air && d.last_episode_to_air.runtime;
+        fill(patch, it, 'episodesPerSeason', seasons ? Math.round((d.number_of_episodes || 0) / seasons) : 0);
+        fill(patch, it, 'episodeRunTime', runtimes.length ? Math.round(runtimes.reduce((a, b) => a + b, 0) / runtimes.length) : (lastEp || 0));
+    }
+    fill(patch, it, 'genres', (d.genres || []).map(g => g.name));
+    fill(patch, it, 'countries', (d.production_countries || []).map(c => c.name));
+    fill(patch, it, 'countryCodes', (d.production_countries || []).map(c => c.iso_3166_1).concat(d.origin_country || []).filter((v, k, a) => v && a.indexOf(v) === k));
+    fill(patch, it, 'originalLanguage', d.original_language || '');
+    fill(patch, it, 'releaseDate', d.release_date || d.first_air_date || '');
+    return { ...patch, metaV: META_V };
+};
+
+const enrichBook = async (it) => {
+    const patch = {};
+    let genres = [], pages = 0, date = '', author = '';
+    const id = String(it.id || '');
+    if (it.olKey) {
+        const d = await httpJson(`https://openlibrary.org${String(it.olKey).replace(/[^A-Za-z0-9/]/g, '')}.json`);
+        if (d && Array.isArray(d.subjects)) genres = d.subjects.slice(0, 12);
+    } else if (id && !/^manual_|_public$|^OL/.test(id) && /^[A-Za-z0-9_-]{6,20}$/.test(id)) {
+        const d = await httpJson(`https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}`);
+        const v = d && d.volumeInfo;
+        if (v) { genres = v.categories || []; pages = v.pageCount || 0; date = v.publishedDate || ''; author = (v.authors || []).join(', '); }
+    }
+    if (!genres.length) {
+        // Dernier recours : recherche par titre (+ auteur), avec les deux sources de livres
+        const found = await window.searchBooks(`${it.title || ''} ${it.author || ''}`.trim());
+        const want = titleKey(it.title);
+        const hit = (found || []).find(b => titleKey(b.title) === want);
+        if (hit) { genres = hit.genres || []; pages = pages || hit.metricValue || 0; date = date || hit.releaseDate || ''; author = author || hit.author || ''; }
+        if (!hit && !pages) return { metaV: META_V, metaMissing: true };
+    }
+    fill(patch, it, 'genres', (genres || []).filter(g => typeof g === 'string').slice(0, 12));
+    fill(patch, it, 'metricValue', pages);
+    fill(patch, it, 'releaseDate', date);
+    fill(patch, it, 'author', author);
+    return { ...patch, metaV: META_V };
+};
+
+const enrichAlbum = async (it) => {
+    const patch = {};
+    let d = null;
+    if (/^\d+$/.test(String(it.id || ''))) d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(it.id)}?`);
+    if (!d || d.error) {
+        const s = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(`${it.title || ''} ${it.author || ''}`.trim())}&limit=5`);
+        const want = titleKey(it.title);
+        const hit = ((s && s.data) || []).find(a => titleKey(a.title) === want);
+        if (!hit) return { metaV: META_V, metaMissing: true };
+        d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(hit.id)}?`);
+        if (!d || d.error) return { metaV: META_V, metaMissing: true };
+    }
+    fill(patch, it, 'genres', ((d.genres && d.genres.data) || []).map(g => g.name));
+    fill(patch, it, 'releaseDate', d.release_date || '');
+    fill(patch, it, 'durationMin', d.duration ? Math.round(d.duration / 60) : 0);
+    fill(patch, it, 'author', d.artist && d.artist.name);
+    fill(patch, it, 'metricValue', d.nb_tracks || 0);
+    return { ...patch, metaV: META_V };
+};
+
+window.startStatsEnrichment = async () => {
+    const E = window._enrich;
+    if (E.running || !window.currentUser) return;
+    const uid = window.currentUser.uid;
+    const todo = (window.myCollection || []).filter(i => i.docId && ENRICH_TYPES.includes(i.type) && !i.metaV && !(E.skip && E.skip.has(i.docId)));
+    if (!todo.length) return;
+    E.skip = E.skip || new Set();
+    Object.assign(E, { running: true, done: 0, total: todo.length });
+    const queue = [...todo];
+    let pending = [];
+    let lastRender = 0;
+    const repaint = (force) => {
+        if (window.currentView !== 'stats') return;
+        const a = document.activeElement;
+        if (!force && a && a.tagName === 'INPUT' && document.getElementById('main-content').contains(a)) return; // ne pas gêner la saisie d'un objectif
+        if (!force && Date.now() - lastRender < 1200) return;
+        lastRender = Date.now();
+        window.renderStatsView();
+    };
+    const flush = async () => {
+        if (!pending.length || !window.currentUser || window.currentUser.uid !== uid) { pending = []; return; }
+        const chunk = pending; pending = [];
+        const ref = (id) => doc(db, 'artifacts', appId, 'users', uid, 'items', id);
+        try {
+            const batch = writeBatch(db);
+            chunk.forEach(([id, p]) => batch.update(ref(id), p));
+            await batch.commit();
+        } catch (e) {
+            // Une œuvre supprimée entre-temps fait échouer le lot : on repasse une par une
+            for (const [id, p] of chunk) { try { await updateDoc(ref(id), p); } catch (err) { /* œuvre supprimée : on l'ignore */ } }
+        }
+    };
+    const worker = async () => {
+        while (queue.length && window.currentUser && window.currentUser.uid === uid) {
+            const it = queue.shift();
+            try {
+                const job = it.type === 'Livre' ? enrichBook(it) : it.type === 'Album' ? enrichAlbum(it) : enrichScreen(it);
+                // 20 s maximum par œuvre : un service qui ne répond pas ne bloque jamais la complétion
+                const patch = await Promise.race([job, new Promise((_, rej) => setTimeout(() => rej(new Error('délai dépassé')), 20000))]);
+                if (patch) { pending.push([it.docId, patch]); Object.assign(it, patch); }
+            } catch (e) {
+                E.skip.add(it.docId); // panne réseau ou quota : on réessaiera à la prochaine ouverture de l'app
+            }
+            E.done++;
+            if (pending.length >= 20) await flush();
+            repaint(false);
+        }
+    };
+    try {
+        await Promise.all([worker(), worker(), worker()]);
+        await flush();
+    } finally {
+        E.running = false;
+        repaint(true);
+    }
+};
+
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v4.2 (nouvelle DA)");
+        /* --- J.6 APPLI INSTALLABLE (écran d'accueil du téléphone) --- */
+        const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isMobile = () => isIOS() || /Android/i.test(navigator.userAgent);
+        window._installPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Android / Chrome : on garde la proposition d'installation pour notre propre bouton
+            e.preventDefault();
+            window._installPrompt = e;
+            if (window.currentView === 'profile') window.renderProfile();
+        });
+        window.addEventListener('appinstalled', () => {
+            window._installPrompt = null;
+            window.ui.toast('MaBiblio est installée sur ton téléphone ✓');
+            if (window.currentView === 'profile') window.renderProfile();
+        });
+        window.installApp = async () => {
+            if (window._installPrompt) {
+                const p = window._installPrompt;
+                window._installPrompt = null;
+                try { await p.prompt(); await p.userChoice; } catch (e) { console.warn(e); }
+                if (window.currentView === 'profile') window.renderProfile();
+                return;
+            }
+            if (isIOS()) {
+                window.ui.alert("Pour installer MaBiblio sur ton iPhone :\n\n1. Ouvre le site dans Safari\n2. Touche le bouton Partager (le carré avec une flèche vers le haut)\n3. Choisis « Sur l'écran d'accueil »\n4. Touche « Ajouter »\n\nL'appli apparaît avec son icône, comme les autres.");
+            } else {
+                window.ui.alert("Pour installer MaBiblio :\n\nOuvre le menu de ton navigateur (les 3 points ⋮) puis choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ».");
+            }
+        };
+        window.installCardHtml = () => {
+            if (isStandalone()) return '';
+            return `<div class="install-card" role="button" onclick="window.installApp()"><span class="cell-icon" style="background:#fff"><i class="fa-solid fa-mobile-screen-button"></i></span><span class="flex-1 text-left"><span class="block font-extrabold text-[15px]">Installer l'appli</span><span class="block text-xs font-semibold" style="color:#2D2547">Sur l'écran d'accueil de ton téléphone, en plein écran</span></span><i class="fa-solid fa-chevron-right text-xs"></i></div>`;
+        };
+        // Petit rappel discret (au plus toutes les 2 semaines), seulement sur téléphone et hors appli installée
+        setTimeout(() => {
+            if (!window.currentUser || isStandalone() || !(isMobile() || window._installPrompt)) return;
+            let last = 0;
+            try { last = Number(localStorage.getItem('mabiblio_install_hint')) || 0; } catch (e) {}
+            if (Date.now() - last < 14 * 86400000) return;
+            try { localStorage.setItem('mabiblio_install_hint', String(Date.now())); } catch (e) {}
+            window.ui.toast("Installe MaBiblio sur ton téléphone", { actionLabel: 'Comment ?', onAction: () => window.installApp(), duration: 9000 });
+        }, 6000);
+
+        /* --- J.7 NOTIFICATIONS SUR LE TÉLÉPHONE (push) ---
+           Chaque notification de l'app (j'aime, commentaire, mention, abonnement, conseil) est envoyée
+           sur le téléphone par un petit programme Firebase (dossier functions/). Ici : l'abonnement du téléphone.
+           Le téléphone est enregistré dans users/{moi}/pushTokens (privé, lisible par moi seul).
+           Sans clé VAPID dans config.js, tout ce bloc reste inactif (aucun bouton affiché). */
+        const VAPID_KEY = window.MABIBLIO_VAPID_KEY || '';
+        const PUSH_LS = 'mabiblio_push_device';
+        const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        const pushPermission = () => ('Notification' in window) ? Notification.permission : 'unsupported';
+        const myPushDevice = () => { try { return localStorage.getItem(PUSH_LS) || ''; } catch (e) { return ''; } };
+        const sha = async (txt) => {
+            try {
+                const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+                return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+            } catch (e) { return String(txt).replace(/[^A-Za-z0-9_-]/g, '').slice(-40); }
+        };
+        let messagingMod = null;
+        const getPushToken = async () => {
+            const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, rej) => setTimeout(() => rej(new Error('service worker absent')), 8000))]);
+            if (!messagingMod) messagingMod = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js');
+            if (messagingMod.isSupported && !(await messagingMod.isSupported())) throw new Error('non pris en charge');
+            const messaging = messagingMod.getMessaging(app);
+            return messagingMod.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+        };
+        const saveDevice = async (token) => {
+            const id = await sha(token);
+            const ua = navigator.userAgent;
+            const platform = isIOS() ? 'iPhone/iPad' : /Android/i.test(ua) ? 'Android' : 'Ordinateur';
+            await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', id), { token, platform, createdAt: Date.now(), lastSeen: Date.now() });
+            try { localStorage.setItem(PUSH_LS, id); } catch (e) {}
+            return id;
+        };
+        window.enablePush = async () => {
+            if (!VAPID_KEY || !window.currentUser) return;
+            if (isIOS() && !isStandalone()) {
+                window.ui.alert("Sur iPhone, les notifications marchent seulement avec l'appli installée.\n\n1. Touche Partager (le carré avec une flèche)\n2. Choisis « Sur l'écran d'accueil »\n3. Ouvre MaBiblio depuis son icône, puis reviens ici.");
+                return;
+            }
+            if (!pushSupported()) {
+                window.ui.alert(isIOS()
+                    ? "Ton iPhone ne permet pas encore les notifications pour cette appli.\n\n• Vérifie qu'il est à jour (iOS 16.4 ou plus récent).\n• Si MaBiblio était déjà sur ton écran d'accueil avant cette version : supprime son icône puis ajoute-la à nouveau (Partager → Sur l'écran d'accueil). Ta bibliothèque n'est pas perdue, il faudra juste te reconnecter."
+                    : "Ce navigateur ne permet pas les notifications. Essaie avec Chrome, ou installe l'appli.");
+                return;
+            }
+            let perm = pushPermission();
+            if (perm === 'default') perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+                window.ui.alert("Les notifications sont refusées pour MaBiblio.\n\nPour les autoriser : Réglages du téléphone → Notifications → MaBiblio (ou les réglages du site dans ton navigateur).");
+                if (window.currentView === 'profile') window.renderProfile();
+                return;
+            }
+            try {
+                const token = await getPushToken();
+                if (!token) throw new Error('pas de jeton');
+                await saveDevice(token);
+                window.ui.toast('Notifications activées sur ce téléphone ✓');
+            } catch (e) {
+                console.error('Notifications', e);
+                window.ui.alert("Les notifications n'ont pas pu être activées. Vérifie ta connexion et réessaie.");
+            }
+            if (window.currentView === 'profile') window.renderProfile();
+        };
+        // Désactivation sur CE téléphone (aussi appelée à la déconnexion, pour ne plus recevoir les notifications du compte)
+        window.disablePush = async (silent = false) => {
+            const id = myPushDevice();
+            try { localStorage.removeItem(PUSH_LS); } catch (e) {}
+            try {
+                if (messagingMod) await messagingMod.deleteToken(messagingMod.getMessaging(app));
+            } catch (e) { /* jeton déjà invalide */ }
+            if (id && window.currentUser) {
+                try { await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', id)); } catch (e) { console.warn(e); }
+            }
+            if (!silent) { window.ui.toast('Notifications désactivées sur ce téléphone'); if (window.currentView === 'profile') window.renderProfile(); }
+        };
+        // À chaque ouverture : le jeton du téléphone est rafraîchi (il peut changer) — sans rien demander
+        window.refreshPushDevice = async () => {
+            if (!VAPID_KEY || !window.currentUser || !myPushDevice() || pushPermission() !== 'granted' || !pushSupported()) return;
+            try {
+                const token = await getPushToken();
+                if (!token) return;
+                const id = await sha(token);
+                if (id !== myPushDevice()) {
+                    try { await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', myPushDevice())); } catch (e) {}
+                    await saveDevice(token);
+                } else {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'pushTokens', id), { token, lastSeen: Date.now() }, { merge: true });
+                }
+            } catch (e) { console.warn('Rafraîchissement des notifications', e); }
+        };
+        window.pushCardHtml = () => {
+            if (!VAPID_KEY) return '';
+            const on = !!myPushDevice() && pushPermission() === 'granted';
+            const oldIOS = isIOS() && isStandalone() && !pushSupported();
+            const sub = on ? 'Activées sur ce téléphone' : oldIOS ? "Réinstalle l'appli pour les recevoir (10 secondes)" : pushPermission() === 'denied' ? 'Refusées dans les réglages du téléphone' : 'Likes, commentaires, abonnements, conseils…';
+            return `<div class="install-card" style="background:var(--mint);margin-top:12px" role="button" onclick="${on ? 'window.disablePush()' : 'window.enablePush()'}"><span class="cell-icon" style="background:#fff"><i class="fa-${on ? 'solid' : 'regular'} fa-bell"></i></span><span class="flex-1 text-left"><span class="block font-extrabold text-[15px]">${on ? 'Notifications activées' : 'Activer les notifications'}</span><span class="block text-xs font-semibold" style="color:#1F4D3B">${sub}</span></span><span class="text-xs font-extrabold">${on ? 'Désactiver' : '<i class="fa-solid fa-chevron-right"></i>'}</span></div>`;
+        };
+        // Ouverture depuis une notification du téléphone : on va directement au bon endroit
+        window.openFromPush = (notifId, tries = 0) => {
+            if (!notifId || typeof notifId !== 'string') return;
+            const list = (window.extState && window.extState.notifications) || [];
+            const n = list.find(x => x.id === notifId);
+            if (!n && tries < 12) { setTimeout(() => window.openFromPush(notifId, tries + 1), 500); return; }
+            if (!n) { window.openNotifications(); return; }
+            if (n.type === 'reco') window.openRecoNotif(n.id);
+            else if (n.type === 'follow') window.openPublicProfile(n.fromUid);
+            else if (n.type === 'like') window.goToActivity(n.actId);
+            else window.goToActivityComments(n.actId);
+        };
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (e) => {
+                if (e.data && e.data.type === 'open-notif') window.openFromPush(String(e.data.notifId || ''));
+            });
+        }
+        (() => {
+            // Appli lancée par un toucher sur une notification : ?notif=<id>
+            const m = location.search.match(/[?&]notif=([A-Za-z0-9_-]{1,64})/);
+            if (!m) return;
+            const notifId = m[1];
+            try { history.replaceState(null, '', location.pathname); } catch (e) {}
+            const go = () => window.currentUser ? window.openFromPush(notifId) : setTimeout(go, 400);
+            setTimeout(go, 600);
+        })();
+        // Dès la première ouverture de l'appli : fenêtre « Activer les notifications ? ».
+        // Le téléphone n'autorise la vraie demande qu'après un toucher : le bouton « Autoriser » la déclenche directement.
+        // « Plus tard » : on reposera la question dans 2 semaines (3 fois au maximum). Le bouton du profil reste disponible.
+        window.showPushAsk = () => {
+            if (document.getElementById('push-ask')) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'ui-overlay';
+            overlay.id = 'push-ask';
+            overlay.innerHTML = `<div class="ui-box" role="dialog" aria-modal="true" style="text-align:center">
+                <div class="mx-auto mb-3 flex items-center justify-center" style="width:60px;height:60px;border-radius:20px;background:var(--mint);font-size:26px"><i class="fa-solid fa-bell"></i></div>
+                <p class="font-display" style="font-size:20px;font-weight:800;margin:0 0 6px">Activer les notifications ?</p>
+                <p class="ui-text" style="margin-bottom:16px">Sois prévenu quand tes amis aiment tes posts, te commentent, s'abonnent à toi ou te conseillent une œuvre.</p>
+                <div class="ui-actions"><button type="button" class="ui-btn" id="push-ask-later">Plus tard</button><button type="button" class="ui-btn ui-ok" id="push-ask-ok">Autoriser</button></div>
+            </div>`;
+            document.body.appendChild(overlay);
+            requestAnimationFrame(() => overlay.classList.add('show'));
+            const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); };
+            overlay.querySelector('#push-ask-later').onclick = () => close();
+            // Appel direct (sans attente) pour que le téléphone accepte d'afficher sa demande d'autorisation
+            overlay.querySelector('#push-ask-ok').onclick = () => { close(); window.enablePush(); };
+        };
+        (() => {
+            const started = Date.now();
+            const tryAsk = () => {
+                if (!VAPID_KEY) return;
+                if (!window.currentUser || !window.userProfile || !window.userProfile.name) { if (Date.now() - started < 30000) setTimeout(tryAsk, 1000); return; }
+                window.refreshPushDevice();
+                // Seulement là où les notifications sont possibles : appli installée sur iPhone, ou Android / ordinateur
+                if (myPushDevice() || pushPermission() !== 'default' || !pushSupported() || (isIOS() && !isStandalone())) return;
+                let st = { n: 0, at: 0 };
+                try { st = JSON.parse(localStorage.getItem('mabiblio_push_ask')) || st; } catch (e) {}
+                if (st.n >= 3 || (st.at && Date.now() - st.at < 14 * 86400000)) return;
+                if (document.querySelector('.ui-overlay')) { setTimeout(tryAsk, 3000); return; } // une autre fenêtre est ouverte : on attend
+                try { localStorage.setItem('mabiblio_push_ask', JSON.stringify({ n: st.n + 1, at: Date.now() })); } catch (e) {}
+                window.showPushAsk();
+            };
+            setTimeout(tryAsk, 2500);
+        })();
+
+        // Service worker : uniquement sur le vrai site (https), jamais en test local (fichier ou banc d'essai)
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location.hostname === 'localhost' && /[?&]swtest\b/.test(location.search)))) {
+            const registerSW = () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker', e));
+            if (document.readyState === 'complete') registerSW(); else window.addEventListener('load', registerSW);
+        }
+
+        console.log("MaBiblio v5.1 (appli installable + notifications)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
