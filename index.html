@@ -153,6 +153,8 @@
         .pv-ring small { font-size: 10px; font-weight: 700; color: var(--muted); }
         .pv-title { font-family: var(--font-display); font-size: 30px; font-weight: 800; line-height: 1.05; margin: 0 0 8px; }
         .pv-meta { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 14px; }
+        .pv-metric-edit { font: inherit; color: inherit; background: var(--ground); border-radius: 10px; padding: 2px 8px; }
+        .pv-metric-edit i { font-size: 10px; margin-left: 2px; opacity: .7; }
         .pv-chip { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 12px; font-size: 12px; font-weight: 700; background: var(--ground); }
         .pv-info { background: var(--ground); border-radius: 22px; padding: 16px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px 16px; margin-bottom: 18px; }
         .pv-label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
@@ -341,6 +343,24 @@
         .st-reco { position: relative; cursor: pointer; min-width: 0; }
         .st-reco-img { width: 100%; aspect-ratio: 2/3; border-radius: 14px; object-fit: cover; background: #E9E3DA; display: block; }
         .st-reco-t { display: block; font-size: 12px; font-weight: 700; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .stats-grid > .stat-tile:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
+        .st-lead-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+        .st-lead-row { display: flex; gap: 12px; align-items: flex-start; }
+        .st-lead-av { width: 44px; height: 44px; border-radius: 50%; padding: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: var(--font-display); font-weight: 800; }
+        .st-lead-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .st-podium { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
+        .st-podium b { color: var(--ink); }
+        .st-medal { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; font-style: normal; font-size: 9px; font-weight: 800; align-items: center; justify-content: center; margin-right: 4px; background: #F1ECE4; color: var(--ink); }
+        .st-medal.m0 { background: var(--miel); } .st-medal.m1 { background: #E4DED4; } .st-medal.m2 { background: #F3C9A8; }
+        .st-hl { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+        .st-more { width: 100%; height: 44px; border-radius: 22px; background: var(--ground); font-weight: 800; font-size: 14px; margin-top: 12px; }
+        .st-reco-btn { height: 34px; padding: 0 14px; border-radius: 17px; background: var(--ink); color: #fff; font-weight: 800; font-size: 12px; flex-shrink: 0; white-space: nowrap; display: inline-flex; align-items: center; }
+        .st-reco-btn.is-sent { background: var(--mint-tint); color: #1F7A57; }
+        .st-reco-search { position: relative; margin-top: 14px; }
+        .st-reco-search i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #85808D; font-size: 13px; }
+        .st-reco-search input { width: 100%; height: 46px; border-radius: 23px; background: var(--ground); border: none; outline: none; padding: 0 16px 0 40px; font-family: inherit; font-weight: 600; font-size: 14px; }
+        .st-reco-note { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         /* Fenêtres et messages de l'app */
         .ui-overlay { position: fixed; inset: 0; z-index: 40000; background: rgba(22,21,26,.38); display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; transition: opacity .18s; }
         .ui-overlay.show { opacity: 1; }
@@ -621,7 +641,7 @@
         import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         // AJOUT DE 'limit' et 'orderBy' POUR LA RECHERCHE ET LE TRI
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, terminate, clearIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, where, getDocs, collectionGroup, writeBatch, limit, orderBy, runTransaction, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache, terminate, clearIndexedDbPersistence, getCountFromServer } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         /* --- A.2 CONFIGURATION DU PROJET ---
            La configuration Firebase est dans le fichier config.js, à côté de ce fichier.
@@ -1052,6 +1072,7 @@
                     ...doc.data()
                 })).filter(i => !HIDDEN_TYPES.includes(i.type));
                 window.refreshCurrentView();
+                if (window.scheduleStatsSummary) window.scheduleStatsSummary(); // résumé pour les classements entre amis
             }, (err) => console.error('Écoute bibliothèque', err));
         };
 
@@ -1488,6 +1509,12 @@
 
         window.openSearchModal = () => {
             const modal = document.getElementById('search-modal');
+            // Depuis une catégorie de la bibliothèque (ex. Livres), la recherche s'ouvre directement sur cette catégorie
+            if (window.currentView === 'home' && CONFIG[window.currentType] && searchType !== window.currentType) {
+                searchType = window.currentType;
+                document.getElementById('search-results').innerHTML = '';
+                document.getElementById('search-input').value = '';
+            }
             modal.classList.add('open');
             window.renderSearchTypeChips();
         };
@@ -1892,7 +1919,7 @@
                     ${item.rating ? `<div class="pv-ring" aria-label="Note"><span><b>${esc(item.rating)}</b><small>/ 10</small></span></div>` : ''}
                     <div class="${item.rating ? 'pr-24' : ''}">
                         <h2 class="pv-title">${esc(item.title)}</h2>
-                        <p class="pv-meta"><span class="cat-chip mr-1" style="background:${cat.c}">${esc(item.type)}</span> ${metricDisplay}${platformBadge}</p>
+                        <p class="pv-meta"><span class="cat-chip mr-1" style="background:${cat.c}">${esc(item.type)}</span> ${isMine ? `<button type="button" class="pv-metric-edit" onclick="window.editItemMetric()" aria-label="Corriger">${metricDisplay} <i class="fa-solid fa-pen"></i></button>` : metricDisplay}${platformBadge}</p>
                     </div>
                     ${chips.length ? `<div class="flex flex-wrap gap-1.5 mb-4">${chips.join('')}</div>` : ''}
                     ${metaInfos}
@@ -1905,6 +1932,23 @@
         };
 
         window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+
+        // Corriger le nombre de pages d'un livre (souvent faux), la durée d'un film, le nombre de saisons…
+        window.editItemMetric = async () => {
+            const it = window.tempItem;
+            if (!it || !it.docId || it._fromFriend || !window.currentUser) return;
+            const label = { 'Livre': 'Nombre de pages', 'Série': 'Nombre de saisons vues', 'Album': 'Nombre de titres', 'Film': 'Durée (en minutes)', 'YouTube': 'Durée (en minutes)' }[it.type] || 'Valeur';
+            const v = await window.ui.prompt(label, String(num(it.metricValue) || ''), { maxLength: 6 });
+            if (v === null) return;
+            const n = parseInt(String(v).replace(/\s/g, ''), 10);
+            if (!Number.isFinite(n) || n < 0 || n > 100000) { window.ui.alert('Entre un nombre entre 0 et 100 000.'); return; }
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', it.docId), { metricValue: n });
+                it.metricValue = n;
+                if (document.getElementById('preview-modal').classList.contains('open') && window.tempItem === it) window.openPreview(it);
+                window.ui.toast('Corrigé ✓');
+            } catch (e) { console.error(e); window.ui.alert("La correction n'a pas pu être enregistrée."); }
+        };
 
         // Après ouverture d'un résultat de recherche : on charge le détail puis on rafraîchit la fiche
         const _openPreviewBase = window.openPreview;
@@ -2745,7 +2789,10 @@
                 const isLikePost = n.type === 'like'; // Action spécifique pour le "like" normal
                 
                 let action = '';
-                if (isFollow) {
+                const isReco = n.type === 'reco';
+                if (isReco) {
+                    action = `window.openRecoNotif(${jsArg(n.id)})`;
+                } else if (isFollow) {
                     action = `window.openPublicProfile(${jsArg(n.fromUid)})`;
                 } else if (isLikePost) {
                     // On bascule sur le Feed, et on scrolle doucement jusqu'au post
@@ -2760,8 +2807,9 @@
                 if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'background:#DDF6EC;color:#1F7A57'; } 
                 else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'background:#FFE4F0;color:#D6336C'; } 
                 else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'background:#FFF1D6;color:#8A5A00'; } 
+                else if (isReco) { icon = '<i class="fa-solid fa-hand-holding-heart"></i>'; color = 'background:#FFE5DE;color:#B23A22'; } 
                 const content = isFollow ? `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> <span class="font-bold text-gray-800">${esc(n.message)}</span>` : `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> ${esc(n.text || n.message)}`;
-                const subText = isFollow ? 'Voir le profil' : `Sur ${esc(n.itemTitle || 'un post')}`;
+                const subText = isFollow ? 'Voir le profil' : isReco ? (n.note ? `« ${esc(n.note)} »` : "Voir l'œuvre") : `Sur ${esc(n.itemTitle || 'un post')}`;
                 return `<div class="notif-item cursor-pointer flex items-start gap-3" onclick="${action}">
                     <div class="notif-icon" style="${color}">${icon}</div>
                     <div class="flex-1">
@@ -3635,7 +3683,7 @@ window.toggleStatsMode = (mode) => {
 };
 
 const ST = window._statsUI = { tab: 'overview', fs: 'both', friend: null, friendItems: {}, friendLoading: null };
-const STATS_TABS = [['overview', "Vue d'ensemble"], ['screen', 'Films & séries'], ['books', 'Livres'], ['music', 'Musique'], ['affinity', 'Affinité']];
+const STATS_TABS = [['overview', "Vue d'ensemble"], ['affinity', 'Amis'], ['screen', 'Films & séries'], ['books', 'Livres'], ['music', 'Musique']];
 window.setStatsTab = (t) => {
     if (!STATS_TABS.some(([k]) => k === t)) return;
     ST.tab = t;
@@ -3932,16 +3980,16 @@ const statsHabits = (sc) => {
     const worst = genres.length > 5 ? genres.slice(-3).reverse() : [];
     // Répartition des notes
     const dist = Array.from({ length: 10 }, (_, k) => ({ label: String(k + 1), title: `${k + 1}/10`, parts: [{ v: items.filter(i => Math.round(ratingOf(i) || 0) === k + 1).length, color: '#FFC567' }] }));
-    const typeAvg = ['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => [t, avgRating(items.filter(i => i.type === t))]).filter(([, a]) => a !== null).sort((a, b) => b[1] - a[1]);
+    const typeAvg = ['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => [t, avgRating(items.filter(i => i.type === t))]).sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1));
     return `
         ${sCard('Ton mois le plus chargé', busiest || sEmpty('Pas de dates de fin sur cette période.'))}
         ${sCard('Les genres que tu notes le mieux', best.length ? `<ul class="st-sentences">${best.map(sentence).join('')}</ul>` : sEmpty('Il faut au moins 3 œuvres notées dans un même genre.'))}
         ${worst.length ? sCard('Ceux qui te plaisent moins', `<ul class="st-sentences">${worst.map(sentence).join('')}</ul>`) : ''}
-        ${typeAvg.length ? sCard('Ta note moyenne par catégorie', `<div class="flex flex-wrap gap-2">${typeAvg.map(([t, a]) => `<span class="st-pill" style="background:${catOf(t).c}">${esc(catOf(t).label)} <b>${fr1(a)}</b></span>`).join('')}</div>`) : ''}
+        ${sCard('Ta note moyenne par catégorie', `<div class="flex flex-wrap gap-2">${typeAvg.map(([t, a]) => `<span class="st-pill" style="background:${catOf(t).c}${a === null ? ';opacity:.55' : ''}">${esc(catOf(t).label)} <b>${a !== null ? fr1(a) : '–'}</b></span>`).join('')}</div>`)}
         ${sCard('Tes notes', barChart(dist))}`;
 };
 
-// ---------- Onglet 6 : affinité avec un ami ----------
+// ---------- Onglet « Amis » : affinité, classements entre amis, conseils ----------
 const workKeys = (i) => {
     const keys = [];
     const id = String(i.id || '');
@@ -3950,9 +3998,68 @@ const workKeys = (i) => {
     if (t) keys.push(`${i.type}|t|${t}`);
     return keys;
 };
+const FIRST = (n) => String(n || '').trim().split(/\s+/)[0] || '?';
+const LEAD_TYPES = ['Film', 'Série', 'Livre', 'Album', 'YouTube'];
+const TYPE_CODE = { 'Film': 'F', 'Série': 'S', 'Livre': 'L', 'Album': 'A', 'YouTube': 'Y' };
+const CODE_TYPE = { F: 'Film', S: 'Série', L: 'Livre', A: 'Album', Y: 'YouTube' };
+
+/* Résumé de MA bibliothèque, rangé dans mon profil : mes amis le lisent avec mon profil (déjà chargé),
+   ce qui permet les classements et les « œuvres en commun » sans relire des centaines d'œuvres. */
+const buildStatsSummary = (items) => {
+    const done = (items || []).filter(isDone);
+    const counts = {};
+    LEAD_TYPES.forEach(t => { counts[t] = done.filter(i => i.type === t).length; });
+    const works = done.filter(i => TYPE_CODE[i.type] && i.type !== 'YouTube').slice(0, 1500).map(i => {
+        const id = String(i.id || '');
+        const idPart = id && !/^manual_|_public$/.test(id) ? id.replace(/[~|]/g, '').slice(0, 40) : '';
+        const r = ratingOf(i);
+        return `${TYPE_CODE[i.type]}~${idPart}~${normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 32)}~${r !== null ? Math.round(r * 2) / 2 : ''}`;
+    }).join('|');
+    return { v: 1, counts, works };
+};
+const parseSummaryWorks = (s) => String((s && s.works) || '').split('|').filter(Boolean).map(w => {
+    const [c, id, title, r] = w.split('~');
+    return { type: CODE_TYPE[c], id: id || '', title: title || '', rating: r ? Number(r) : null, status: 'Vu' };
+}).filter(w => w.type && (w.id || w.title));
+let summaryTimer = null, lastSummary = null;
+window.scheduleStatsSummary = () => { clearTimeout(summaryTimer); summaryTimer = setTimeout(() => window.publishStatsSummary(), 8000); };
+window.publishStatsSummary = async () => {
+    if (!window.currentUser || !Array.isArray(window.myCollection)) return;
+    const s = buildStatsSummary(window.myCollection);
+    const key = JSON.stringify(s);
+    const cur = window.userProfile && window.userProfile.statsSummary;
+    if (key === lastSummary || (cur && JSON.stringify({ v: cur.v, counts: cur.counts, works: cur.works }) === key)) { lastSummary = key; return; }
+    try {
+        await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { statsSummary: { ...s, at: Date.now() } });
+        lastSummary = key;
+    } catch (e) { console.error('Résumé des stats', e); }
+};
+
+const statsFriends = () => (window.followingData || []).map(p => ({ uid: p.uid || p.id, name: p.name, avatar: p.avatar, summary: p.statsSummary && p.statsSummary.v === 1 ? p.statsSummary : null }))
+    .filter(f => f.uid && !window.isHiddenUser(f.uid));
+
+// Nombre d'œuvres terminées par catégorie d'un ami qui n'a pas encore de résumé : simples comptages
+// (1 lecture Firebase par comptage, au lieu de relire toute sa bibliothèque)
+ST.counts = ST.counts || {};
+const loadFriendCounts = (uid) => {
+    const c = ST.counts[uid];
+    if (c && (c.loading || Date.now() - c.at < 30 * 60 * 1000)) return;
+    ST.counts[uid] = { loading: true, at: Date.now(), data: c && c.data };
+    Promise.all(LEAD_TYPES.map(async t => {
+        const q = query(collection(db, 'artifacts', appId, 'users', uid, 'items'), where('type', '==', t), where('status', '==', CONFIG[t].statuses[0]));
+        const snap = await getCountFromServer(q);
+        return [t, snap.data().count];
+    })).then(rows => { ST.counts[uid] = { at: Date.now(), data: Object.fromEntries(rows) }; })
+      .catch(e => { console.error('Comptages', e); ST.counts[uid] = { at: Date.now(), data: null, error: true }; })
+      .finally(() => { if (window.currentView === 'stats' && ST.tab === 'affinity' && !ST.friend) window.renderStatsView(); });
+};
+const countsOf = (f) => f.summary ? f.summary.counts : (ST.counts[f.uid] && ST.counts[f.uid].data) || null;
+
 window.pickAffinityFriend = async (uid) => {
     if (!uid || typeof uid !== 'string') return;
-    ST.friend = uid;
+    ST.friend = uid === ST.friend ? null : uid; // toucher à nouveau l'ami sélectionné revient aux classements
+    ST.commonShown = 10; ST.recoQuery = '';
+    if (!ST.friend) { window.renderStatsView(); return; }
     const cached = ST.friendItems[uid];
     if (!cached || Date.now() - cached.at > 5 * 60 * 1000) {
         ST.friendLoading = uid;
@@ -3965,6 +4072,8 @@ window.pickAffinityFriend = async (uid) => {
     }
     if (window.currentView === 'stats' && ST.tab === 'affinity') window.renderStatsView();
 };
+window.showMoreCommon = () => { ST.commonShown = (ST.commonShown || 10) + 40; window.renderStatsView(); };
+
 window.computeAffinity = (mine, theirs) => {
     const myDone = mine.filter(isDone), theirDone = theirs.filter(isDone);
     const index = new Map();
@@ -3979,41 +4088,153 @@ window.computeAffinity = (mine, theirs) => {
     const agree = rated.map(c => 1 - Math.min(9, Math.abs(ratingOf(c.mine) - ratingOf(c.theirs))) / 9);
     const K = 2;
     const pct = rated.length ? Math.round(((agree.reduce((a, b) => a + b, 0) + 0.5 * K) / (rated.length + K)) * 100) : null;
-    // Conseils : ce que l'autre a adoré (8+) et que je n'ai pas encore vu, et inversement
-    const theirIndex = new Map();
-    theirs.forEach(i => workKeys(i).forEach(k => theirIndex.set(k, i)));
-    const myAll = new Map();
-    mine.forEach(i => workKeys(i).forEach(k => myAll.set(k, i)));
-    const forMe = theirDone.filter(f => (ratingOf(f) || 0) >= 8 && !workKeys(f).some(k => { const m = myAll.get(k); return m && isDone(m); })).sort((a, b) => ratingOf(b) - ratingOf(a));
-    const forThem = myDone.filter(m => (ratingOf(m) || 0) >= 8 && !workKeys(m).some(k => { const t = theirIndex.get(k); return t && isDone(t); })).sort((a, b) => ratingOf(b) - ratingOf(a));
+    // Suggestions d'après vos goûts : ce que l'un a adoré (8+) et que l'autre n'a pas encore terminé,
+    // classé selon la note et selon ce que l'autre pense habituellement de ces genres.
+    const theirIndex = new Map(); theirs.forEach(i => workKeys(i).forEach(k => theirIndex.set(k, i)));
+    const myAll = new Map(); mine.forEach(i => workKeys(i).forEach(k => myAll.set(k, i)));
+    const genreTaste = (items) => { const t = new Map(); tally(items.filter(isDone), i => i.genres).forEach(g => { if (g.n >= 2) t.set(g.name, g.avg); }); return t; };
+    const myTaste = genreTaste(mine), theirTaste = genreTaste(theirs);
+    const fit = (i, taste) => { const gs = (i.genres || []).map(g => taste.get(g)).filter(v => v !== undefined); return gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length - 7 : 0; };
+    const forMe = theirDone.filter(f => (ratingOf(f) || 0) >= 8 && !workKeys(f).some(k => { const m = myAll.get(k); return m && isDone(m); }))
+        .sort((a, b) => (ratingOf(b) + fit(b, myTaste)) - (ratingOf(a) + fit(a, myTaste)));
+    const forThem = myDone.filter(m => (ratingOf(m) || 0) >= 8 && !workKeys(m).some(k => { const t = theirIndex.get(k); return t && isDone(t); }))
+        .sort((a, b) => (ratingOf(b) + fit(b, theirTaste)) - (ratingOf(a) + fit(a, theirTaste)));
     return { common, rated, pct, forMe, forThem };
 };
-const statsAffinity = () => {
-    const friends = (window.followingData || []).map(p => ({ uid: p.uid || p.id, name: p.name, avatar: p.avatar })).filter(f => f.uid && !window.isHiddenUser(f.uid));
-    if (!friends.length) return sEmpty('Abonne-toi à des amis pour comparer vos goûts.');
-    if (!ST.friend || !friends.some(f => f.uid === ST.friend)) ST.friend = null;
-    const pickers = `<div class="stories">${friends.map(f => {
-        const av = safeImg(window.liveUser(f.uid, f.name, f.avatar).avatar);
-        const first = String(window.liveUser(f.uid, f.name).name || '').trim().split(/\s+/)[0] || '?';
-        return `<button type="button" class="story ${ST.friend === f.uid ? 'is-picked' : ''}" onclick="window.pickAffinityFriend(${jsArg(f.uid)})"><span class="story-ring" style="background:${ST.friend === f.uid ? '#16151A' : '#E4DED4'}"><span>${av ? `<img src="${av}" alt="">` : initial(f.name)}</span></span><span class="story-name">${esc(first)}</span></button>`;
-    }).join('')}</div>`;
-    if (!ST.friend) return `<p class="st-lead">Choisis un ami pour comparer vos bibliothèques :</p>${pickers}`;
+
+// Conseiller une œuvre à un ami : elle arrive dans ses notifications (cloche)
+const recoSentKey = (uid, it) => `${uid}|${workKeys(it)[0] || ''}`;
+window.recommendTo = async (friendUid, key) => {
+    const it = itemRegistry.get(key);
+    if (!it || !friendUid || !window.currentUser || window.isHiddenUser(friendUid)) return;
+    const name = FIRST(window.liveUser(friendUid).name);
+    const note = await window.ui.prompt(`Conseiller « ${it.title} » à ${name}.\nUn petit mot ? (facultatif)`, '', { maxLength: 200, okLabel: 'Envoyer' });
+    if (note === null) return;
+    const clean = (v, n) => String(v || '').slice(0, n);
+    try {
+        await addDoc(collection(db, 'artifacts', appId, 'users', friendUid, 'notifications'), {
+            type: 'reco', title: 'Conseil', fromUid: window.currentUser.uid, user: window.userProfile.name || '',
+            message: `te conseille « ${clean(it.title, 120)} »`, text: `te conseille « ${clean(it.title, 120)} »`,
+            itemTitle: clean(it.title, 200), actId: null, note: clean(note.trim(), 200), rating: ratingOf(it),
+            item: { id: clean(it.id, 80), type: it.type, title: clean(it.title, 200), img: clean(it.img, 1000), author: clean(it.author, 200), releaseDate: clean(it.releaseDate, 30), desc: clean(it.desc, 600), genres: (Array.isArray(it.genres) ? it.genres : []).slice(0, 5).map(g => clean(g, 40)), metricValue: num(it.metricValue) },
+            timestamp: Date.now(), read: false
+        });
+        const k = recoSentKey(friendUid, it);
+        try { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { recosSent: arrayUnion(k) }); } catch (e) { /* simple mémo */ }
+        window.userProfile.recosSent = [...new Set([...(window.userProfile.recosSent || []), k])];
+        window.ui.toast(`Conseil envoyé à ${name} ✓`);
+        if (window.currentView === 'stats') window.renderStatsView();
+    } catch (e) { console.error(e); window.ui.alert("Le conseil n'a pas pu être envoyé. Réessaie."); }
+};
+window.setRecoQuery = (v) => {
+    ST.recoQuery = String(v || '');
+    const box = document.getElementById('reco-search-results');
+    if (box) box.innerHTML = recoSearchResults();
+};
+const recoButton = (it) => {
+    const sent = (window.userProfile.recosSent || []).includes(recoSentKey(ST.friend, it));
+    return sent ? `<span class="st-reco-btn is-sent">Conseillé ✓</span>` : `<button type="button" class="st-reco-btn" onclick="event.stopPropagation(); window.recommendTo(${jsArg(ST.friend)}, ${jsArg(regItem(it))})">Conseiller</button>`;
+};
+const recoSearchResults = () => {
+    const q = normTxt(ST.recoQuery.trim());
+    if (q.length < 2) return '';
+    const hits = (window.myCollection || []).filter(i => isDone(i) && normTxt([i.title, i.author].join(' ')).includes(q)).slice(0, 8);
+    if (!hits.length) return sEmpty('Rien trouvé dans ta bibliothèque.');
+    return `<ul class="st-commons mt-2">${hits.map(i => `<li class="st-common">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)}${ratingOf(i) !== null ? ` · ${fr1(ratingOf(i))}★` : ''}</div></div>${recoButton(i)}</li>`).join('')}</ul>`;
+};
+window.openRecoNotif = (notifId) => {
+    const n = (window.extState.notifications || []).find(x => x.id === notifId);
+    if (!n || !n.item || typeof n.item !== 'object') return;
+    const it = n.item;
+    window.openPreview({ id: String(it.id || 'reco_' + notifId), type: LEAD_TYPES.includes(it.type) ? it.type : 'Film', title: String(it.title || ''), img: String(it.img || ''), author: String(it.author || ''), releaseDate: String(it.releaseDate || ''), desc: String(it.desc || ''), genres: Array.isArray(it.genres) ? it.genres : [], metricValue: num(it.metricValue), rating: n.rating, comment: n.note || '', docId: null, _fromFriend: true });
+};
+
+// Page d'accueil de l'onglet : classements entre amis
+const statsFriendsBoard = (friends) => {
+    friends.filter(f => !f.summary).forEach(f => loadFriendCounts(f.uid));
+    const me = { uid: window.currentUser.uid, name: 'Toi', isMe: true, counts: buildStatsSummary(window.myCollection).counts };
+    const people = [me, ...friends.map(f => ({ uid: f.uid, name: FIRST(window.liveUser(f.uid, f.name).name), counts: countsOf(f) }))];
+    const verb = { 'Film': ['as vu le plus de films', 'a vu le plus de films'], 'Série': ['as vu le plus de séries', 'a vu le plus de séries'], 'Livre': ['as lu le plus de livres', 'a lu le plus de livres'], 'Album': ['as écouté le plus d\'albums', 'a écouté le plus d\'albums'], 'YouTube': ['as regardé le plus de vidéos YouTube', 'a regardé le plus de vidéos YouTube'] };
+    const avatarOf = (p) => { if (p.isMe) { const a = safeImg(window.userProfile.avatar); return a ? `<img src="${a}" alt="">` : initial(window.userProfile.name); } const a = safeImg(window.liveUser(p.uid).avatar); return a ? `<img src="${a}" alt="">` : initial(p.name); };
+    const rows = LEAD_TYPES.map(t => {
+        const ranked = people.filter(p => p.counts && num(p.counts[t]) > 0).sort((a, b) => num(b.counts[t]) - num(a.counts[t]));
+        if (!ranked.length) return '';
+        const w = ranked[0];
+        const sentence = w.isMe ? `C'est <b>toi</b> qui ${verb[t][0]}` : `C'est <b>${esc(w.name)}</b> qui ${verb[t][1]}`;
+        return `<li class="st-lead-row"><span class="st-lead-av" style="background:${catOf(t).c}">${avatarOf(w)}</span><div class="min-w-0 flex-1"><div class="text-[14px] leading-snug">${sentence} <span class="text-gray-500">(${num(w.counts[t])})</span></div>
+            <div class="st-podium">${ranked.slice(0, 3).map((p, k) => `<span><i class="st-medal m${k}">${k + 1}</i>${esc(p.name)} <b>${num(p.counts[t])}</b></span>`).join('')}</div></div></li>`;
+    }).join('');
+    // Œuvres en commun et affinité (résumés publiés, ou bibliothèques déjà ouvertes)
+    const myItems = window.myCollection || [];
+    const shared = friends.map(f => {
+        const theirs = (ST.friendItems[f.uid] && !ST.friendItems[f.uid].error) ? ST.friendItems[f.uid].items : (f.summary ? parseSummaryWorks(f.summary) : null);
+        if (!theirs) return null;
+        const a = window.computeAffinity(myItems, theirs);
+        return { f, n: a.common.length, pct: a.rated.length >= 3 ? a.pct : null };
+    }).filter(Boolean);
+    const byShared = [...shared].sort((a, b) => b.n - a.n);
+    const byPct = shared.filter(s => s.pct !== null).sort((a, b) => b.pct - a.pct);
+    const highlights = [];
+    if (byShared.length && byShared[0].n > 0) highlights.push(`<li><span class="st-hl" style="background:var(--lav)"><i class="fa-solid fa-link"></i></span><span>C'est avec <b>${esc(FIRST(window.liveUser(byShared[0].f.uid, byShared[0].f.name).name))}</b> que tu partages le plus d'œuvres <span class="text-gray-500">(${byShared[0].n})</span></span></li>`);
+    if (byPct.length) highlights.push(`<li><span class="st-hl" style="background:var(--rose)"><i class="fa-solid fa-heart"></i></span><span>Ta meilleure affinité : <b>${esc(FIRST(window.liveUser(byPct[0].f.uid, byPct[0].f.name).name))}</b> <span class="text-gray-500">(${byPct[0].pct} %)</span></span></li>`);
+    const sharedList = byShared.filter(s => s.n > 0).slice(0, 5);
+    const missing = friends.length - shared.length;
+    return `
+        ${highlights.length ? `<section class="st-card"><ul class="st-sentences">${highlights.join('')}</ul></section>` : ''}
+        ${sCard('Le match entre amis', rows ? `<ul class="st-lead-list">${rows}</ul>` : sEmpty('Les classements arrivent…'))}
+        ${sharedList.length ? sCard('Avec qui tu partages le plus', `<ul class="st-commons">${sharedList.map(s => `<li class="st-common" onclick="window.pickAffinityFriend(${jsArg(s.f.uid)})"><span class="feed-avatar" style="background:var(--lav-tint);width:38px;height:38px">${safeImg(window.liveUser(s.f.uid).avatar) ? `<img src="${safeImg(window.liveUser(s.f.uid).avatar)}" alt="">` : initial(s.f.name)}</span><div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] truncate">${esc(window.liveUser(s.f.uid, s.f.name).name)}</div><div class="text-[12px] text-gray-500 font-semibold">${s.n} œuvre${s.n > 1 ? 's' : ''} en commun</div></div>${s.pct !== null ? `<span class="st-pill" style="background:var(--miel-tint)"><b>${s.pct} %</b></span>` : ''}<i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></li>`).join('')}</ul>`) : ''}
+        ${missing > 0 ? `<p class="st-note">${missing} ami${missing > 1 ? 's' : ''} n'${missing > 1 ? 'ont' : 'a'} pas encore ouvert la nouvelle version : touche sa bulle pour comparer quand même.</p>` : ''}`;
+};
+
+// Détail avec un ami
+const statsFriendDetail = (friends) => {
     const name = window.liveUser(ST.friend).name || 'Ton ami';
+    const first = esc(FIRST(name));
     const data = ST.friendItems[ST.friend];
-    if (ST.friendLoading === ST.friend || !data) return pickers + `<div class="text-center py-10 text-gray-500 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Lecture de la bibliothèque de ${esc(name)}…</div>`;
-    if (data.error) return pickers + sEmpty("Sa bibliothèque n'a pas pu être lue. Réessaie dans un instant.");
+    if (ST.friendLoading === ST.friend || !data) return `<div class="text-center py-10 text-gray-500 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Lecture de la bibliothèque de ${esc(name)}…</div>`;
+    if (data.error) return sEmpty("Sa bibliothèque n'a pas pu être lue. Réessaie dans un instant.");
     const a = window.computeAffinity(window.myCollection || [], data.items);
     const pctHtml = a.pct !== null && a.rated.length >= 3
-        ? `<div class="st-aff-pct">${a.pct}<small>%</small></div><div class="st-aff-l">d'affinité avec ${esc(name)}</div><div class="st-aff-s">calculée sur ${a.rated.length} œuvres notées par vous deux</div>`
+        ? `<div class="st-aff-pct">${a.pct}<small>%</small></div><div class="st-aff-l">d'affinité avec ${esc(name)}</div><div class="st-aff-s">calculée sur ${a.rated.length} œuvres notées par vous deux · ${a.common.length} en commun</div>`
         : `<div class="st-aff-pct">–</div><div class="st-aff-l">Pas encore assez d'œuvres notées en commun</div><div class="st-aff-s">Il en faut au moins 3 (${a.rated.length} pour l'instant)</div>`;
-    const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, c.mine.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div><div class="st-duo"><span title="Ma note">${ratingOf(c.mine) !== null ? fr1(ratingOf(c.mine)) : '–'}</span><span title="Sa note" class="is-friend">${ratingOf(c.theirs) !== null ? fr1(ratingOf(c.theirs)) : '–'}</span></div></li>`;
-    const recos = (list, empty) => list.length ? `<div class="st-recos">${list.slice(0, 9).map(i => `<div class="st-reco" onclick="window.openPreviewKey(${jsArg(regItem({ ...i, docId: null, _fromFriend: true }))})">${coverImg(i.img, i.title, 'st-reco-img', 'loading="lazy"')}<span class="feed-rating">${esc(ratingOf(i) !== null ? fr1(ratingOf(i)) : '')}</span><span class="st-reco-t">${esc(i.title)}</span></div>`).join('')}</div>` : sEmpty(empty);
-    const sortedCommon = [...a.common].sort((x, y) => String(window.itemDateKey(y.mine)).localeCompare(String(window.itemDateKey(x.mine))));
-    return pickers + `
+    const duo = (c) => `<div class="st-duo"><span title="Ma note">${ratingOf(c.mine) !== null ? fr1(ratingOf(c.mine)) : '–'}</span><span title="Sa note" class="is-friend">${ratingOf(c.theirs) !== null ? fr1(ratingOf(c.theirs)) : '–'}</span></div>`;
+    const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, c.mine.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div>${duo(c)}</li>`;
+    const head = `<div class="st-duo-head"><span>Moi</span><span class="is-friend">${first}</span></div>`;
+    // Les œuvres que vous avez le plus aimées tous les deux d'abord (500 œuvres en commun ne s'affichent pas d'un coup)
+    const both = (c) => Math.min(ratingOf(c.mine) ?? 0, ratingOf(c.theirs) ?? 0) * 100 + (ratingOf(c.mine) ?? 0) + (ratingOf(c.theirs) ?? 0);
+    const sortedCommon = [...a.common].sort((x, y) => both(y) - both(x));
+    const shown = Math.min(sortedCommon.length, ST.commonShown || 10);
+    const gaps = a.rated.map(c => ({ c, d: Math.abs(ratingOf(c.mine) - ratingOf(c.theirs)) })).filter(x => x.d >= 3).sort((x, y) => y.d - x.d).slice(0, 3);
+    // Conseils reçus de cet ami (notifications), sinon suggestions d'après ses goûts
+    const received = (window.extState.notifications || []).filter(n => n.type === 'reco' && n.fromUid === ST.friend && n.item);
+    const tile = (i, onclick, extra = '') => `<div class="st-reco" onclick="${onclick}">${coverImg(i.img, i.title, 'st-reco-img', 'loading="lazy"')}${ratingOf(i) !== null ? `<span class="feed-rating">${fr1(ratingOf(i))}</span>` : ''}<span class="st-reco-t">${esc(i.title)}</span>${extra}</div>`;
+    const receivedHtml = received.length ? `<div class="st-recos">${received.slice(0, 9).map(n => tile({ ...n.item, rating: n.rating }, `window.openRecoNotif(${jsArg(n.id)})`, n.note ? `<span class="st-reco-note">« ${esc(n.note)} »</span>` : '')).join('')}</div>` : '';
+    const suggestFor = a.forMe.slice(0, 6);
+    const forMeHtml = receivedHtml
+        || (suggestFor.length ? `<p class="st-note -mt-1 mb-3">${first} ne t'a encore rien conseillé : voici ce qu'il a adoré et que tu n'as pas vu, d'après tes goûts.</p><div class="st-recos">${suggestFor.map(i => tile(i, `window.openPreviewKey(${jsArg(regItem({ ...i, docId: null, _fromFriend: true }))})`)).join('')}</div>` : sEmpty("Rien de noté 8 ou plus que tu n'aies pas déjà vu."));
+    const forThem = a.forThem.slice(0, 6);
+    const forThemHtml = `
+        ${forThem.length ? `<p class="st-note -mt-1 mb-3">D'après ses goûts, ces œuvres que tu as adorées pourraient lui plaire :</p><ul class="st-commons">${forThem.map(i => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(i))})">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)} · ${fr1(ratingOf(i))}★</div></div>${recoButton(i)}</li>`).join('')}</ul>` : sEmpty('Rien à lui suggérer automatiquement pour le moment.')}
+        <div class="st-reco-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Choisir une autre œuvre de ma bibliothèque…" value="${esc(ST.recoQuery || '')}" oninput="window.setRecoQuery(this.value)" autocomplete="off"></div>
+        <div id="reco-search-results">${recoSearchResults()}</div>`;
+    return `
         <div class="st-aff">${pctHtml}</div>
-        ${sCard(`${a.common.length} œuvre${a.common.length > 1 ? 's' : ''} en commun`, a.common.length ? `<div class="st-duo-head"><span>Moi</span><span class="is-friend">${esc(String(name).split(/\s+/)[0])}</span></div><ul class="st-commons">${sortedCommon.slice(0, 30).map(row).join('')}</ul>${a.common.length > 30 ? `<p class="st-note">… et ${a.common.length - 30} autres.</p>` : ''}` : sEmpty('Aucune œuvre terminée en commun pour le moment.'))}
-        ${sCard(`${esc(String(name).split(/\s+/)[0])} te conseille`, recos(a.forMe, "Rien de noté 8 ou plus que tu n'aies pas déjà vu."))}
-        ${sCard(`Tu pourrais lui conseiller`, recos(a.forThem, 'Rien à lui conseiller pour le moment.'))}`;
+        ${sCard(a.common.length ? 'Vos coups de cœur communs' : 'Œuvres en commun', a.common.length ? `${head}<ul class="st-commons">${sortedCommon.slice(0, shown).map(row).join('')}</ul>${sortedCommon.length > shown ? `<button type="button" class="st-more" onclick="window.showMoreCommon()">Voir plus (${sortedCommon.length - shown} autres)</button>` : ''}` : sEmpty('Aucune œuvre terminée en commun pour le moment.'))}
+        ${gaps.length ? sCard('Vos plus gros désaccords', `${head}<ul class="st-commons">${gaps.map(x => row(x.c)).join('')}</ul>`) : ''}
+        ${sCard(`${first} te conseille`, forMeHtml)}
+        ${sCard(`Conseiller une œuvre à ${first}`, forThemHtml)}`;
+};
+
+const statsAffinity = () => {
+    const friends = statsFriends();
+    if (!friends.length) return sEmpty('Abonne-toi à des amis pour comparer vos goûts.');
+    if (ST.friend && !friends.some(f => f.uid === ST.friend)) ST.friend = null;
+    const pickers = `<div class="stories">${friends.map(f => {
+        const u = window.liveUser(f.uid, f.name, f.avatar);
+        const av = safeImg(u.avatar);
+        return `<button type="button" class="story ${ST.friend === f.uid ? 'is-picked' : ''}" onclick="window.pickAffinityFriend(${jsArg(f.uid)})"><span class="story-ring" style="background:${ST.friend === f.uid ? '#16151A' : '#E4DED4'}"><span>${av ? `<img src="${av}" alt="">` : initial(f.name)}</span></span><span class="story-name">${esc(FIRST(u.name))}</span></button>`;
+    }).join('')}</div>`;
+    return pickers + (ST.friend ? statsFriendDetail(friends) : `<p class="st-note -mt-1 mb-3">Touche un ami pour voir vos stats à deux.</p>${statsFriendsBoard(friends)}`);
 };
 
 // ---------- Rendu de la page ----------
@@ -4023,7 +4244,8 @@ window.renderStatsView = () => {
     // Complétion des anciennes œuvres : lancée à l'ouverture des stats, en arrière-plan
     if (window.currentView === 'stats' && window.startStatsEnrichment) setTimeout(() => window.startStatsEnrichment(), 0);
     const E = window._enrich || {};
-    const banner = E.running && E.total
+    // La barre ne s'affiche que pour la grosse complétion (première fois) ; les nouvelles œuvres se complètent sans bruit
+    const banner = E.running && E.total >= 10
         ? `<div class="st-banner"><div class="flex items-center justify-between gap-2"><span><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Je complète tes œuvres déjà enregistrées…</span><b>${E.done}/${E.total}</b></div><div class="stat-bar mt-2" style="background:rgba(22,21,26,.12)"><span style="width:${Math.round(E.done / E.total * 100)}%"></span></div></div>`
         : '';
     const switcherHtml = ST.tab === 'affinity' ? '' : `
@@ -4044,7 +4266,6 @@ window.renderStatsView = () => {
             ${tabs}
             ${banner}
             ${switcherHtml}
-            ${ST.tab === 'affinity' ? '<p class="st-note -mt-1 mb-3">Sur tout l\'historique de vos deux bibliothèques.</p>' : ''}
             ${body}
         </div>
     `;
@@ -4230,7 +4451,7 @@ window.startStatsEnrichment = async () => {
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v4.3 (nouvelle DA + statistiques détaillées)");
+        console.log("MaBiblio v4.4 (statistiques détaillées + amis)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
