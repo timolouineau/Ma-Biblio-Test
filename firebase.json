@@ -3,8 +3,7 @@
     {
       "source": "functions",
       "codebase": "default",
-      "runtime": "nodejs22",
-      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" install --omit=dev --no-audit --no-fund"]
+      "runtime": "nodejs22"
     }
   ],
   "firestore": {
