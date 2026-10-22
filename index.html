@@ -3635,7 +3635,7 @@ window.toggleStatsMode = (mode) => {
 };
 
 const ST = window._statsUI = { tab: 'overview', fs: 'both', friend: null, friendItems: {}, friendLoading: null };
-const STATS_TABS = [['overview', "Vue d'ensemble"], ['screen', 'Films & séries'], ['books', 'Livres'], ['music', 'Musique'], ['habits', 'Habitudes'], ['affinity', 'Affinité']];
+const STATS_TABS = [['overview', "Vue d'ensemble"], ['screen', 'Films & séries'], ['books', 'Livres'], ['music', 'Musique'], ['affinity', 'Affinité']];
 window.setStatsTab = (t) => {
     if (!STATS_TABS.some(([k]) => k === t)) return;
     ST.tab = t;
@@ -3838,10 +3838,10 @@ const statsOverview = (sc) => {
                 ${ringSegs}
             </svg>
         </div>
-        ${sCard('Temps passé', `<div class="st-minis">${timeTiles}</div>${seriesUnknown && series.length ? `<p class="st-note">Séries : estimation à partir du nombre d'épisodes${seriesUnknown ? ` (${seriesUnknown} série${seriesUnknown > 1 ? 's' : ''} encore sans info)` : ''}.</p>` : ''}${ytMin ? `<p class="st-note">+ ${frInt(ytMin / 60)} h de vidéos YouTube.</p>` : ''}`)}
+        <h3 class="st-h st-h-out" style="margin-top:6px">${isYear ? 'Mes objectifs' : 'Par catégorie'}</h3>
+        <div class="stats-grid mb-3.5">${cardsHtml}</div>
         ${sCard(isYear ? 'Mois par mois' : 'Année par année', chart + legend)}
-        <h3 class="st-h st-h-out">${isYear ? 'Mes objectifs' : 'Par catégorie'}</h3>
-        <div class="stats-grid">${cardsHtml}</div>`;
+        ${statsHabits(sc)}`;
 };
 
 // ---------- Onglet 2 : films & séries ----------
@@ -3909,10 +3909,10 @@ const statsMusic = (sc) => {
         ${sCard('Albums par décennie', decades.length ? barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color: rose }] }))) : sEmpty('Pas encore de dates de sortie.'))}`;
 };
 
-// ---------- Onglet 5 : habitudes ----------
+// ---------- Habitudes (affichées dans la vue d'ensemble) ----------
 const statsHabits = (sc) => {
     const { items } = sc;
-    if (!items.length) return sEmpty('Pas encore d\'œuvres terminées sur cette période.');
+    if (!items.length) return '';
     // Mois le plus chargé
     const months = tally(items, i => [monthKeyOf(i)]);
     let busiest = '';
@@ -4035,7 +4035,7 @@ window.renderStatsView = () => {
     let body = '';
     try {
         body = ST.tab === 'screen' ? statsScreen(sc) : ST.tab === 'books' ? statsBooks(sc) : ST.tab === 'music' ? statsMusic(sc)
-            : ST.tab === 'habits' ? statsHabits(sc) : ST.tab === 'affinity' ? statsAffinity() : statsOverview(sc);
+            : ST.tab === 'affinity' ? statsAffinity() : statsOverview(sc);
     } catch (e) { console.error('Stats', e); body = sEmpty("Une statistique n'a pas pu être calculée."); }
     container.innerHTML = `
         <div class="pt-16 px-4 pb-32">
