@@ -2524,6 +2524,11 @@
             } else {
                 badge.classList.remove('active');
             }
+            // Pastille rouge sur l'icône de l'appli (écran d'accueil du téléphone)
+            try {
+                if (count > 0 && navigator.setAppBadge) navigator.setAppBadge(count).catch(() => {});
+                else if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+            } catch (e) {}
         };
 
         window.goToActivity = (actId) => {

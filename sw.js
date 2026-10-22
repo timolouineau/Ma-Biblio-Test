@@ -3,7 +3,7 @@
    RÈGLE D'OR : la page elle-même (index.html, config.js…) vient TOUJOURS d'Internet quand il y en a.
    Personne ne peut donc rester bloqué sur une ancienne version. Le cache ne sert qu'en secours, hors ligne.
    Les données (Firebase) et les recherches (TMDB, Google Livres, Deezer…) ne passent JAMAIS par ce cache. */
-const VERSION = 'mabiblio-v2';
+const VERSION = 'mabiblio-v3';
 const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 // Fichiers externes qui ne changent jamais (versions figées) : servis depuis le cache une fois téléchargés
 const IMMUTABLE = [/^https:\/\/www\.gstatic\.com\/firebasejs\/\d+\.\d+\.\d+\//, /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/font-awesome\/\d/, /^https:\/\/fonts\.gstatic\.com\//];
@@ -70,6 +70,9 @@ self.addEventListener('push', (event) => {
     const title = String(d.title || 'MaBiblio').slice(0, 120);
     const body = String(d.body || 'Nouvelle activité').slice(0, 240);
     const url = /^\.\/\?notif=[A-Za-z0-9_-]{1,64}$/.test(String(d.url || '')) ? d.url : './';
+    // Pastille rouge sur l'icône de l'appli : nombre de notifications non lues
+    const count = parseInt(d.badge, 10);
+    if (Number.isFinite(count) && count > 0 && self.navigator && self.navigator.setAppBadge) self.navigator.setAppBadge(Math.min(count, 99)).catch(() => {});
     event.waitUntil(self.registration.showNotification(title, {
         body,
         icon: 'icons/icon-192.png',

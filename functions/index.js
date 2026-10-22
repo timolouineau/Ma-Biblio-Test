@@ -53,6 +53,11 @@ exports.envoyerNotification = functions
         if (!tokens.length) return null;
 
         const data = buildPush(n, notifId);
+        // Nombre de notifications non lues → pastille rouge sur l'icône de l'appli
+        try {
+            const unread = await db.collection(`artifacts/${appId}/users/${uid}/notifications`).where('read', '==', false).count().get();
+            data.badge = String(Math.min(unread.data().count || 1, 99));
+        } catch (e) { data.badge = '1'; }
         const res = await getMessaging().sendEachForMulticast({
             tokens,
             data,
