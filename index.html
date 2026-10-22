@@ -4636,17 +4636,44 @@ window.startStatsEnrichment = async () => {
             const go = () => window.currentUser ? window.openFromPush(notifId) : setTimeout(go, 400);
             setTimeout(go, 600);
         })();
-        // Proposition discrète d'activer les notifications (appli installée, une fois par mois au plus)
-        setTimeout(() => {
-            if (!VAPID_KEY || !window.currentUser) return;
-            window.refreshPushDevice();
-            if (myPushDevice() || pushPermission() !== 'default' || !isStandalone()) return;
-            let last = 0;
-            try { last = Number(localStorage.getItem('mabiblio_push_hint')) || 0; } catch (e) {}
-            if (Date.now() - last < 30 * 86400000) return;
-            try { localStorage.setItem('mabiblio_push_hint', String(Date.now())); } catch (e) {}
-            window.ui.toast('Reçois une notification quand tes amis réagissent', { actionLabel: 'Activer', onAction: () => window.enablePush(), duration: 10000 });
-        }, 4000);
+        // Dès la première ouverture de l'appli : fenêtre « Activer les notifications ? ».
+        // Le téléphone n'autorise la vraie demande qu'après un toucher : le bouton « Autoriser » la déclenche directement.
+        // « Plus tard » : on reposera la question dans 2 semaines (3 fois au maximum). Le bouton du profil reste disponible.
+        window.showPushAsk = () => {
+            if (document.getElementById('push-ask')) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'ui-overlay';
+            overlay.id = 'push-ask';
+            overlay.innerHTML = `<div class="ui-box" role="dialog" aria-modal="true" style="text-align:center">
+                <div class="mx-auto mb-3 flex items-center justify-center" style="width:60px;height:60px;border-radius:20px;background:var(--mint);font-size:26px"><i class="fa-solid fa-bell"></i></div>
+                <p class="font-display" style="font-size:20px;font-weight:800;margin:0 0 6px">Activer les notifications ?</p>
+                <p class="ui-text" style="margin-bottom:16px">Sois prévenu quand tes amis aiment tes posts, te commentent, s'abonnent à toi ou te conseillent une œuvre.</p>
+                <div class="ui-actions"><button type="button" class="ui-btn" id="push-ask-later">Plus tard</button><button type="button" class="ui-btn ui-ok" id="push-ask-ok">Autoriser</button></div>
+            </div>`;
+            document.body.appendChild(overlay);
+            requestAnimationFrame(() => overlay.classList.add('show'));
+            const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); };
+            overlay.querySelector('#push-ask-later').onclick = () => close();
+            // Appel direct (sans attente) pour que le téléphone accepte d'afficher sa demande d'autorisation
+            overlay.querySelector('#push-ask-ok').onclick = () => { close(); window.enablePush(); };
+        };
+        (() => {
+            const started = Date.now();
+            const tryAsk = () => {
+                if (!VAPID_KEY) return;
+                if (!window.currentUser || !window.userProfile || !window.userProfile.name) { if (Date.now() - started < 30000) setTimeout(tryAsk, 1000); return; }
+                window.refreshPushDevice();
+                // Seulement là où les notifications sont possibles : appli installée sur iPhone, ou Android / ordinateur
+                if (myPushDevice() || pushPermission() !== 'default' || !pushSupported() || (isIOS() && !isStandalone())) return;
+                let st = { n: 0, at: 0 };
+                try { st = JSON.parse(localStorage.getItem('mabiblio_push_ask')) || st; } catch (e) {}
+                if (st.n >= 3 || (st.at && Date.now() - st.at < 14 * 86400000)) return;
+                if (document.querySelector('.ui-overlay')) { setTimeout(tryAsk, 3000); return; } // une autre fenêtre est ouverte : on attend
+                try { localStorage.setItem('mabiblio_push_ask', JSON.stringify({ n: st.n + 1, at: Date.now() })); } catch (e) {}
+                window.showPushAsk();
+            };
+            setTimeout(tryAsk, 2500);
+        })();
 
         // Service worker : uniquement sur le vrai site (https), jamais en test local (fichier ou banc d'essai)
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location.hostname === 'localhost' && /[?&]swtest\b/.test(location.search)))) {
