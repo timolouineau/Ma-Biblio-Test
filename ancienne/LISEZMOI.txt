@@ -1,0 +1,3 @@
+Page de test temporaire : copie du site en ligne actuel (sans réglages d'appli), branchée sur le projet TEST.
+Sert à vérifier qu'une icône déjà ajoutée à l'écran d'accueil peut recevoir les notifications après la mise à jour.
+À supprimer après le test.
