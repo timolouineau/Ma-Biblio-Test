@@ -8,10 +8,16 @@
     <meta name="apple-mobile-web-app-title" content="MaBiblio">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
-    <link rel="icon" type="image/png" href="https://i.postimg.cc/mZFY1S2M/Design-sans-titre.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <!-- Barre d'état claire avec texte foncé (lisible sur le fond crème de la nouvelle DA) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#F6F3EE">
+    <meta name="description" content="Ta bibliothèque de films, séries, livres, albums et vidéos, à partager avec tes amis.">
+
+    <!-- Appli installable : manifeste + icônes (fichiers à côté de index.html) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="icons/favicon-64.png">
     
     <!-- Configuration Firebase : fichier séparé, DIFFÉRENT dans le dépôt test et le dépôt en ligne -->
     <script src="config.js"></script>
@@ -385,6 +391,7 @@
         .grid-item.is-selected .sel-check { background: var(--ink); color: #fff; }
         .grid-item.is-selected { outline: 3px solid var(--lav-deep); outline-offset: -3px; }
         .grid-item.is-selected img { opacity: .75; }
+        .install-card { display: flex; align-items: center; gap: 12px; background: var(--lav); border-radius: 24px; padding: 14px 16px; margin-top: 28px; cursor: pointer; }
         .bio-text { font-size: 14px; color: var(--muted); margin-top: 8px; line-height: 1.45; padding: 0 20px; font-weight: 500; }
     </style>
 </head>
@@ -3382,6 +3389,7 @@
                             </div>`).join('')}
                     </div>` : ''}
 
+                    ${window.installCardHtml ? window.installCardHtml() : ''}
                     <div class="ios-group !mx-0 mt-8"><div class="ios-cell !border-0 cursor-pointer" onclick="window.openFeedbackModal()"><span class="cell-icon" style="background:var(--miel-tint)"><i class="fa-regular fa-envelope"></i></span><span class="font-bold text-sm flex-1 text-left">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></div></div>
                     <div class="ios-group !mx-0 mt-3"><div class="ios-cell !border-0 cursor-pointer justify-center" onclick="window.logout()"><span class="text-red-600 font-bold text-sm">Déconnexion</span></div></div>
                 </div>`;
@@ -4454,7 +4462,57 @@ window.startStatsEnrichment = async () => {
 };
 
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v4.4 (statistiques détaillées + amis)");
+        /* --- J.6 APPLI INSTALLABLE (écran d'accueil du téléphone) --- */
+        const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isMobile = () => isIOS() || /Android/i.test(navigator.userAgent);
+        window._installPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Android / Chrome : on garde la proposition d'installation pour notre propre bouton
+            e.preventDefault();
+            window._installPrompt = e;
+            if (window.currentView === 'profile') window.renderProfile();
+        });
+        window.addEventListener('appinstalled', () => {
+            window._installPrompt = null;
+            window.ui.toast('MaBiblio est installée sur ton téléphone ✓');
+            if (window.currentView === 'profile') window.renderProfile();
+        });
+        window.installApp = async () => {
+            if (window._installPrompt) {
+                const p = window._installPrompt;
+                window._installPrompt = null;
+                try { await p.prompt(); await p.userChoice; } catch (e) { console.warn(e); }
+                if (window.currentView === 'profile') window.renderProfile();
+                return;
+            }
+            if (isIOS()) {
+                window.ui.alert("Pour installer MaBiblio sur ton iPhone :\n\n1. Ouvre le site dans Safari\n2. Touche le bouton Partager (le carré avec une flèche vers le haut)\n3. Choisis « Sur l'écran d'accueil »\n4. Touche « Ajouter »\n\nL'appli apparaît avec son icône, comme les autres.");
+            } else {
+                window.ui.alert("Pour installer MaBiblio :\n\nOuvre le menu de ton navigateur (les 3 points ⋮) puis choisis « Installer l'application » ou « Ajouter à l'écran d'accueil ».");
+            }
+        };
+        window.installCardHtml = () => {
+            if (isStandalone()) return '';
+            return `<div class="install-card" role="button" onclick="window.installApp()"><span class="cell-icon" style="background:#fff"><i class="fa-solid fa-mobile-screen-button"></i></span><span class="flex-1 text-left"><span class="block font-extrabold text-[15px]">Installer l'appli</span><span class="block text-xs font-semibold" style="color:#2D2547">Sur l'écran d'accueil de ton téléphone, en plein écran</span></span><i class="fa-solid fa-chevron-right text-xs"></i></div>`;
+        };
+        // Petit rappel discret (au plus toutes les 2 semaines), seulement sur téléphone et hors appli installée
+        setTimeout(() => {
+            if (!window.currentUser || isStandalone() || !(isMobile() || window._installPrompt)) return;
+            let last = 0;
+            try { last = Number(localStorage.getItem('mabiblio_install_hint')) || 0; } catch (e) {}
+            if (Date.now() - last < 14 * 86400000) return;
+            try { localStorage.setItem('mabiblio_install_hint', String(Date.now())); } catch (e) {}
+            window.ui.toast("Installe MaBiblio sur ton téléphone", { actionLabel: 'Comment ?', onAction: () => window.installApp(), duration: 9000 });
+        }, 6000);
+
+        // Service worker : uniquement sur le vrai site (https), jamais en test local (fichier ou banc d'essai)
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location.hostname === 'localhost' && /[?&]swtest\b/.test(location.search)))) {
+            const registerSW = () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker', e));
+            if (document.readyState === 'complete') registerSW(); else window.addEventListener('load', registerSW);
+        }
+
+        console.log("MaBiblio v5.0 (appli installable)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
