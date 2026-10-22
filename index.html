@@ -231,7 +231,7 @@
         @keyframes likeBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
         .like-bounce { animation: likeBounce 0.3s ease-in-out; color: #FF2D55 !important; }
         .mention { color: var(--lav-deep); font-weight: 800; }
-        .mention-suggestions { position: absolute; bottom: 70px; left: 10px; right: 10px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(22,21,26,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
+        .mention-suggestions { position: absolute; bottom: calc(100% + 6px); left: 10px; right: 10px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(22,21,26,0.15); z-index: 31000; max-height: 150px; overflow-y: auto; display: none; }
         .suggestion-item { padding: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F1ECE4; }
         .suggestion-item:last-child { border-bottom: none; }
         .pinned-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; margin-bottom: 24px; }
@@ -370,6 +370,173 @@
         .st-reco-search i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #85808D; font-size: 13px; }
         .st-reco-search input { width: 100%; height: 46px; border-radius: 23px; background: var(--ground); border: none; outline: none; padding: 0 16px 0 40px; font-family: inherit; font-weight: 600; font-size: 14px; }
         .st-reco-note { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        /* --- FENÊTRE « NOUVEAUTÉS » --- */
+        .ui-box.wn-box { max-width: 370px; padding: 0 0 16px; overflow: hidden; max-height: calc(100vh - 48px); overflow-y: auto; }
+        .wn-box > .ui-btn { width: calc(100% - 36px); margin: 4px 18px 0; display: block; }
+        .wn-head { position: relative; background: var(--lav); padding: 26px 22px 20px; overflow: hidden; }
+        .wn-blob { position: absolute; width: 58px; height: 58px; border-radius: 50%; opacity: .9; }
+        .wn-kicker { position: relative; display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: rgba(255,255,255,.7); padding: 4px 10px; border-radius: 10px; }
+        .wn-title { position: relative; font-size: 26px; font-weight: 800; line-height: 1.05; margin: 10px 0 0; letter-spacing: -0.02em; }
+        .wn-list { list-style: none; margin: 0; padding: 16px 18px 10px; display: flex; flex-direction: column; gap: 13px; }
+        .wn-list li { display: flex; gap: 12px; align-items: flex-start; animation: wnIn .4s ease both; }
+        .wn-list li > span:last-child { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.35; color: var(--muted); font-weight: 600; }
+        .wn-list b { color: var(--ink); font-size: 15px; font-weight: 800; }
+        .wn-ic { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; color: var(--ink); }
+        @keyframes wnIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .wn-list li { animation: none; } }
+
+        /* --- COMMENTAIRES ET RÉPONSES --- */
+        .cm { display: flex; gap: 10px; margin-bottom: 12px; }
+        .cm-reply { margin-left: 42px; position: relative; }
+        .cm-reply::before { content: ''; position: absolute; left: -24px; top: -6px; width: 14px; height: 22px; border-left: 2px solid #E4DED4; border-bottom: 2px solid #E4DED4; border-bottom-left-radius: 10px; }
+        .cm-av { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--lav-tint); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--ink); }
+        .cm-reply .cm-av { width: 28px; height: 28px; font-size: 12px; }
+        .cm-av img { width: 100%; height: 100%; object-fit: cover; }
+        .cm-bubble { background: #fff; border-radius: 4px 18px 18px 18px; padding: 9px 13px; display: inline-block; max-width: 100%; }
+        .cm-bubble > button { display: block; }
+        .cm-actions { display: flex; align-items: center; gap: 14px; margin: 4px 0 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+        .cm-actions button { font-weight: 800; color: var(--muted); }
+        .cm-like { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+        .cm-like.is-on { color: #FF4D6D !important; }
+        .reply-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--lav-tint); color: var(--lav-deep); border-radius: 16px; padding: 8px 8px 8px 14px; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+        .reply-bar button { width: 28px; height: 28px; border-radius: 50%; background: #fff; color: var(--ink); flex-shrink: 0; }
+
+        /* --- FICHES ENRICHIES --- */
+        .pv-section { margin: 4px 0 22px; }
+        #pv-desc { margin-bottom: 24px; }
+        .pv-rw { background: var(--ground); border-radius: 22px; padding: 14px 16px; margin-bottom: 20px; }
+        .pv-rw-add { height: 40px; padding: 0 14px; border-radius: 20px; background: var(--ink); color: #fff; font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex-shrink: 0; transition: transform .15s; }
+        .pv-rw-add:active { transform: scale(.95); }
+        .pv-rw-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+        .pv-rw-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+        .pv-rw-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lav); flex-shrink: 0; box-shadow: 0 0 0 3px #fff; }
+        .pv-rw-r { background: var(--miel); border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+        .pv-rw-del { width: 28px; height: 28px; border-radius: 50%; background: #fff; color: var(--muted); font-size: 12px; flex-shrink: 0; }
+        .rw-notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+        .rw-notes button { height: 40px; border-radius: 14px; background: var(--ground); font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--ink); transition: transform .1s; }
+        .rw-notes button.active { background: var(--miel); transform: scale(1.06); }
+        .pv-video { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 20px; overflow: hidden; background: var(--ink); }
+        .pv-video iframe, .pv-video-btn { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+        .pv-video-btn { padding: 0; background: var(--ink); cursor: pointer; }
+        .pv-video-btn img { width: 100%; height: 100%; object-fit: cover; opacity: .85; }
+        .pv-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 62px; height: 62px; border-radius: 50%; background: rgba(255,255,255,.94); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 22px; padding-left: 4px; box-shadow: 0 8px 22px rgba(0,0,0,.3); transition: transform .15s; }
+        .pv-video-btn:active .pv-play { transform: translate(-50%, -50%) scale(.92); }
+        .pv-tracks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+        .pv-track { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 4px; border-radius: 16px; transition: background .15s; }
+        .pv-track.is-extra { display: none; }
+        .pv-tracks.show-all .pv-track.is-extra { display: flex; }
+        .pv-track.is-playing { background: var(--rose-tint); }
+        .pv-track-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--ground); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+        .pv-track-btn.is-off { font-size: 12px; font-weight: 800; color: var(--muted); background: transparent; }
+        .pv-track.is-playing .pv-track-btn { background: var(--ink); color: #fff; }
+        .pv-track-bar { display: block; height: 3px; border-radius: 2px; margin-top: 4px; background: transparent; overflow: hidden; }
+        .pv-track.is-playing .pv-track-bar { background: rgba(22,21,26,.1); }
+        .pv-track-bar span { display: block; height: 100%; width: 0; background: var(--ink); transition: width .25s linear; }
+        .pv-similar { display: flex; align-items: flex-start; gap: 10px; overflow-x: auto; margin: 0 -22px; padding: 2px 22px 6px; scroll-snap-type: x mandatory; scroll-padding: 0 22px; scrollbar-width: none; }
+        .pv-similar::-webkit-scrollbar { display: none; }
+        .pv-sim { width: 104px; flex-shrink: 0; text-align: left; scroll-snap-align: start; background: none; border: none; padding: 0; font-family: inherit; color: var(--ink); cursor: pointer; }
+        .pv-sim-img { position: relative; display: block; width: 100%; border-radius: 14px; overflow: hidden; background: #E9E3DA; box-shadow: 0 4px 10px rgba(22,21,26,.1); }
+        .pv-sim-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pv-sim-own { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--mint); font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .pv-sim-t { display: block; font-size: 12px; font-weight: 800; line-height: 1.25; margin-top: 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .pv-sim-a { display: block; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pv-skel, .pv-skel-t { background: linear-gradient(90deg, #EFEAE2 25%, #F7F3EE 50%, #EFEAE2 75%); background-size: 200% 100%; animation: pvSkel 1.2s infinite linear; }
+        .pv-skel-t { height: 18px; width: 55%; border-radius: 9px; margin-bottom: 10px; }
+        @keyframes pvSkel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+        /* --- PROFIL (le mien et celui d'un ami) --- */
+        .pf-hero { position: relative; background: var(--lav); border-radius: 30px; padding: 18px 16px 14px; margin-bottom: 12px; overflow: hidden; }
+        .pf-hero::after { content: ''; position: absolute; right: -40px; top: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,.22); pointer-events: none; }
+        .pf-avatar-wrap { position: relative; flex-shrink: 0; z-index: 1; }
+        .pf-avatar { width: 84px; height: 84px; border-radius: 50%; background: #fff; border: 4px solid #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 34px; color: var(--ink); box-shadow: 0 8px 20px rgba(22,21,26,.14); }
+        .pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .pf-avatar-edit { position: absolute; right: -2px; bottom: -2px; width: 32px; height: 32px; border-radius: 50%; background: var(--miel); border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+        .pf-name { display: flex; align-items: center; gap: 8px; max-width: 100%; font-family: var(--font-display); font-size: 25px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink); background: none; border: none; padding: 0; text-align: left; cursor: pointer; position: relative; z-index: 1; }
+        .pf-name i { font-size: 12px; opacity: .45; flex-shrink: 0; }
+        .pf-bio { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; color: rgba(22,21,26,.72); line-height: 1.4; text-align: left; background: none; border: none; padding: 0; cursor: pointer; position: relative; z-index: 1; }
+        .pf-bio i { font-size: 9px; opacity: .45; margin-left: 2px; }
+        .pf-stats { display: flex; gap: 8px; margin-top: 16px; position: relative; z-index: 1; }
+        .pf-stat { flex: 1; min-width: 0; background: rgba(255,255,255,.62); border-radius: 18px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; border: none; font-family: inherit; color: var(--ink); cursor: pointer; transition: transform .15s; }
+        .pf-stat:active { transform: scale(.96); }
+        div.pf-stat { cursor: default; }
+        .pf-stat b { font-family: var(--font-display); font-size: 21px; font-weight: 800; line-height: 1.1; }
+        .pf-stat span { font-size: 11px; font-weight: 700; color: rgba(22,21,26,.66); white-space: nowrap; }
+        .pf-follow { flex: 1; min-width: 0; border-radius: 18px; background: var(--ink); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; font-family: inherit; transition: transform .15s; }
+        .pf-follow:active { transform: scale(.96); }
+        .pf-follow.is-on { background: #fff; color: var(--ink); }
+        .pf-affinity { margin-top: 10px; font-size: 12px; font-weight: 700; color: rgba(22,21,26,.75); display: flex; align-items: center; gap: 7px; position: relative; z-index: 1; }
+        .pf-card { background: #fff; border-radius: 26px; padding: 16px; margin-bottom: 12px; }
+        .pf-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 12px -16px 12px; padding: 0 16px; scrollbar-width: none; }
+        .pf-tabs::-webkit-scrollbar { display: none; }
+        .pf-tabs .type-chip { height: 34px; font-size: 13px; padding: 0 12px 0 10px; background: var(--ground); }
+        .pf-tabs .type-chip.active { background: var(--ink); }
+        .pf-top3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+        .pf-slot { min-width: 0; cursor: pointer; }
+        .pf-poster { position: relative; border-radius: 16px; overflow: hidden; background: #E9E3DA; box-shadow: 0 6px 14px rgba(22,21,26,.12); transition: transform .15s; }
+        .pf-slot:active .pf-poster { transform: scale(.96); }
+        .pf-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pf-empty { background: var(--ground); border: 2px dashed #D9D2C6; box-shadow: none; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .pf-rank { position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-family: var(--font-display); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+        .pf-slot-t { font-size: 12px; font-weight: 700; margin-top: 6px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .pf-group-h { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 4px 8px; }
+        .pf-group { background: #fff; border-radius: 22px; overflow: hidden; }
+        .pf-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 14px; min-height: 54px; background: none; border: none; border-bottom: 1px solid #F1ECE4; font-family: inherit; color: var(--ink); cursor: pointer; }
+        .pf-row:last-child { border-bottom: none; }
+        .pf-row .cell-icon { width: 32px; height: 32px; border-radius: 11px; font-size: 14px; }
+        .pf-sub { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 1px; }
+        .pf-switch { width: 46px; height: 28px; border-radius: 14px; background: #E4DED4; position: relative; flex-shrink: 0; transition: background .2s; }
+        .pf-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.15); transition: transform .2s; }
+        .pf-switch.is-on { background: #34C77B; }
+        .pf-switch.is-on::after { transform: translateX(18px); }
+        .pf-mini-btn { height: 30px; padding: 0 12px; border-radius: 15px; background: var(--ground); font-size: 12px; font-weight: 800; color: var(--ink); white-space: nowrap; flex-shrink: 0; }
+        .pf-mini-btn.is-danger { color: #B42318; background: #FFF0F0; }
+        .pf-person { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+        .pf-list-h { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 6px 14px 2px; }
+        .following-dropdown { margin: 0; }
+        .following-dropdown.open { margin-bottom: 12px; max-height: 360px; }
+        .pf-status { height: 34px; padding: 0 14px; border-radius: 17px; background: var(--ground); font-weight: 800; font-size: 13px; color: var(--ink); }
+        .pf-status.active { background: var(--ink); color: #fff; }
+        .pin-remove { width: 100%; height: 46px; border-radius: 23px; background: #FFF0F0; color: #B42318; font-weight: 800; font-size: 14px; margin-bottom: 12px; }
+        .pin-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; margin-bottom: 8px; background: #fff; border-radius: 18px; cursor: pointer; transition: transform .15s; }
+        .pin-row:active { transform: scale(.98); }
+        .pin-row-img { width: 42px; height: 60px; border-radius: 10px; object-fit: cover; background: #E9E3DA; flex-shrink: 0; }
+        .pin-row-r { background: var(--miel); border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+        #public-profile-modal .back-btn-float { position: fixed; top: calc(env(safe-area-inset-top) + 14px); left: 16px; z-index: 30; }
+
+        /* Le match de l'année : podium */
+        .st-back { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 19px; background: #fff; font-weight: 800; font-size: 13px; margin: -4px 0 12px; }
+        .st-match-chips { display: flex; gap: 6px; overflow-x: auto; margin: 12px -16px 4px; padding: 0 16px 4px; scrollbar-width: none; }
+        .st-match-chips::-webkit-scrollbar { display: none; }
+        .st-match-chips .type-chip { height: 34px; font-size: 13px; padding: 0 12px 0 10px; background: var(--ground); }
+        .st-match-chips .type-chip.active { background: var(--ink); }
+        .st-match-lead { font-size: 14px; font-weight: 600; margin: 10px 0 4px; }
+        .st-podium3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; margin-top: 30px; }
+        .pd-col { display: flex; flex-direction: column; align-items: center; min-width: 0; cursor: pointer; }
+        .pd-col.is-empty { opacity: .35; cursor: default; }
+        .pd-av { position: relative; width: 56px; height: 56px; border-radius: 50%; padding: 3px; background: var(--pt); display: flex; margin-bottom: 6px; }
+        .pd-av > span, .pd-col.is-empty .pd-av { overflow: hidden; }
+        .pd-av > span { width: 100%; height: 100%; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--ink); }
+        .pd-av img { width: 100%; height: 100%; object-fit: cover; }
+        .pd-col.is-empty .pd-av { align-items: center; justify-content: center; color: var(--muted); font-size: 18px; }
+        .pd-r1 .pd-av { width: 72px; height: 72px; background: var(--miel); }
+        .pd-r1 .pd-av > span { font-size: 26px; }
+        .pd-col.is-me .pd-av { box-shadow: 0 0 0 3px var(--ink); }
+        .pd-crown { position: absolute; top: -17px; left: 50%; transform: translateX(-50%) rotate(-8deg); color: #F2A20C; font-size: 20px; filter: drop-shadow(0 2px 2px rgba(22,21,26,.18)); animation: pdCrown 2.4s ease-in-out infinite; }
+        .pd-name { font-weight: 800; font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pd-n { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; white-space: nowrap; }
+        .pd-n b { color: var(--ink); font-family: var(--font-display); font-size: 15px; }
+        .pd-step { width: 100%; border-radius: 18px 18px 8px 8px; display: flex; justify-content: center; padding-top: 10px; transform-origin: bottom; animation: pdRise .55s cubic-bezier(.2,.9,.3,1.2) both; }
+        .pd-step span { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--ink); }
+        .pd-r1 .pd-step { height: 104px; background: var(--miel); animation-delay: .18s; }
+        .pd-r2 .pd-step { height: 76px; background: #E4DED4; animation-delay: .06s; }
+        .pd-r3 .pd-step { height: 56px; background: #F3C9A8; animation-delay: .3s; }
+        .pd-r1 .pd-step span { font-size: 34px; }
+        @keyframes pdRise { from { transform: scaleY(0.15); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+        @keyframes pdCrown { 0%, 100% { transform: translateX(-50%) rotate(-8deg); } 50% { transform: translateX(-50%) rotate(6deg) translateY(-2px); } }
+        @media (prefers-reduced-motion: reduce) { .pd-step, .pd-crown { animation: none; } }
+        .st-match-rest { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+        .st-match-rest li { display: flex; align-items: center; gap: 10px; cursor: pointer; border-radius: 16px; padding: 4px 6px 4px 2px; }
+        .st-match-rest li.is-me { background: var(--ground); cursor: default; }
         /* Fenêtres et messages de l'app */
         .ui-overlay { position: fixed; inset: 0; z-index: 40000; background: rgba(22,21,26,.38); display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; transition: opacity .18s; }
         .ui-overlay.show { opacity: 1; }
@@ -575,16 +742,17 @@
     
     <div id="comment-sheet" class="sheet-overlay">
         <div class="sheet flex flex-col" style="height: 80vh;">
-            <div class="flex justify-between items-center px-6 py-4 border-b bg-white">
-                <div class="font-black text-lg">Commentaires</div>
-                <button onclick="window.closeCommentSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+            <div class="flex justify-between items-center px-5 pt-5 pb-3">
+                <div class="font-display font-extrabold text-xl">Commentaires</div>
+                <button onclick="window.closeCommentSheet()" class="w-10 h-10 bg-white rounded-full flex items-center justify-center" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="flex-1 overflow-y-auto p-4 bg-gray-50" id="comments-list-container"></div>
-            <div class="p-4 bg-white border-top relative">
+            <div class="flex-1 overflow-y-auto px-4 pb-4" id="comments-list-container"></div>
+            <div class="px-4 pt-2 pb-4 bg-white relative" style="padding-bottom:max(16px, env(safe-area-inset-bottom))">
                 <div id="mention-suggestions" class="mention-suggestions"></div>
+                <div id="reply-bar" class="reply-bar" style="display:none"></div>
                 <div class="flex gap-2">
-                    <input type="text" id="comment-modal-input" placeholder="Ajouter un commentaire (@ pour mentionner)..." class="flex-1 bg-gray-100 p-3 rounded-xl outline-none font-medium" oninput="window.handleMentionInput(this)">
-                    <button onclick="window.postCommentFromModal()" class="bg-blue-600 text-white w-12 rounded-xl font-bold"><i class="fa-solid fa-arrow-up"></i></button>
+                    <input type="text" id="comment-modal-input" placeholder="Ajouter un commentaire (@ pour mentionner)…" maxlength="1000" class="flex-1 min-w-0 h-12 px-4 rounded-full outline-none font-semibold" style="background:var(--ground)" oninput="window.handleMentionInput(this)" onkeydown="if(event.key==='Enter') window.postCommentFromModal()">
+                    <button onclick="window.postCommentFromModal()" class="w-12 h-12 rounded-full font-bold text-white shrink-0" style="background:var(--ink)" aria-label="Envoyer"><i class="fa-solid fa-arrow-up"></i></button>
                 </div>
             </div>
         </div>
@@ -629,14 +797,14 @@
     </div>
     
     <div id="pin-selector-modal" class="modal flex flex-col">
-        <div class="pt-14 px-5 py-4 border-b bg-white flex justify-between items-center">
-            <h2 class="text-xl font-black">Choisir un favori</h2>
-            <button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="text-blue-600 font-bold">Annuler</button>
+        <div class="pt-14 px-5 pb-2 flex justify-between items-center gap-3">
+            <h2 class="text-2xl font-extrabold leading-tight" id="pin-selector-title">Mon top 3</h2>
+            <button onclick="document.getElementById('pin-selector-modal').classList.remove('open')" class="h-10 px-4 rounded-full bg-white font-bold text-sm shrink-0">Fermer</button>
         </div>
-        <div class="p-4 bg-gray-50">
-            <input type="text" id="pin-search" placeholder="Rechercher dans ma collection..." class="w-full p-3 rounded-xl border border-gray-200 outline-none font-bold text-sm" oninput="window.filterPinSelector(this.value)">
+        <div class="px-4 pt-2 pb-3">
+            <div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i><input type="search" id="pin-search" placeholder="Rechercher…" autocomplete="off" class="w-full h-12 pl-12 pr-4 bg-white rounded-full outline-none font-semibold" oninput="window.filterPinSelector(this.value)"></div>
         </div>
-        <div class="flex-1 overflow-y-auto p-4" id="pin-selector-list"></div>
+        <div class="flex-1 overflow-y-auto px-4 pb-10" id="pin-selector-list"></div>
     </div>
 
 </body>
@@ -1476,6 +1644,8 @@
                 const btn = document.getElementById('btn-select-mode');
                 if (btn) btn.classList.remove('is-on');
             }
+            // En quittant les stats, le détail d'un ami se referme : on revient toujours à l'accueil de l'onglet
+            if (window.currentView === 'stats' && view !== 'stats' && window._statsUI) window._statsUI.friend = null;
             window.currentView = view;
             // Les abonnés sont relus à chaque arrivée sur la page Profil (et seulement à ce moment-là)
             if (view === 'profile') window._followersCache = null;
@@ -1899,7 +2069,7 @@
                 </div>
                 <div class="mb-6"><p class="section-kicker mb-3">Ajouter à ma bibliothèque</p><div class="space-y-2.5">
                     <button onclick="window.startAddFromOther()" class="pv-btn pv-btn-main">${actionLabel}</button>
-                    ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${metricValue}, false)" class="pv-btn" style="background:var(--mint-tint)">En cours</button>` : ''}
+                    ${CONFIG[item.type] && CONFIG[item.type].statuses.includes('En cours') ? `<button onclick="window.saveItem('En cours', null, null, null, ${metricValue}, false)" class="pv-btn" style="background:var(--mint-tint)">En cours</button>` : ''}
                     <button onclick="window.saveItem('Wishlist', null, null, null, ${metricValue}, false)" class="pv-btn" style="background:var(--lav-tint)">Wishlist</button>
                 </div></div>`;
             } else {
@@ -1910,7 +2080,7 @@
                     <button onclick="window.openNotation()" class="pv-btn pv-btn-main"><i class="fa-solid fa-star" style="color:var(--miel)"></i>${mainBtnText}</button>
                     <div class="flex gap-2.5">
                         <button onclick="window.saveItem('Wishlist', null, null, null, ${metricValue}, false)" class="pv-btn" style="background:var(--lav-tint)">Plus tard (Wishlist)</button>
-                        ${item.type !== 'Film' ? `<button onclick="window.saveItem('En cours', null, null, null, ${metricValue}, false)" class="pv-btn" style="background:var(--mint-tint)">En cours</button>` : ''}
+                        ${CONFIG[item.type] && CONFIG[item.type].statuses.includes('En cours') ? `<button onclick="window.saveItem('En cours', null, null, null, ${metricValue}, false)" class="pv-btn" style="background:var(--mint-tint)">En cours</button>` : ''}
                     </div>
                     ${showDelete ? `<button onclick="window.deleteItem()" class="pv-btn pv-btn-danger">Supprimer de ma collection</button>` : ''}
                 </div>`;
@@ -1938,12 +2108,20 @@
                     ${item.needsDetails && !item.detailsLoaded && !item.docId ? `<div class="text-gray-500 text-xs mb-4 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des détails…</div>` : ''}
                     ${actionButtonsHtml}
                     ${commentHtml}
-                    <div class="font-display text-lg font-extrabold mb-1.5">Résumé</div>
-                    <div class="text-gray-600 text-sm leading-relaxed">${contentHtml}</div>
-                </div>`; 
+                    ${window.rewatchHtml ? window.rewatchHtml(item, isMine) : ''}
+                    <div id="pv-media"></div>
+                    <div id="pv-desc">
+                        <div class="font-display text-lg font-extrabold mb-1.5">Résumé</div>
+                        <div class="text-gray-600 text-sm leading-relaxed">${contentHtml}</div>
+                    </div>
+                    <div id="pv-similar"></div>
+                </div>`;
         };
 
-        window.closePreview = () => document.getElementById('preview-modal').classList.remove('open');
+        window.closePreview = () => {
+            document.getElementById('preview-modal').classList.remove('open');
+            if (window.stopPreviewMedia) window.stopPreviewMedia();
+        };
 
         // Corriger le nombre de pages d'un livre (souvent faux), la durée d'un film, le nombre de saisons…
         window.editItemMetric = async () => {
@@ -1965,11 +2143,16 @@
         // Après ouverture d'un résultat de recherche : on charge le détail puis on rafraîchit la fiche
         const _openPreviewBase = window.openPreview;
         window.openPreview = (item) => {
+            if (window.stopPreviewMedia) window.stopPreviewMedia();
             _openPreviewBase(item);
+            if (window.loadPreviewExtras) window.loadPreviewExtras(item);
             if (item && item.needsDetails && !item.detailsLoaded && !item.docId) {
                 window.loadItemDetails(item).then(() => {
                     const stillOpen = document.getElementById('preview-modal').classList.contains('open');
-                    if (stillOpen && window.tempItem === item && item.detailsLoaded) _openPreviewBase(item);
+                    if (stillOpen && window.tempItem === item && item.detailsLoaded) {
+                        _openPreviewBase(item);
+                        if (window.loadPreviewExtras) window.loadPreviewExtras(item);
+                    }
                 });
             }
         };
@@ -2251,50 +2434,63 @@
            Gestion des modales commentaires, mentions et abonnements
            ================================================================== */
 
-        /* --- 1. GESTION DE LA MODALE COMMENTAIRES --- */
+        /* --- 1. GESTION DE LA MODALE COMMENTAIRES ---
+           Réponses : un commentaire peut répondre à un autre (champ replyTo = horodatage du commentaire d'origine).
+           Les réponses s'affichent sous leur commentaire, en retrait. Une réponse dont l'original a été
+           supprimé reste visible (avec « en réponse à … »). Aucune règle de sécurité ne change :
+           on ajoute toujours UN commentaire à la fois. */
+        const MENTION_RE = /@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g;
+        window._replyTo = null; // { ts, uid, name }
+        const commentRowHtml = (actId, c, isReply) => {
+            const cu = window.liveUser(c.userId, c.userName, c.userAvatar);
+            const textWithMentions = esc(c.text).replace(MENTION_RE, '<span class="mention">@$1</span>');
+            const isMyComment = c.userId === window.currentUser.uid;
+            const likes = Array.isArray(c.likes) ? c.likes : [];
+            const isLiked = likes.includes(window.currentUser.uid);
+            const avatar = safeImg(cu.avatar);
+            const replyHint = isReply === 'orphan' && c.replyToName ? `<div class="text-[11px] font-bold text-gray-500 mb-0.5"><i class="fa-solid fa-reply mr-1"></i>en réponse à ${esc(c.replyToName)}</div>` : '';
+            return `
+                <div class="cm ${isReply === true ? 'cm-reply' : ''}">
+                    <button type="button" class="cm-av" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">${avatar ? `<img src="${avatar}" alt="">` : initial(cu.name)}</button>
+                    <div class="flex-1 min-w-0">
+                        <div class="cm-bubble">
+                            ${replyHint}
+                            <button type="button" class="font-extrabold text-[13px] mb-0.5 text-left" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">${esc(cu.name)}</button>
+                            <div class="text-[14px] leading-snug break-words">${textWithMentions}</div>
+                        </div>
+                        <div class="cm-actions">
+                            <span>${esc(window.timeAgo(c.timestamp))}</span>
+                            <button type="button" onclick="window.startReply(${jsArg(actId)}, ${jsArg(c.timestamp)})">Répondre</button>
+                            ${isMyComment ? `<button type="button" onclick="window.deleteComment(${jsArg(actId)}, ${jsArg(c.timestamp)})">Supprimer</button>` : ''}
+                            <button type="button" class="cm-like ${isLiked ? 'is-on' : ''}" onclick="window.toggleCommentLike(${jsArg(actId)}, ${jsArg(c.timestamp)})" aria-label="J'aime"><i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>${likes.length > 0 ? likes.length : ''}</button>
+                        </div>
+                    </div>
+                </div>`;
+        };
         window.openCommentModal = (actId) => {
+            if (window.currentCommentActId !== actId) window.cancelReply();
             window.currentCommentActId = actId;
             const actData = window.findAct(actId);
             if (!actData) return;
 
             const container = document.getElementById('comments-list-container');
-            const comments = Array.isArray(actData.comments) ? actData.comments : [];
-            
-            let html = comments.length === 0 ? '<div class="text-center text-gray-400 mt-10">Soyez le premier à commenter</div>' : '';
-            
-            comments.forEach(c => {
-                 if (!c || typeof c !== 'object') return;
-                 if (window.myBlocked().includes(c.userId)) return; // commentaires des comptes bloqués masqués
-                 const cu = window.liveUser(c.userId, c.userName, c.userAvatar);
-                 // Texte échappé PUIS mise en couleur des mentions @Pseudo
-                 const textWithMentions = esc(c.text).replace(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g, '<span class="mention">@$1</span>');
-                 const isMyComment = c.userId === window.currentUser.uid;
-                 const likes = Array.isArray(c.likes) ? c.likes : [];
-                 const isLiked = likes.includes(window.currentUser.uid);
-                 const avatar = safeImg(cu.avatar);
-
-                 html += `
-                    <div class="flex gap-3 mb-4">
-                        <div class="w-8 h-8 rounded-full bg-blue-600 overflow-hidden shrink-0 cursor-pointer" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">
-                            ${avatar ? `<img src="${avatar}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-white font-bold text-xs">${initial(cu.name)}</div>`}
-                        </div>
-                        <div class="flex-1">
-                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm relative group">
-                                <div class="font-bold text-xs mb-1 cursor-pointer hover:underline" onclick="window.goToProfileFromComment(${jsArg(c.userId)})">${esc(cu.name)}</div>
-                                <div class="text-sm text-gray-800 leading-snug">${textWithMentions}</div>
-
-                                <div class="flex items-center justify-end gap-3 mt-2 border-t pt-2 border-gray-100">
-                                    ${isMyComment ? `<button onclick="window.deleteComment(${jsArg(actId)}, ${jsArg(c.timestamp)})" class="text-[10px] text-gray-400 font-bold uppercase hover:text-red-500">Supprimer</button>` : ''}
-                                    <button onclick="window.toggleCommentLike(${jsArg(actId)}, ${jsArg(c.timestamp)})" class="flex items-center gap-1 text-[10px] font-bold ${isLiked ? 'text-red-500' : 'text-gray-400'}">
-                                        <i class="fa-${isLiked ? 'solid' : 'regular'} fa-heart"></i>
-                                        <span>${likes.length > 0 ? likes.length : ''}</span>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="text-[10px] text-gray-400 font-bold mt-1 ml-2">${window.timeAgo(c.timestamp)}</div>
-                        </div>
-                    </div>
-                 `;
+            const comments = (Array.isArray(actData.comments) ? actData.comments : [])
+                .filter(c => c && typeof c === 'object' && !window.myBlocked().includes(c.userId)); // comptes bloqués masqués
+            const byTs = new Map(comments.map(c => [c.timestamp, c]));
+            const roots = comments.filter(c => !c.replyTo || !byTs.has(c.replyTo));
+            const repliesOf = new Map();
+            comments.filter(c => c.replyTo && byTs.has(c.replyTo)).forEach(c => {
+                // Une réponse à une réponse se range sous le commentaire de départ (un seul niveau de retrait)
+                let top = byTs.get(c.replyTo), guard = 0;
+                while (top && top.replyTo && byTs.has(top.replyTo) && guard++ < 20) top = byTs.get(top.replyTo);
+                const k = top ? top.timestamp : c.replyTo;
+                if (!repliesOf.has(k)) repliesOf.set(k, []);
+                repliesOf.get(k).push(c);
+            });
+            let html = comments.length === 0 ? '<div class="text-center text-gray-500 font-semibold text-sm mt-10">Sois le premier à commenter</div>' : '';
+            roots.sort((a, b) => num(a.timestamp) - num(b.timestamp)).forEach(c => {
+                html += commentRowHtml(actId, c, c.replyTo ? 'orphan' : false);
+                (repliesOf.get(c.timestamp) || []).sort((a, b) => num(a.timestamp) - num(b.timestamp)).forEach(r => { html += commentRowHtml(actId, r, true); });
             });
             
             container.innerHTML = html;
@@ -2306,6 +2502,25 @@
             document.getElementById('comment-sheet').classList.add('open');
         };
 
+        window.startReply = (actId, ts) => {
+            const act = window.findAct(actId);
+            const c = act && Array.isArray(act.comments) ? act.comments.find(x => x && x.timestamp === ts) : null;
+            if (!c) return;
+            const name = window.liveUser(c.userId, c.userName).name;
+            window._replyTo = { ts: c.timestamp, uid: c.userId, name };
+            const bar = document.getElementById('reply-bar');
+            if (bar) { bar.innerHTML = `<span class="truncate"><i class="fa-solid fa-reply mr-1.5"></i>Réponse à <b>${esc(name)}</b></span><button type="button" onclick="window.cancelReply()" aria-label="Annuler la réponse"><i class="fa-solid fa-xmark"></i></button>`; bar.style.display = 'flex'; }
+            const input = document.getElementById('comment-modal-input');
+            if (input) { input.placeholder = `Répondre à ${name}…`; input.focus(); }
+        };
+        window.cancelReply = () => {
+            window._replyTo = null;
+            const bar = document.getElementById('reply-bar');
+            if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
+            const input = document.getElementById('comment-modal-input');
+            if (input) input.placeholder = 'Ajouter un commentaire (@ pour mentionner)…';
+        };
+
         window.goToProfileFromComment = (uid) => {
             window.closeCommentSheet();
             setTimeout(() => { window.openPublicProfile(uid); }, 100);
@@ -2314,25 +2529,38 @@
         window.closeCommentSheet = () => {
              document.getElementById('comment-sheet').classList.remove('open');
              document.getElementById('comments-list-container').removeAttribute('data-loaded');
+             document.getElementById('mention-suggestions').style.display = 'none';
+             window.cancelReply();
              window.currentCommentActId = null;
         };
 
-        /* --- 2. GESTION DES MENTIONS (@Pseudo) --- */
+        /* --- 2. GESTION DES MENTIONS (@Pseudo) ---
+           On peut mentionner ses abonnements ET les personnes qui participent à la discussion. */
+        const mentionCandidates = () => {
+            const map = new Map();
+            (window.followingData || []).forEach(u => { const id = u.uid || u.id; if (id && u.name) map.set(id, { uid: id, name: u.name, avatar: u.avatar }); });
+            const act = window.findAct(window.currentCommentActId);
+            if (act) {
+                const add = (uid, fallback) => { if (!uid || uid === window.currentUser.uid || map.has(uid) || window.isHiddenUser(uid)) return; const u = window.liveUser(uid, fallback); map.set(uid, { uid, name: u.name, avatar: u.avatar }); };
+                add(act.userId, act.userName);
+                (Array.isArray(act.comments) ? act.comments : []).forEach(c => c && add(c.userId, c.userName));
+            }
+            return [...map.values()];
+        };
         window.handleMentionInput = (input) => {
             const val = input.value;
             const lastWord = val.split(' ').pop();
             const suggestionBox = document.getElementById('mention-suggestions');
             
             if (lastWord.startsWith('@') && lastWord.length > 1) {
-                const search = lastWord.substring(1).toLowerCase();
-                // Recherche dans la liste des abonnements
-                const matches = (window.followingData || []).filter(u => String(u.name || '').toLowerCase().includes(search));
+                const search = normTxtGlobal(lastWord.substring(1));
+                const matches = mentionCandidates().filter(u => normTxtGlobal(u.name).includes(search)).slice(0, 8);
 
                 if (matches.length > 0) {
                     suggestionBox.style.display = 'block';
                     suggestionBox.innerHTML = matches.map(u => `
                         <div class="suggestion-item" onclick="window.insertMention(${jsArg(String(u.name || ''))})">
-                            <div class="w-6 h-6 rounded-full bg-gray-200 overflow-hidden">${safeImg(u.avatar) ? `<img src="${safeImg(u.avatar)}" class="w-full h-full object-cover">`: ''}</div>
+                            <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center font-display font-extrabold text-xs" style="background:var(--lav-tint)">${safeImg(u.avatar) ? `<img src="${safeImg(u.avatar)}" class="w-full h-full object-cover">` : initial(u.name)}</div>
                             <div class="font-bold text-sm">${esc(u.name)}</div>
                         </div>
                     `).join('');
@@ -2355,9 +2583,10 @@
         };
 
         /* --- 3. ENVOI DE COMMENTAIRE & NOTIFICATIONS --- */
+        let commentSending = false;
         window.postCommentFromModal = async () => {
             const actId = window.currentCommentActId;
-            if (!actId) return;
+            if (!actId || commentSending) return;
             const input = document.getElementById('comment-modal-input');
             const text = input.value.trim().slice(0, 1000);
             if(!text) return;
@@ -2365,6 +2594,7 @@
             const actData = window.findAct(actId);
             if (!actData) return;
             const myUid = window.currentUser.uid;
+            const reply = window._replyTo;
 
             const newComment = { 
                 userId: myUid, 
@@ -2374,7 +2604,9 @@
                 timestamp: Date.now(),
                 likes: [] 
             };
+            if (reply) { newComment.replyTo = reply.ts; newComment.replyToUid = reply.uid; newComment.replyToName = String(reply.name || '').slice(0, 60); }
 
+            commentSending = true;
             try {
                 // Ajout du commentaire (on ajoute à la liste sans réécrire les autres)
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activity', actId), { 
@@ -2384,20 +2616,27 @@
                 console.error(e);
                 window.ui.alert("Le commentaire n'a pas pu être envoyé.");
                 return;
-            }
+            } finally { commentSending = false; }
 
-            // Notification pour l'auteur du post (sauf si c'est moi)
-            if (actData.userId !== myUid) {
+            // Notifications : une seule par personne, jamais à moi-même
+            const notified = new Set([myUid]);
+            // 1. Réponse : l'auteur du commentaire d'origine
+            if (reply && reply.uid && !notified.has(reply.uid)) {
+                notified.add(reply.uid);
+                window.sendNotification(reply.uid, 'reply', 'a répondu à votre commentaire', actData.itemTitle, actId);
+            }
+            // 2. L'auteur du post
+            if (!notified.has(actData.userId)) {
+                notified.add(actData.userId);
                 window.sendNotification(actData.userId, 'comment', 'a commenté votre post', actData.itemTitle, actId);
             }
-            
-            // Notification pour les personnes mentionnées (une seule fois chacune, jamais à moi-même)
-            const mentions = text.match(/@([\wàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ\-\_\.]+)/g);
+            // 3. Les personnes mentionnées
+            const mentions = text.match(MENTION_RE);
             if (mentions) {
-                const notified = new Set([myUid, actData.userId]);
+                const people = mentionCandidates();
                 mentions.forEach(m => {
                     const name = m.substring(1);
-                    const user = (window.followingData || []).find(u => u.name === name);
+                    const user = people.find(u => u.name === name) || people.find(u => String(u.name || '').split(/\s+/)[0] === name);
                     if (user && !notified.has(user.uid)) {
                         notified.add(user.uid);
                         window.sendNotification(user.uid, 'mention', 'vous a mentionné', actData.itemTitle, actId);
@@ -2406,16 +2645,21 @@
             }
 
             input.value = "";
+            window.cancelReply();
             
             // Affichage instantané du commentaire et rafraîchissement de la modale
             if (!Array.isArray(actData.comments)) actData.comments = [];
             actData.comments.push(newComment);
             window.openCommentModal(actId);
             
-            // On force le scroll tout en bas pour voir le nouveau commentaire
+            // On montre le nouveau commentaire
             setTimeout(() => {
                 const container = document.getElementById('comments-list-container');
-                if (container) container.scrollTop = container.scrollHeight;
+                if (!container) return;
+                if (!reply) { container.scrollTop = container.scrollHeight; return; }
+                const all = container.querySelectorAll('.cm');
+                const el = [...all].find(x => x.innerHTML.includes(jsArg(newComment.timestamp)));
+                if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
             }, 50);
         };
 
@@ -2807,6 +3051,14 @@
                 
                 let action = '';
                 const isReco = n.type === 'reco';
+                if (n.type === 'annonce') {
+                    return `<div class="notif-item cursor-pointer flex items-start gap-3" style="background:var(--lav)" onclick="window.showWhatsNew(true)">
+                        <div class="notif-icon" style="background:#fff"><i class="fa-solid fa-bullhorn"></i></div>
+                        <div class="flex-1"><div class="text-sm leading-tight"><span class="font-black">MaBiblio</span> ${esc(n.text || n.message)}</div>
+                        <div class="text-[10px] font-bold uppercase mt-1" style="color:#2D2547">Voir les nouveautés • ${new Date(n.time || n.timestamp).toLocaleDateString()}</div></div>
+                        ${!n.read ? '<div class="w-2.5 h-2.5 rounded-full mt-2 shrink-0" style="background:#FF6B6B"></div>' : ''}
+                    </div>`;
+                }
                 if (isReco) {
                     action = `window.openRecoNotif(${jsArg(n.id)})`;
                 } else if (isFollow) {
@@ -2823,7 +3075,8 @@
                 let color = 'background:#EFEAFF;color:#5B47C9'; 
                 if (isFollow) { icon = '<i class="fa-solid fa-user-plus"></i>'; color = 'background:#DDF6EC;color:#1F7A57'; } 
                 else if (n.type && n.type.includes('like')) { icon = '<i class="fa-solid fa-heart"></i>'; color = 'background:#FFE4F0;color:#D6336C'; } 
-                else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'background:#FFF1D6;color:#8A5A00'; } 
+                else if (n.type === 'mention') { icon = '<i class="fa-solid fa-at"></i>'; color = 'background:#FFF1D6;color:#8A5A00'; }
+                else if (n.type === 'reply') { icon = '<i class="fa-solid fa-reply"></i>'; color = 'background:#DDF6EC;color:#1F7A57'; }
                 else if (isReco) { icon = '<i class="fa-solid fa-hand-holding-heart"></i>'; color = 'background:#FFE5DE;color:#B23A22'; } 
                 const content = isFollow ? `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> <span class="font-bold text-gray-800">${esc(n.message)}</span>` : `<span class="font-black">${esc(n.user || 'Quelqu\'un')}</span> ${esc(n.text || n.message)}`;
                 const subText = isFollow ? 'Voir le profil' : isReco ? (n.note ? `« ${esc(n.note)} »` : "Voir l'œuvre") : `Sur ${esc(n.itemTitle || 'un post')}`;
@@ -3235,49 +3488,103 @@
         /* --- J.2.bis GESTION DES FAVORIS (PINS) --- (version unique, les anciens doublons ont été supprimés) */
         const isFinished = (i) => i && i.status && i.status !== 'Wishlist' && i.status !== 'En cours';
 
+        /* Top 3 PAR CATÉGORIE : profile.pins = { F: [3], S: [3], L: [3], A: [3], Y: [3] }.
+           Les anciens « 3 coups de cœur mélangés » (profile.pinned) restent affichés dans leur catégorie
+           tant que cette catégorie n'a pas été modifiée : rien n'est perdu. */
+        const PIN_TYPES = ['Film', 'Série', 'Livre', 'Album', 'YouTube'];
+        const PIN_CODE = { 'Film': 'F', 'Série': 'S', 'Livre': 'L', 'Album': 'A', 'YouTube': 'Y' };
+        const PIN_WORD = { 'Film': 'films', 'Série': 'séries', 'Livre': 'livres', 'Album': 'albums', 'YouTube': 'vidéos' };
+        window.pinsOf = (prof, type) => {
+            const code = PIN_CODE[type];
+            const saved = prof && prof.pins && Array.isArray(prof.pins[code]) ? prof.pins[code] : null;
+            let arr = saved ? saved.slice(0, 3) : (Array.isArray(prof && prof.pinned) ? prof.pinned.filter(x => x && x.type === type) : []);
+            arr = arr.map(x => (x && typeof x === 'object' && x.title) ? x : null);
+            while (arr.length < 3) arr.push(null);
+            return arr.slice(0, 3);
+        };
+        const firstPinnedType = (prof) => PIN_TYPES.find(t => window.pinsOf(prof, t).some(Boolean)) || 'Film';
+
+        // Bloc « Top 3 » (mon profil ou celui d'un ami)
+        const topThreeHtml = (prof, type, isOwn) => {
+            const arr = window.pinsOf(prof, type);
+            const cat = catOf(type);
+            const aspect = type === 'Album' ? 'aspect-square' : type === 'YouTube' ? 'aspect-video' : 'aspect-[2/3]';
+            const tabs = `<div class="pf-tabs">${PIN_TYPES.map(t => `<button type="button" class="type-chip ${t === type ? 'active' : ''}" onclick="${isOwn ? 'window.setPinTab' : 'window.setPubPinTab'}('${t}')"><span class="dot" style="background:${catOf(t).c}"></span>${catOf(t).label}</button>`).join('')}</div>`;
+            const slots = arr.map((item, i) => {
+                if (item) {
+                    const key = regItem(isOwn ? ((window.myCollection || []).find(m => m.type === item.type && String(m.id) === String(item.id)) || { ...item, docId: null, _fromFriend: true }) : { ...item, docId: null, _fromFriend: true });
+                    const click = isOwn ? `window.openPinSelector(${i})` : `window.openPreviewKey(${jsArg(key)})`;
+                    return `<div class="pf-slot" onclick="${click}"><div class="pf-poster ${aspect}">${coverImg(item.img, item.title, '', 'loading="lazy"')}<span class="pf-rank">${i + 1}</span>${item.rating ? `<span class="grid-rating">${esc(item.rating)}</span>` : ''}</div><div class="pf-slot-t">${esc(item.title)}</div></div>`;
+                }
+                return isOwn
+                    ? `<div class="pf-slot" onclick="window.openPinSelector(${i})"><div class="pf-poster pf-empty ${aspect}" style="border-color:${cat.c}"><i class="fa-solid fa-plus" style="color:${cat.deep}"></i><span class="pf-rank">${i + 1}</span></div><div class="pf-slot-t text-gray-400">Ajouter</div></div>`
+                    : `<div class="pf-slot"><div class="pf-poster pf-empty ${aspect}"><span class="pf-rank">${i + 1}</span></div><div class="pf-slot-t">&nbsp;</div></div>`;
+            }).join('');
+            const emptyPublic = !isOwn && !arr.some(Boolean);
+            return `<section class="pf-card">
+                <div class="flex items-baseline justify-between gap-2"><h3 class="st-h !mb-0">${isOwn ? 'Mon top 3' : 'Son top 3'}</h3>${isOwn ? `<span class="text-[12px] font-bold text-gray-500">Touche pour changer</span>` : ''}</div>
+                ${tabs}
+                ${emptyPublic ? `<p class="st-empty py-3">Pas encore de top 3 en ${PIN_WORD[type]}.</p>` : `<div class="pf-top3">${slots}</div>`}
+            </section>`;
+        };
+        window._pinTab = null;
+        window.setPinTab = (t) => { if (PIN_TYPES.includes(t)) { window._pinTab = t; window.renderProfile(); } };
+
         window.renderPinList = (items) => {
             const list = document.getElementById('pin-selector-list');
             const slotIndex = window.currentPinSlot;
+            const current = window.pinsOf(window.userProfile, window._pinTab || 'Film')[slotIndex];
             let html = '';
-            if (window.userProfile.pinned && window.userProfile.pinned[slotIndex]) {
-                html += `<div class="p-3 mb-2 bg-red-50 text-red-500 text-center font-bold text-sm rounded-xl cursor-pointer" onclick="window.savePin(null)">🗑 Retirer ce favori</div>`;
+            if (current) {
+                html += `<button type="button" class="pin-remove" onclick="window.savePin(null)"><i class="fa-solid fa-trash-can mr-1.5"></i>Retirer « ${esc(current.title)} » du top 3</button>`;
             }
             if (items.length === 0) {
-                list.innerHTML = html + '<div class="text-center text-gray-400 mt-10">Rien trouvé.<br>Terminez des œuvres d\'abord !</div>';
+                list.innerHTML = html + `<div class="text-center text-gray-500 font-semibold text-sm mt-10">Rien trouvé.<br>Termine d'abord des ${esc(PIN_WORD[window._pinTab] || 'œuvres')} !</div>`;
                 return;
             }
-            html += items.map(item => {
+            html += items.slice(0, 300).map(item => {
                 const key = regItem({ id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type });
-                return `<div class="flex items-center gap-4 p-3 border-b border-gray-100 cursor-pointer hover:bg-white" onclick="window.savePinKey(${jsArg(key)})">${coverImg(item.img, item.title, 'w-10 h-14 object-cover rounded bg-gray-200', 'loading="lazy"')}<div><div class="font-bold text-sm">${esc(item.title)}</div><div class="text-[10px] text-gray-500 font-bold uppercase">${esc(item.type)} • ${esc(item.rating || '-')} ★</div></div></div>`;
+                return `<div class="pin-row" onclick="window.savePinKey(${jsArg(key)})">${coverImg(item.img, item.title, 'pin-row-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(item.title)}</div><div class="text-[12px] text-gray-500 font-semibold mt-0.5">${esc(item.author || item.type)}</div></div>${item.rating ? `<span class="pin-row-r">${esc(item.rating)}</span>` : ''}</div>`;
             }).join('');
             list.innerHTML = html;
         };
 
+        const pinCandidates = (term = '') => {
+            const type = window._pinTab || 'Film';
+            const q = normTxt(term);
+            return (window.myCollection || []).filter(i => isFinished(i) && i.type === type && (!q || normTxt([i.title, i.author].join(' ')).includes(q)))
+                .sort((a, b) => (num(b.rating) - num(a.rating)) || String(a.title || '').localeCompare(String(b.title || '')));
+        };
         window.openPinSelector = (slotIndex) => {
             window.currentPinSlot = slotIndex;
+            const type = window._pinTab || 'Film';
+            const title = document.getElementById('pin-selector-title');
+            if (title) title.textContent = `Top 3 · ${catOf(type).label} · n°${slotIndex + 1}`;
             document.getElementById('pin-selector-modal').classList.add('open');
             const search = document.getElementById('pin-search');
-            if (search) search.value = '';
-            window.renderPinList((window.myCollection || []).filter(isFinished));
+            if (search) { search.value = ''; search.placeholder = `Rechercher dans mes ${PIN_WORD[type]}…`; }
+            window.renderPinList(pinCandidates());
         };
 
-        window.filterPinSelector = (query) => {
-            const term = String(query || '').toLowerCase();
-            window.renderPinList((window.myCollection || []).filter(i => isFinished(i) && String(i.title || '').toLowerCase().includes(term)));
-        };
+        window.filterPinSelector = (query) => window.renderPinList(pinCandidates(String(query || '')));
 
         window.savePin = async (itemData) => {
+            const type = window._pinTab || 'Film';
+            const code = PIN_CODE[type];
             try {
                 const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
-                const newPinned = [...(window.userProfile.pinned || [null, null, null])];
-                while (newPinned.length < 3) newPinned.push(null);
-                newPinned[window.currentPinSlot] = itemData || null;
-                await updateDoc(ref, { pinned: newPinned });
-                window.userProfile.pinned = newPinned;
+                const arr = window.pinsOf(window.userProfile, type);
+                const slot = window.currentPinSlot;
+                const pick = itemData ? { id: String(itemData.id || ''), title: String(itemData.title || '').slice(0, 200), img: String(itemData.img || '').slice(0, 1000), rating: itemData.rating ?? null, type } : null;
+                // La même œuvre ne peut pas être deux fois dans le top 3 : elle change simplement de place
+                if (pick) arr.forEach((x, k) => { if (x && k !== slot && String(x.id) === pick.id && x.title === pick.title) arr[k] = arr[slot]; });
+                arr[slot] = pick;
+                await updateDoc(ref, { [`pins.${code}`]: arr });
+                window.userProfile.pins = { ...(window.userProfile.pins || {}), [code]: arr };
                 document.getElementById('pin-selector-modal').classList.remove('open');
                 window.renderProfile();
-                window.ui.toast(itemData ? 'Coup de cœur enregistré ✓' : 'Coup de cœur retiré');
-            } catch(e) { console.error(e); window.ui.alert("Le coup de cœur n'a pas pu être enregistré."); }
+                window.ui.toast(itemData ? 'Top 3 mis à jour ✓' : 'Retiré du top 3');
+            } catch(e) { console.error(e); window.ui.alert("Le top 3 n'a pas pu être enregistré."); }
         };
 
         window.unfollowUser = async (id) => {
@@ -3287,8 +3594,20 @@
              }
         };
 
+        // Ligne de personne (abonnements / abonnés)
+        const personRow = (uid, name, avatar, actions) => {
+            const av = safeImg(avatar);
+            return `<div class="pf-person"><button type="button" class="flex items-center gap-3 min-w-0 flex-1 text-left" onclick="window.openPublicProfile(${jsArg(uid)})"><span class="feed-avatar" style="background:var(--lav-tint);width:38px;height:38px">${av ? `<img src="${av}" alt="">` : initial(name)}</span><span class="font-bold text-[14px] truncate">${esc(name)}</span></button>${actions}</div>`;
+        };
+        window.togglePeopleList = (which) => {
+            const other = which === 'following-list' ? 'followers-list' : 'following-list';
+            const el = document.getElementById(which);
+            if (el) el.classList.toggle('open');
+            const o = document.getElementById(other);
+            if (o) o.classList.remove('open');
+        };
 
-        /* --- J.2 RENDU DU PROFIL PRIVÉ (CORRIGÉ) ---
+        /* --- J.2 RENDU DU PROFIL PRIVÉ ---
            Les abonnés sont chargés UNE fois à l'ouverture de la page Profil (mis en cache),
            au lieu d'être relus à chaque mise à jour de la bibliothèque ou du fil. */
         window._followersCache = null;
@@ -3311,95 +3630,58 @@
             // Si l'utilisateur a changé de page pendant le chargement, on n'écrase pas la nouvelle page
             if (window.currentView !== 'profile') return;
             const followers = window._followersCache.filter(f => !window.myBlocked().includes(f.id));
+            const openLists = ['following-list', 'followers-list'].filter(id => { const el = document.getElementById(id); return el && el.classList.contains('open'); });
 
-            // Données utilisateur
-            const bio = window.userProfile.bio || "Ajouter une biographie...";
-            const pinned = (window.userProfile.pinned || [null, null, null]).map(p => (p && HIDDEN_TYPES.includes(p.type)) ? null : p); 
-            const myAvatar = safeImg(window.userProfile.avatar);
+            const prof = window.userProfile;
+            const myAvatar = safeImg(prof.avatar);
+            const doneCount = (window.myCollection || []).filter(isFinished).length;
+            if (!window._pinTab) window._pinTab = firstPinnedType(prof);
+
+            const followingHtml = following.length ? following.map(p => { const pid = p.uid || p.id; return personRow(pid, p.name, p.avatar, `<button onclick="event.stopPropagation(); window.unfollowUser(${jsArg(pid)})" class="pf-mini-btn">Ne plus suivre</button>`); }).join('') : '<div class="p-5 text-center text-[13px] font-semibold text-gray-500">Aucun abonnement</div>';
+            const followersHtml = followers.length ? followers.map(f => personRow(f.id, f.name, f.avatar, `<div class="flex gap-1.5 shrink-0"><button onclick="event.stopPropagation(); window.removeFollower(${jsArg(f.id)})" class="pf-mini-btn">Retirer</button><button onclick="event.stopPropagation(); window.blockUser(${jsArg(f.id)})" class="pf-mini-btn is-danger">Bloquer</button></div>`)).join('') : '<div class="p-5 text-center text-[13px] font-semibold text-gray-500">Aucun abonné</div>';
 
             container.innerHTML = `
-                <div class="pt-20 px-4 pb-32 text-center">
-                    
-                    <div class="avatar-container">
-                        <div class="avatar-img">${myAvatar ? `<img src="${myAvatar}" class="w-full h-full object-cover">` : initial(window.userProfile.name)}</div>
-                        <label class="avatar-edit-btn" aria-label="Changer ma photo"><i class="fa-solid fa-camera text-gray-900 text-sm"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
-                    </div>
-                    
-                    <div class="mt-4 flex items-center justify-center gap-2">
-                        <h2 class="text-3xl font-extrabold">${esc(window.userProfile.name)}</h2>
-                        <button onclick="window.updateProfileName()" class="w-9 h-9 rounded-full bg-white text-gray-900 text-sm" aria-label="Modifier mon pseudo"><i class="fa-solid fa-pen"></i></button>
-                    </div>
-                    <p class="bio-text cursor-pointer hover:text-blue-600" onclick="window.updateBio()">${esc(bio)} <i class="fa-solid fa-pen text-[10px] ml-1 opacity-50"></i></p>
+                <div class="pt-16 px-4 pb-32">
+                    <h1 class="page-title" style="margin-bottom:16px">Profil</h1>
 
-                    <div class="text-left mt-7 px-1"><span class="section-kicker">Mes 3 coups de cœur</span></div>
-                    <div class="pinned-grid">
-                        ${[0, 1, 2].map(i => {
-                            const item = pinned[i];
-                            if (item) {
-                                return `
-                                <div class="pinned-item filled" onclick="window.openPinSelector(${i})">
-                                    ${coverImg(item.img, item.title, '')}
-                                    <div class="pinned-overlay"><i class="fa-solid fa-rotate text-white"></i></div>
-                                    <div class="grid-rating">${esc(item.rating || '?')}</div>
-                                </div>`;
-                            } else {
-                                return `
-                                <div class="pinned-item" onclick="window.openPinSelector(${i})">
-                                    <i class="fa-solid fa-plus text-gray-300 text-2xl"></i>
-                                </div>`;
-                            }
-                        }).join('')}
-                    </div>
-
-                    <div class="flex gap-3 mt-6">
-                        <div class="flex-1"><button class="w-full p-4 rounded-[24px] flex flex-col items-center gap-1" style="background:var(--lav)" onclick="document.getElementById('following-list').classList.toggle('open'); document.getElementById('followers-list').classList.remove('open')"><span class="font-display text-3xl font-extrabold text-gray-900">${following.length}</span><span class="text-[11px] font-extrabold text-gray-800 uppercase tracking-wider">Abonnements</span></button></div>
-                        <div class="flex-1"><button class="w-full p-4 rounded-[24px] flex flex-col items-center gap-1" style="background:var(--mint)" onclick="document.getElementById('followers-list').classList.toggle('open'); document.getElementById('following-list').classList.remove('open')"><span class="font-display text-3xl font-extrabold text-gray-900">${followers.length}</span><span class="text-[11px] font-extrabold text-gray-800 uppercase tracking-wider">Abonnés</span></button></div>
-                    </div>
-
-                    <div id="following-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${following.length > 0 ? following.map(p => { const pid = p.uid || p.id; const av = safeImg(p.avatar); return `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile(${jsArg(pid)})">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${av ? `<img src="${av}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${initial(p.name)}</span>`}</div>
-                                        <span class="font-bold text-sm">${esc(p.name)}</span>
-                                    </div>
-                                    <button onclick="event.stopPropagation(); window.unfollowUser(${jsArg(pid)})" class="text-red-500 text-[10px] font-black uppercase">Arrêter</button>
-                                </div>`; }).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonnement</div>'}
+                    <section class="pf-hero">
+                        <div class="flex items-center gap-4">
+                            <div class="pf-avatar-wrap">
+                                <div class="pf-avatar">${myAvatar ? `<img src="${myAvatar}" alt="">` : initial(prof.name)}</div>
+                                <label class="pf-avatar-edit" aria-label="Changer ma photo"><i class="fa-solid fa-camera"></i><input type="file" accept="image/*" class="hidden" onchange="window.handleAvatarUpload(event)"></label>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <button type="button" class="pf-name" onclick="window.updateProfileName()" aria-label="Modifier mon pseudo"><span class="truncate">${esc(prof.name)}</span><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" class="pf-bio" onclick="window.updateBio()">${prof.bio ? esc(prof.bio) : '<span class="opacity-60">Ajouter une bio…</span>'} <i class="fa-solid fa-pen"></i></button>
+                            </div>
                         </div>
-                    </div>
-
-                    <div id="followers-list" class="following-dropdown mt-2 overflow-hidden transition-all duration-300">
-                        <div class="bg-white rounded-2xl border border-gray-100 shadow-inner">
-                            ${followers.length > 0 ? followers.map(f => { const av = safeImg(f.avatar); return `
-                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                    <div class="flex items-center gap-3 cursor-pointer" onclick="window.openPublicProfile(${jsArg(f.id)})">
-                                        <div class="w-8 h-8 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center">${av ? `<img src="${av}" class="w-full h-full object-cover">` : `<span class="font-bold text-blue-600 text-xs">${initial(f.name)}</span>`}</div>
-                                        <span class="font-bold text-sm max-w-[80px] truncate">${esc(f.name)}</span>
-                                    </div>
-                                    <div class="flex gap-3 items-center">
-                                        <button onclick="event.stopPropagation(); window.removeFollower(${jsArg(f.id)})" class="text-red-500 text-[10px] font-black uppercase">Retirer</button>
-                                        <div class="h-3 w-px bg-gray-300"></div>
-                                        <button onclick="event.stopPropagation(); window.blockUser(${jsArg(f.id)})" class="text-red-800 text-[10px] font-black uppercase">Bloquer</button>
-                                    </div>
-                                </div>`; }).join('') : '<div class="p-6 text-center text-xs text-gray-400">Aucun abonné</div>'}
+                        <div class="pf-stats">
+                            <div class="pf-stat"><b>${doneCount}</b><span>œuvre${doneCount > 1 ? 's' : ''}</span></div>
+                            <button type="button" class="pf-stat" onclick="window.togglePeopleList('following-list')"><b>${following.length}</b><span>abonnement${following.length > 1 ? 's' : ''}</span></button>
+                            <button type="button" class="pf-stat" onclick="window.togglePeopleList('followers-list')"><b>${followers.length}</b><span>abonné${followers.length > 1 ? 's' : ''}</span></button>
                         </div>
-                    </div>
+                    </section>
+
+                    <div id="following-list" class="following-dropdown ${openLists.includes('following-list') ? 'open' : ''}"><div class="pf-list-h">Mes abonnements</div>${followingHtml}</div>
+                    <div id="followers-list" class="following-dropdown ${openLists.includes('followers-list') ? 'open' : ''}"><div class="pf-list-h">Mes abonnés</div>${followersHtml}</div>
+
+                    ${topThreeHtml(prof, window._pinTab, true)}
 
                     ${blockedUids.length ? `
-                    <div class="text-left mt-8 mb-2 px-1"><span class="section-kicker">Comptes bloqués</span></div>
-                    <div class="bg-white rounded-2xl border border-gray-100">
-                        ${blockedUids.map(u => `
-                            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
-                                <span class="font-bold text-sm">${esc(window.liveUser(u).name)}</span>
-                                <button onclick="window.unblockUser(${jsArg(u)})" class="text-blue-600 text-[10px] font-black uppercase">Débloquer</button>
-                            </div>`).join('')}
+                    <p class="pf-group-h">Comptes bloqués</p>
+                    <div class="pf-group">
+                        ${blockedUids.map(u => `<div class="pf-row"><span class="font-bold text-[14px] flex-1 truncate">${esc(window.liveUser(u).name)}</span><button onclick="window.unblockUser(${jsArg(u)})" class="pf-mini-btn">Débloquer</button></div>`).join('')}
                     </div>` : ''}
 
-                    ${window.installCardHtml ? window.installCardHtml() : ''}
-                    ${window.pushCardHtml ? window.pushCardHtml() : ''}
-                    <div class="ios-group !mx-0 mt-8"><div class="ios-cell !border-0 cursor-pointer" onclick="window.openFeedbackModal()"><span class="cell-icon" style="background:var(--miel-tint)"><i class="fa-regular fa-envelope"></i></span><span class="font-bold text-sm flex-1 text-left">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></div></div>
-                    <div class="ios-group !mx-0 mt-3"><div class="ios-cell !border-0 cursor-pointer justify-center" onclick="window.logout()"><span class="text-red-600 font-bold text-sm">Déconnexion</span></div></div>
+                    <p class="pf-group-h">Réglages</p>
+                    <div class="pf-group">
+                        ${window.pushRowHtml ? window.pushRowHtml() : ''}
+                        ${window.installRowHtml ? window.installRowHtml() : ''}
+                        <button type="button" class="pf-row" onclick="window.showWhatsNew(true)"><span class="cell-icon" style="background:var(--lav-tint)"><i class="fa-solid fa-wand-magic-sparkles"></i></span><span class="flex-1 text-left font-bold text-[14px]">Nouveautés de l'appli</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></button>
+                        <button type="button" class="pf-row" onclick="window.openFeedbackModal()"><span class="cell-icon" style="background:var(--miel-tint)"><i class="fa-regular fa-envelope"></i></span><span class="flex-1 text-left font-bold text-[14px]">Nous contacter / Feedback</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></button>
+                        ${prof.admin === true ? `<button type="button" class="pf-row" onclick="window.sendAnnouncement()"><span class="cell-icon" style="background:var(--corail-tint)"><i class="fa-solid fa-bullhorn"></i></span><span class="flex-1 text-left font-bold text-[14px]">Annoncer la mise à jour à tous</span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></button>` : ''}
+                    </div>
+                    <div class="pf-group mt-3"><button type="button" class="pf-row justify-center" onclick="window.logout()"><span class="text-red-600 font-bold text-[14px]">Déconnexion</span></button></div>
                 </div>`;
         };
 
@@ -3520,9 +3802,17 @@
         };
 
 
-   /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) - VERSION MENU DÉROULANT --- */
+   /* --- J.3 RENDU DU PROFIL PUBLIC (AMI) --- */
     window.friendData = [];
     window.friendState = { type: 'Film', status: 'Vu', sort: 'date' };
+    window._pubProfile = null; // { uid, prof, pinType }
+
+    window.setPubPinTab = (t) => {
+        if (!PIN_TYPES.includes(t) || !window._pubProfile) return;
+        window._pubProfile.pinType = t;
+        const box = document.getElementById('pub-top3');
+        if (box) box.innerHTML = topThreeHtml(window._pubProfile.prof, t, false);
+    };
 
     window.openPublicProfile = async (uid) => {
         if (!uid || uid === 'undefined') return;
@@ -3546,12 +3836,11 @@
             const iBlocked = window.myBlocked().includes(uid);
             if (blockedMe || iBlocked) {
                 container.innerHTML = `
-                    <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
                     <div class="pt-40 px-8 text-center">
-                        <div class="w-20 h-20 mx-auto rounded-full bg-gray-100 flex items-center justify-center text-gray-300 text-3xl mb-5"><i class="fa-solid fa-user-slash"></i></div>
+                        <div class="w-20 h-20 mx-auto rounded-full bg-white flex items-center justify-center text-gray-400 text-3xl mb-5"><i class="fa-solid fa-user-slash"></i></div>
                         ${iBlocked
-                            ? `<h2 class="text-xl font-black mb-2">${esc(prof.name)}</h2><p class="text-gray-500 text-sm mb-6">Tu as bloqué ce compte.</p><button onclick="window.unblockUser(${jsArg(uid)})" class="bg-gray-100 text-gray-800 border border-gray-200 px-8 py-2.5 rounded-full font-bold text-sm">Débloquer</button>`
-                            : `<h2 class="text-xl font-black mb-2">Compte indisponible</h2><p class="text-gray-500 text-sm">Ce profil n'est pas accessible.</p>`}
+                            ? `<h2 class="font-display text-2xl font-extrabold mb-2">${esc(prof.name)}</h2><p class="text-gray-500 text-sm font-semibold mb-6">Tu as bloqué ce compte.</p><button onclick="window.unblockUser(${jsArg(uid)})" class="bg-white px-8 h-11 rounded-full font-bold text-sm">Débloquer</button>`
+                            : `<h2 class="font-display text-2xl font-extrabold mb-2">Compte indisponible</h2><p class="text-gray-500 text-sm font-semibold">Ce profil n'est pas accessible.</p>`}
                     </div>`;
                 return;
             }
@@ -3560,71 +3849,53 @@
             const itemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
             // _fromFriend : ces œuvres appartiennent à l'ami, elles s'ouvrent en lecture seule
             window.friendData = itemsSnap.docs.map(d => ({ ...d.data(), _fromFriend: true })).filter(i => !HIDDEN_TYPES.includes(i.type));
+            // Les stats Amis profitent de cette lecture (pas besoin de relire sa bibliothèque)
+            if (window._statsUI) { const it = window.friendData.map(({ _fromFriend, ...i }) => i); window._statsUI.friendItems[uid] = { at: Date.now(), items: it, sum: null }; }
 
             // 3. Status abonnement
             const isFollowing = (window.userProfile.following || []).includes(uid);
-            
-            const bio = prof.bio || "";
-            const pinned = (Array.isArray(prof.pinned) ? prof.pinned : [null, null, null]).map(p => (p && HIDDEN_TYPES.includes(p.type)) ? null : p);
-            const hasPinned = pinned.some(p => p !== null);
+            const doneCount = window.friendData.filter(isFinished).length;
+            const followingCount = Array.isArray(prof.following) ? prof.following.length : 0;
+            window._pubProfile = { uid, prof, pinType: firstPinnedType(prof) };
+            // Œuvres en commun et affinité (déjà calculables : sa bibliothèque vient d'être lue)
+            let affinity = '';
+            try {
+                const a = window.computeAffinity(window.myCollection || [], window.friendData);
+                if (a.common.length) affinity = `<div class="pf-affinity"><i class="fa-solid fa-link"></i><span>${a.common.length} œuvre${a.common.length > 1 ? 's' : ''} en commun${a.pct !== null && a.rated.length >= 3 ? ` · <b>${a.pct} %</b> d'affinité` : ''}</span></div>`;
+            } catch (e) { /* simple bonus */ }
+            const av = safeImg(prof.avatar);
 
-            let buttonHTML = `<button onclick="window.toggleFollowFromProfile(${jsArg(uid)})" class="${isFollowing ? 'bg-gray-100 text-gray-800 border border-gray-200' : 'bg-blue-600 text-white shadow-md shadow-blue-200'} px-8 py-2.5 rounded-full font-bold mt-4 text-sm transition-all active:scale-95">${isFollowing ? 'Abonné' : 'S\'abonner'}</button>`;
-
-            let html = `
-                <button onclick="window.closePublicProfile()" class="fixed top-6 left-6 z-50 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full shadow-md flex items-center justify-center text-black"><i class="fa-solid fa-arrow-left"></i></button>
-
-                <div class="pt-24 bg-white relative z-10">
-                    <div class="text-center px-6 pb-6 border-b border-gray-50">
-                        <div class="w-24 h-24 mx-auto rounded-full text-gray-900 flex items-center justify-center font-display font-extrabold text-4xl overflow-hidden shadow-lg border-4 border-white" style="background:var(--lav)">
-                             ${safeImg(prof.avatar) ? `<img src="${safeImg(prof.avatar)}" class="w-full h-full object-cover">` : initial(prof.name)}
-                        </div>
-                        <h1 class="text-2xl font-black mt-4">${esc(prof.name)}</h1>
-                        ${bio ? `<p class="bio-text mt-2">"${esc(bio)}"</p>` : ''}
-                        ${buttonHTML}
-                        <div><button onclick="window.blockUser(${jsArg(uid)})" class="text-[11px] text-gray-400 font-bold mt-4 hover:text-red-600">Bloquer ce compte</button></div>
-
-                        ${hasPinned ? `
-                            <div class="mt-8 px-1 text-left"><span class="section-kicker">Ses coups de cœur</span></div>
-                            <div class="pinned-grid">
-                                ${pinned.map(item => item ? `<div class="pinned-item filled">${coverImg(item.img, item.title, '')}<div class="grid-rating">${esc(item.rating || '?')}</div></div>` : `<div class="pinned-item opacity-20"></div>`).join('')}
+            container.innerHTML = `
+                <div class="pt-20 px-4 pb-32">
+                    <section class="pf-hero" style="background:var(--mint)">
+                        <div class="flex items-center gap-4">
+                            <div class="pf-avatar-wrap"><div class="pf-avatar">${av ? `<img src="${av}" alt="">` : initial(prof.name)}</div></div>
+                            <div class="min-w-0 flex-1">
+                                <h1 class="pf-name !cursor-default"><span class="truncate">${esc(prof.name)}</span></h1>
+                                ${prof.bio ? `<p class="pf-bio !cursor-default">${esc(prof.bio)}</p>` : ''}
                             </div>
-                        ` : ''}
-                    </div>
-
-                <div class="sticky top-0 bg-white/95 backdrop-blur-md z-20 pt-4 pb-2 shadow-sm px-6">
-                    <div class="relative mb-3">
-                        <select id="friend-type-select" onchange="window.switchFriendTab(this.value)" class="w-full bg-gray-100 text-gray-800 font-bold text-sm rounded-xl p-3 pl-4 outline-none appearance-none border border-gray-200 focus:border-blue-500 transition-colors">
-                            <option value="Film"> Films</option>
-                            <option value="Série"> Séries</option>
-                            <option value="Livre"> Livres</option>
-                            <option value="Album"> Albums</option>
-                            <option value="YouTube"> YouTube</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-gray-500">
-                            <i class="fa-solid fa-chevron-down text-xs"></i>
                         </div>
-                    </div>
+                        <div class="pf-stats">
+                            <div class="pf-stat"><b>${doneCount}</b><span>œuvre${doneCount > 1 ? 's' : ''}</span></div>
+                            <div class="pf-stat"><b>${followingCount}</b><span>abonnement${followingCount > 1 ? 's' : ''}</span></div>
+                            <button type="button" class="pf-follow ${isFollowing ? 'is-on' : ''}" onclick="window.toggleFollowFromProfile(${jsArg(uid)})">${isFollowing ? '<i class="fa-solid fa-check"></i>Abonné' : '<i class="fa-solid fa-plus"></i>Suivre'}</button>
+                        </div>
+                        ${affinity}
+                    </section>
 
-                    <div class="flex gap-2 pb-2 overflow-x-auto no-scrollbar">
-                        <button onclick="window.switchFriendStatus('Vu')" id="f-stat-Vu" class="px-4 py-1.5 rounded-full bg-black text-white text-xs font-bold whitespace-nowrap shadow-sm">Terminé</button>
-                        <button onclick="window.switchFriendStatus('Wishlist')" id="f-stat-Wishlist" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold whitespace-nowrap">Wishlist</button>
-                    </div>
-                    
-                    <div class="flex justify-between items-center py-2 border-t border-gray-100 mt-1">
-                        <span class="text-[10px] font-black uppercase text-gray-400 tracking-widest" id="friend-count-label">...</span>
-                    </div>
-                </div>
-                <div id="friend-grid-content" class="px-4 py-4 min-h-[300px] pb-32"></div>
-            </div>`; 
+                    <div id="pub-top3">${topThreeHtml(prof, window._pubProfile.pinType, false)}</div>
 
-            container.innerHTML = html;
-            
-            // Force la mise à jour visuelle du select
-            setTimeout(() => {
-                const sel = document.getElementById('friend-type-select');
-                if(sel) sel.value = window.friendState.type;
-                window.renderFriendGrid();
-            }, 50);
+                    <section class="pf-card" id="friend-lib">
+                        <h3 class="st-h !mb-0">Sa bibliothèque</h3>
+                        <div class="pf-tabs" id="friend-type-chips"></div>
+                        <div class="flex gap-2 mt-1 mb-3" id="friend-status-chips"></div>
+                        <div class="section-kicker mb-3" id="friend-count-label"></div>
+                        <div id="friend-grid-content" class="min-h-[200px]"></div>
+                    </section>
+
+                    <div class="text-center mt-2"><button onclick="window.blockUser(${jsArg(uid)})" class="text-[12px] text-gray-500 font-bold h-10 px-4">Bloquer ce compte</button></div>
+                </div>`;
+            window.renderFriendGrid();
 
         } catch (e) { 
             console.error(e);
@@ -3633,36 +3904,39 @@
     };
 
     window.switchFriendTab = (type) => {
+        if (!PIN_TYPES.includes(type)) return;
         window.friendState.type = type;
+        if (window.friendState.status === 'En cours' && !CONFIG[type].statuses.includes('En cours')) window.friendState.status = 'Vu';
         window.renderFriendGrid();
     };
 
     window.switchFriendStatus = (status) => {
         window.friendState.status = status;
-        ['Vu', 'Wishlist'].forEach(s => {
-            const el = document.getElementById(`f-stat-${s}`);
-            if(el) {
-                if (s === status) { el.classList.remove('bg-gray-100', 'text-gray-500'); el.classList.add('bg-black', 'text-white'); }
-                else { el.classList.add('bg-gray-100', 'text-gray-500'); el.classList.remove('bg-black', 'text-white'); }
-            }
-        });
         window.renderFriendGrid();
     };
 
     window.renderFriendGrid = () => {
         const container = document.getElementById('friend-grid-content');
         if(!container) return;
+        const type = window.friendState.type;
         const targetStatus = window.friendState.status;
+        const typeBox = document.getElementById('friend-type-chips');
+        if (typeBox) typeBox.innerHTML = PIN_TYPES.map(t => `<button type="button" class="type-chip ${t === type ? 'active' : ''}" onclick="window.switchFriendTab('${t}')"><span class="dot" style="background:${catOf(t).c}"></span>${catOf(t).label}</button>`).join('');
+        const statusBox = document.getElementById('friend-status-chips');
+        const statuses = [['Vu', CONFIG[type].statuses[0]], ['Wishlist', 'Wishlist'], ...(CONFIG[type].statuses.includes('En cours') ? [['En cours', 'En cours']] : [])];
+        if (statusBox) statusBox.innerHTML = statuses.map(([k, l]) => `<button type="button" class="pf-status ${k === targetStatus ? 'active' : ''}" onclick="window.switchFriendStatus('${k}')">${esc(l === 'Vu' && type === 'Série' ? 'Vues' : l)}</button>`).join('');
         let filtered = window.friendData.filter(i => {
-            if(i.type !== window.friendState.type) return false;
+            if(i.type !== type) return false;
             if(targetStatus === 'Wishlist') return i.status === 'Wishlist';
+            if(targetStatus === 'En cours') return i.status === 'En cours';
             return i.status !== 'Wishlist' && i.status !== 'En cours';
         });
         const label = document.getElementById('friend-count-label');
-        if(label) label.innerText = `${filtered.length} ÉLÉMENTS`;
+        if(label) label.textContent = `${filtered.length} ${filtered.length > 1 ? 'œuvres' : 'œuvre'}`;
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        if (filtered.length === 0) { container.innerHTML = `<div class="py-20 text-center opacity-40"><div class="font-bold text-sm text-gray-400">Aucun élément ici</div></div>`; return; }
-        container.innerHTML = `<div class="items-grid">${filtered.map(item => window.generateGridItemHTML(item)).join('')}</div>`;
+        if (filtered.length === 0) { container.innerHTML = `<div class="py-12 text-center text-[13px] font-semibold text-gray-500">Rien ici pour le moment</div>`; return; }
+        const cols = type === 'YouTube' ? 2 : 3;
+        container.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:10px">${filtered.map(item => window.generateGridItemHTML(item, cols)).join('')}</div>`;
     };
 
     window.toggleFollowFromProfile = async (uid) => {
@@ -4024,18 +4298,26 @@ const CODE_TYPE = { F: 'Film', S: 'Série', L: 'Livre', A: 'Album', Y: 'YouTube'
 
 /* Résumé de MA bibliothèque, rangé dans mon profil : mes amis le lisent avec mon profil (déjà chargé),
    ce qui permet les classements et les « œuvres en commun » sans relire des centaines d'œuvres. */
+// v2 : en plus du total, le nombre d'œuvres terminées CETTE ANNÉE (yc) pour « Le match de l'année »
+const curYearNum = () => new Date().getFullYear();
 const buildStatsSummary = (items) => {
     const done = (items || []).filter(isDone);
-    const counts = {};
-    LEAD_TYPES.forEach(t => { counts[t] = done.filter(i => i.type === t).length; });
+    const counts = {}, yc = {};
+    const y = curYearNum();
+    LEAD_TYPES.forEach(t => {
+        const ofType = done.filter(i => i.type === t);
+        counts[t] = ofType.length;
+        yc[t] = ofType.filter(i => window.itemYear(i) === String(y)).length;
+    });
     const works = done.filter(i => TYPE_CODE[i.type] && i.type !== 'YouTube').slice(0, 1500).map(i => {
         const id = String(i.id || '');
         const idPart = id && !/^manual_|_public$/.test(id) ? id.replace(/[~|]/g, '').slice(0, 40) : '';
         const r = ratingOf(i);
         return `${TYPE_CODE[i.type]}~${idPart}~${normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 32)}~${r !== null ? Math.round(r * 2) / 2 : ''}`;
     }).join('|');
-    return { v: 1, counts, works };
+    return { v: 2, counts, y, yc, works };
 };
+const summaryKey = (s) => s ? JSON.stringify({ v: s.v, counts: s.counts, y: s.y, yc: s.yc, works: s.works }) : '';
 const parseSummaryWorks = (s) => String((s && s.works) || '').split('|').filter(Boolean).map(w => {
     const [c, id, title, r] = w.split('~');
     return { type: CODE_TYPE[c], id: id || '', title: title || '', rating: r ? Number(r) : null, status: 'Vu' };
@@ -4045,52 +4327,107 @@ window.scheduleStatsSummary = () => { clearTimeout(summaryTimer); summaryTimer =
 window.publishStatsSummary = async () => {
     if (!window.currentUser || !Array.isArray(window.myCollection)) return;
     const s = buildStatsSummary(window.myCollection);
-    const key = JSON.stringify(s);
+    const key = summaryKey(s);
     const cur = window.userProfile && window.userProfile.statsSummary;
-    if (key === lastSummary || (cur && JSON.stringify({ v: cur.v, counts: cur.counts, works: cur.works }) === key)) { lastSummary = key; return; }
+    if (key === lastSummary || (cur && summaryKey(cur) === key)) { lastSummary = key; return; }
     try {
         await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { statsSummary: { ...s, at: Date.now() } });
         lastSummary = key;
     } catch (e) { console.error('Résumé des stats', e); }
 };
 
-const statsFriends = () => (window.followingData || []).map(p => ({ uid: p.uid || p.id, name: p.name, avatar: p.avatar, summary: p.statsSummary && p.statsSummary.v === 1 ? p.statsSummary : null }))
+const statsFriends = () => (window.followingData || []).map(p => ({ uid: p.uid || p.id, name: p.name, avatar: p.avatar, summary: p.statsSummary && p.statsSummary.v >= 1 && typeof p.statsSummary.works === 'string' ? p.statsSummary : null }))
     .filter(f => f.uid && !window.isHiddenUser(f.uid));
 
-// Nombre d'œuvres terminées par catégorie d'un ami qui n'a pas encore de résumé : simples comptages
-// (1 lecture Firebase par comptage, au lieu de relire toute sa bibliothèque)
-ST.counts = ST.counts || {};
-const loadFriendCounts = (uid) => {
-    const c = ST.counts[uid];
-    if (c && (c.loading || Date.now() - c.at < 30 * 60 * 1000)) return;
-    ST.counts[uid] = { loading: true, at: Date.now(), data: c && c.data };
-    Promise.all(LEAD_TYPES.map(async t => {
-        const q = query(collection(db, 'artifacts', appId, 'users', uid, 'items'), where('type', '==', t), where('status', '==', CONFIG[t].statuses[0]));
-        const snap = await getCountFromServer(q);
-        return [t, snap.data().count];
-    })).then(rows => { ST.counts[uid] = { at: Date.now(), data: Object.fromEntries(rows) }; })
-      .catch(e => { console.error('Comptages', e); ST.counts[uid] = { at: Date.now(), data: null, error: true }; })
-      .finally(() => { if (window.currentView === 'stats' && ST.tab === 'affinity' && !ST.friend) window.renderStatsView(); });
+/* Bibliothèques des amis pour les classements : TOUS les amis sont comparés, sans avoir à ouvrir leur profil.
+   1. résumé publié dans son profil (ami déjà passé à la nouvelle version) : rien à lire de plus ;
+   2. sinon sa bibliothèque est lue UNE fois en arrière-plan (2 amis à la fois), puis son résumé est
+      gardé 6 h sur ce téléphone : en revenant sur la page, plus aucune lecture. */
+const FRIEND_TTL = 6 * 3600 * 1000;
+const friendCacheKey = (uid) => `mabiblio_fsum_${window.currentUser ? window.currentUser.uid : ''}_${uid}`;
+const readFriendCache = (uid) => {
+    try {
+        const c = JSON.parse(localStorage.getItem(friendCacheKey(uid)) || 'null');
+        if (c && c.s && Date.now() - c.at < FRIEND_TTL && c.s.y === curYearNum()) return c.s;
+    } catch (e) { /* cache illisible : on relira */ }
+    return null;
 };
-const countsOf = (f) => f.summary ? f.summary.counts : (ST.counts[f.uid] && ST.counts[f.uid].data) || null;
+const writeFriendCache = (uid, s) => { try { localStorage.setItem(friendCacheKey(uid), JSON.stringify({ at: Date.now(), s })); } catch (e) { /* téléphone plein : tant pis */ } };
+const loadFriendLibrary = async (uid) => {
+    try {
+        const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
+        const items = snap.docs.map(d => d.data()).filter(i => !HIDDEN_TYPES.includes(i.type));
+        const sum = buildStatsSummary(items);
+        ST.friendItems[uid] = { at: Date.now(), items, sum };
+        writeFriendCache(uid, sum);
+    } catch (e) {
+        console.error('Bibliothèque ami', e);
+        ST.friendItems[uid] = { at: Date.now(), items: [], error: true };
+    }
+    return ST.friendItems[uid];
+};
+// Résumé le plus à jour qu'on connaisse pour cet ami (null si rien encore)
+const friendSummary = (f) => {
+    const full = ST.friendItems[f.uid];
+    if (full && !full.error && full.items) return full.sum || (full.sum = buildStatsSummary(full.items));
+    if (f.summary && f.summary.v >= 2 && f.summary.y === curYearNum()) return f.summary;
+    return readFriendCache(f.uid) || f.summary || null;
+};
+// Il manque les chiffres de l'année (ancienne version de l'appli chez l'ami, ou rien du tout)
+const friendNeedsLoad = (f) => {
+    const full = ST.friendItems[f.uid];
+    if (full && (full.items || full.error) && Date.now() - full.at < FRIEND_TTL) return false;
+    if (f.summary && f.summary.v >= 2 && f.summary.y === curYearNum()) return false;
+    return !readFriendCache(f.uid);
+};
+ST.bg = ST.bg || { queue: [], loading: new Set(), done: 0, total: 0 };
+let bgRepaint = null;
+const repaintBoard = () => {
+    clearTimeout(bgRepaint);
+    bgRepaint = setTimeout(() => { if (window.currentView === 'stats' && ST.tab === 'affinity' && !ST.friend) window.renderStatsView(); }, 250);
+};
+const pumpFriendLoads = () => {
+    while (ST.bg.loading.size < 2 && ST.bg.queue.length) {
+        const uid = ST.bg.queue.shift();
+        ST.bg.loading.add(uid);
+        loadFriendLibrary(uid).finally(() => { ST.bg.loading.delete(uid); ST.bg.done++; repaintBoard(); pumpFriendLoads(); });
+    }
+};
+const ensureFriendLibraries = (friends) => {
+    const todo = friends.filter(f => friendNeedsLoad(f) && !ST.bg.loading.has(f.uid) && !ST.bg.queue.includes(f.uid)).map(f => f.uid);
+    if (!todo.length) return;
+    if (!ST.bg.queue.length && !ST.bg.loading.size) { ST.bg.done = 0; ST.bg.total = 0; }
+    ST.bg.queue.push(...todo);
+    ST.bg.total += todo.length;
+    pumpFriendLoads();
+};
 
 window.pickAffinityFriend = async (uid) => {
     if (!uid || typeof uid !== 'string') return;
     ST.friend = uid === ST.friend ? null : uid; // toucher à nouveau l'ami sélectionné revient aux classements
     ST.commonShown = 10; ST.recoQuery = '';
-    if (!ST.friend) { window.renderStatsView(); return; }
+    if (!ST.friend) { window.renderStatsView(); window.scrollMainTop(); return; }
+    window.scrollMainTop();
     const cached = ST.friendItems[uid];
-    if (!cached || Date.now() - cached.at > 5 * 60 * 1000) {
+    if (!cached || !cached.items || cached.error || Date.now() - cached.at > 5 * 60 * 1000) {
         ST.friendLoading = uid;
         window.renderStatsView();
-        try {
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
-            ST.friendItems[uid] = { at: Date.now(), items: snap.docs.map(d => d.data()).filter(i => !HIDDEN_TYPES.includes(i.type)) };
-        } catch (e) { console.error('Affinité', e); ST.friendItems[uid] = { at: Date.now(), items: [], error: true }; }
+        await loadFriendLibrary(uid);
         ST.friendLoading = null;
     }
     if (window.currentView === 'stats' && ST.tab === 'affinity') window.renderStatsView();
 };
+
+// En quittant l'appli (ou la page Stats), on revient toujours à l'accueil de l'onglet Amis
+const resetFriendDetail = () => { ST.friend = null; ST.recoQuery = ''; ST.commonShown = 10; };
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { if (ST.friend) { resetFriendDetail(); ST.needsRepaint = true; } }
+    else if (ST.needsRepaint) {
+        ST.needsRepaint = false;
+        if (window.currentView === 'stats') { window.renderStatsView(); window.scrollMainTop(); }
+    }
+});
+window.addEventListener('pagehide', () => resetFriendDetail());
 window.showMoreCommon = () => { ST.commonShown = (ST.commonShown || 10) + 40; window.renderStatsView(); };
 
 window.computeAffinity = (mine, theirs) => {
@@ -4168,41 +4505,93 @@ window.openRecoNotif = (notifId) => {
     window.openPreview({ id: String(it.id || 'reco_' + notifId), type: LEAD_TYPES.includes(it.type) ? it.type : 'Film', title: String(it.title || ''), img: String(it.img || ''), author: String(it.author || ''), releaseDate: String(it.releaseDate || ''), desc: String(it.desc || ''), genres: Array.isArray(it.genres) ? it.genres : [], metricValue: num(it.metricValue), rating: n.rating, comment: n.note || '', docId: null, _fromFriend: true });
 };
 
-// Page d'accueil de l'onglet : classements entre amis
+// Page d'accueil de l'onglet : le match de l'année (podium) et les affinités avec TOUS les amis
+const MATCH_WORDS = {
+    'Film': { unit: ['film', 'films'], verb: 'vu le plus de films' },
+    'Série': { unit: ['série', 'séries'], verb: 'vu le plus de séries' },
+    'Livre': { unit: ['livre', 'livres'], verb: 'lu le plus de livres' },
+    'Album': { unit: ['album', 'albums'], verb: "écouté le plus d'albums" },
+    'YouTube': { unit: ['vidéo', 'vidéos'], verb: 'regardé le plus de vidéos YouTube' }
+};
+window.setMatchType = (t) => { if (LEAD_TYPES.includes(t)) { ST.matchType = t; window.renderStatsView(); } };
+const personAvatar = (p) => {
+    const u = p.isMe ? { name: window.userProfile.name, avatar: window.userProfile.avatar } : window.liveUser(p.uid, p.name);
+    const a = safeImg(u.avatar);
+    return a ? `<img src="${a}" alt="">` : initial(u.name);
+};
 const statsFriendsBoard = (friends) => {
-    friends.filter(f => !f.summary).forEach(f => loadFriendCounts(f.uid));
-    const me = { uid: window.currentUser.uid, name: 'Toi', isMe: true, counts: buildStatsSummary(window.myCollection).counts };
-    const people = [me, ...friends.map(f => ({ uid: f.uid, name: FIRST(window.liveUser(f.uid, f.name).name), counts: countsOf(f) }))];
-    const verb = { 'Film': ['as vu le plus de films', 'a vu le plus de films'], 'Série': ['as vu le plus de séries', 'a vu le plus de séries'], 'Livre': ['as lu le plus de livres', 'a lu le plus de livres'], 'Album': ['as écouté le plus d\'albums', 'a écouté le plus d\'albums'], 'YouTube': ['as regardé le plus de vidéos YouTube', 'a regardé le plus de vidéos YouTube'] };
-    const avatarOf = (p) => { if (p.isMe) { const a = safeImg(window.userProfile.avatar); return a ? `<img src="${a}" alt="">` : initial(window.userProfile.name); } const a = safeImg(window.liveUser(p.uid).avatar); return a ? `<img src="${a}" alt="">` : initial(p.name); };
-    const rows = LEAD_TYPES.map(t => {
-        const ranked = people.filter(p => p.counts && num(p.counts[t]) > 0).sort((a, b) => num(b.counts[t]) - num(a.counts[t]));
-        if (!ranked.length) return '';
-        const w = ranked[0];
-        const sentence = w.isMe ? `C'est <b>toi</b> qui ${verb[t][0]}` : `C'est <b>${esc(w.name)}</b> qui ${verb[t][1]}`;
-        return `<li class="st-lead-row"><span class="st-lead-av" style="background:${catOf(t).c}">${avatarOf(w)}</span><div class="min-w-0 flex-1"><div class="text-[14px] leading-snug">${sentence} <span class="text-gray-500">(${num(w.counts[t])})</span></div>
-            <div class="st-podium">${ranked.slice(0, 3).map((p, k) => `<span><i class="st-medal m${k}">${k + 1}</i>${esc(p.name)} <b>${num(p.counts[t])}</b></span>`).join('')}</div></div></li>`;
-    }).join('');
-    // Œuvres en commun et affinité (résumés publiés, ou bibliothèques déjà ouvertes)
+    ensureFriendLibraries(friends);
+    const year = curYearNum();
+    const mySum = buildStatsSummary(window.myCollection);
+    const me = { uid: window.currentUser.uid, name: 'Toi', isMe: true, yc: mySum.yc };
+    const people = [me, ...friends.map(f => {
+        const s = friendSummary(f);
+        return { uid: f.uid, name: FIRST(window.liveUser(f.uid, f.name).name), yc: s && s.v >= 2 && s.y === year ? s.yc : null };
+    })];
+    const pending = ST.bg.loading.size + ST.bg.queue.length;
+
+    // ---- Le match de l'année : une catégorie à la fois, en podium ----
+    const scoreOf = (p, t) => num(p.yc && p.yc[t]);
+    const playing = (t) => people.filter(p => p.yc && scoreOf(p, t) > 0).sort((a, b) => scoreOf(b, t) - scoreOf(a, t) || (a.isMe ? -1 : b.isMe ? 1 : 0));
+    if (!LEAD_TYPES.includes(ST.matchType)) ST.matchType = LEAD_TYPES.find(t => playing(t).length) || 'Film';
+    const t = ST.matchType;
+    const cat = catOf(t);
+    const words = MATCH_WORDS[t];
+    const unit = (n) => n > 1 ? words.unit[1] : words.unit[0];
+    const ranked = playing(t);
+    // Places partagées : deux personnes à égalité ont la même place
+    let place = 0, last = null;
+    ranked.forEach((p, k) => { const s = scoreOf(p, t); if (s !== last) { place = k + 1; last = s; } p.place = place; });
+    const chips = `<div class="st-match-chips">${LEAD_TYPES.map(x => `<button type="button" class="type-chip ${x === t ? 'active' : ''}" onclick="window.setMatchType('${x}')"><span class="dot" style="background:${catOf(x).c}"></span>${catOf(x).label}</button>`).join('')}</div>`;
+    const step = (p, rank) => {
+        if (!p) return `<div class="pd-col pd-r${rank} is-empty"><div class="pd-av"><i class="fa-solid fa-question"></i></div><div class="pd-name">—</div><div class="pd-n">&nbsp;</div><div class="pd-step"><span>${rank}</span></div></div>`;
+        const n = scoreOf(p, t);
+        return `<div class="pd-col pd-r${rank}${p.isMe ? ' is-me' : ''}"${p.isMe ? '' : ` onclick="window.pickAffinityFriend(${jsArg(p.uid)})" role="button"`}>
+            <div class="pd-av">${rank === 1 ? '<i class="fa-solid fa-crown pd-crown"></i>' : ''}<span>${personAvatar(p)}</span></div>
+            <div class="pd-name">${esc(p.name)}</div><div class="pd-n"><b>${n}</b> ${unit(n)}</div>
+            <div class="pd-step"><span>${p.place}</span></div></div>`;
+    };
+    let matchBody;
+    if (!ranked.length) {
+        matchBody = sEmpty(pending ? 'Le podium se prépare…' : `Personne n'a encore terminé de ${words.unit[1]} en ${year}. À toi de lancer le match !`);
+    } else {
+        const lead = ranked[0];
+        const tie = ranked.filter(p => p.place === 1).length > 1;
+        const sentence = tie ? `Égalité en tête ! <span class="text-gray-500">(${scoreOf(lead, t)} ${unit(scoreOf(lead, t))})</span>`
+            : lead.isMe ? `C'est <b>toi</b> qui as ${words.verb} en ${year}`
+            : `C'est <b>${esc(lead.name)}</b> qui a ${words.verb} en ${year}`;
+        const rest = ranked.slice(3);
+        const mine = ranked.find(p => p.isMe);
+        matchBody = `
+            <p class="st-match-lead">${sentence}</p>
+            <div class="st-podium3" style="--pc:${cat.c};--pt:${cat.tint};--pd:${cat.deep}">${step(ranked[1], 2)}${step(ranked[0], 1)}${step(ranked[2], 3)}</div>
+            ${rest.length ? `<ol class="st-match-rest">${rest.map(p => `<li class="${p.isMe ? 'is-me' : ''}"${p.isMe ? '' : ` onclick="window.pickAffinityFriend(${jsArg(p.uid)})"`}><span class="st-rank-n">${p.place}</span><span class="st-lead-av" style="background:${cat.tint};width:34px;height:34px">${personAvatar(p)}</span><span class="flex-1 min-w-0 truncate font-bold text-[14px]">${esc(p.name)}</span><span class="text-[13px] font-semibold text-gray-500"><b class="text-gray-900">${scoreOf(p, t)}</b> ${unit(scoreOf(p, t))}</span></li>`).join('')}</ol>` : ''}
+            ${!mine ? `<p class="st-note">Tu n'as pas encore terminé de ${words.unit[1]} en ${year} : ajoutes-en pour monter sur le podium.</p>` : ''}`;
+    }
+    const matchCard = `<section class="st-card st-match"><div class="flex items-baseline justify-between gap-2"><h3 class="st-h !mb-0">Le match ${year}</h3><span class="text-[12px] font-bold text-gray-500">depuis le 1er janvier</span></div>${chips}${matchBody}</section>`;
+
+    // ---- Œuvres en commun et affinité, calculées avec TOUS les amis ----
     const myItems = window.myCollection || [];
     const shared = friends.map(f => {
-        const theirs = (ST.friendItems[f.uid] && !ST.friendItems[f.uid].error) ? ST.friendItems[f.uid].items : (f.summary ? parseSummaryWorks(f.summary) : null);
+        const full = ST.friendItems[f.uid];
+        const theirs = (full && full.items && !full.error) ? full.items : (() => { const s = friendSummary(f); return s ? parseSummaryWorks(s) : null; })();
         if (!theirs) return null;
         const a = window.computeAffinity(myItems, theirs);
         return { f, n: a.common.length, pct: a.rated.length >= 3 ? a.pct : null };
     }).filter(Boolean);
     const byShared = [...shared].sort((a, b) => b.n - a.n);
     const byPct = shared.filter(s => s.pct !== null).sort((a, b) => b.pct - a.pct);
+    const nameOf = (f) => esc(FIRST(window.liveUser(f.uid, f.name).name));
     const highlights = [];
-    if (byShared.length && byShared[0].n > 0) highlights.push(`<li><span class="st-hl" style="background:var(--lav)"><i class="fa-solid fa-link"></i></span><span>C'est avec <b>${esc(FIRST(window.liveUser(byShared[0].f.uid, byShared[0].f.name).name))}</b> que tu partages le plus d'œuvres <span class="text-gray-500">(${byShared[0].n})</span></span></li>`);
-    if (byPct.length) highlights.push(`<li><span class="st-hl" style="background:var(--rose)"><i class="fa-solid fa-heart"></i></span><span>Ta meilleure affinité : <b>${esc(FIRST(window.liveUser(byPct[0].f.uid, byPct[0].f.name).name))}</b> <span class="text-gray-500">(${byPct[0].pct} %)</span></span></li>`);
-    const sharedList = byShared.filter(s => s.n > 0).slice(0, 5);
-    const missing = friends.length - shared.length;
+    if (byShared.length && byShared[0].n > 0) highlights.push(`<li onclick="window.pickAffinityFriend(${jsArg(byShared[0].f.uid)})" class="cursor-pointer"><span class="st-hl" style="background:var(--lav)"><i class="fa-solid fa-link"></i></span><span>C'est avec <b>${nameOf(byShared[0].f)}</b> que tu partages le plus d'œuvres <span class="text-gray-500">(${byShared[0].n})</span></span></li>`);
+    if (byPct.length) highlights.push(`<li onclick="window.pickAffinityFriend(${jsArg(byPct[0].f.uid)})" class="cursor-pointer"><span class="st-hl" style="background:var(--rose)"><i class="fa-solid fa-heart"></i></span><span>Ta meilleure affinité : <b>${nameOf(byPct[0].f)}</b> <span class="text-gray-500">(${byPct[0].pct} %)</span></span></li>`);
+    const progress = pending ? `<div class="st-banner"><div class="flex items-center justify-between gap-2"><span><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Comparaison avec tes amis…</span><b>${Math.min(ST.bg.done, ST.bg.total)}/${ST.bg.total}</b></div></div>` : '';
+    const sharedList = byShared.filter(s => s.n > 0).slice(0, 8);
     return `
+        ${progress}
         ${highlights.length ? `<section class="st-card"><ul class="st-sentences">${highlights.join('')}</ul></section>` : ''}
-        ${sCard('Le match entre amis', rows ? `<ul class="st-lead-list">${rows}</ul>` : sEmpty('Les classements arrivent…'))}
-        ${sharedList.length ? sCard('Avec qui tu partages le plus', `<ul class="st-commons">${sharedList.map(s => `<li class="st-common" onclick="window.pickAffinityFriend(${jsArg(s.f.uid)})"><span class="feed-avatar" style="background:var(--lav-tint);width:38px;height:38px">${safeImg(window.liveUser(s.f.uid).avatar) ? `<img src="${safeImg(window.liveUser(s.f.uid).avatar)}" alt="">` : initial(s.f.name)}</span><div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] truncate">${esc(window.liveUser(s.f.uid, s.f.name).name)}</div><div class="text-[12px] text-gray-500 font-semibold">${s.n} œuvre${s.n > 1 ? 's' : ''} en commun</div></div>${s.pct !== null ? `<span class="st-pill" style="background:var(--miel-tint)"><b>${s.pct} %</b></span>` : ''}<i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></li>`).join('')}</ul>`) : ''}
-        ${missing > 0 ? `<p class="st-note">${missing} ami${missing > 1 ? 's' : ''} n'${missing > 1 ? 'ont' : 'a'} pas encore ouvert la nouvelle version : touche sa bulle pour comparer quand même.</p>` : ''}`;
+        ${matchCard}
+        ${sharedList.length ? sCard('Avec qui tu partages le plus', `<ul class="st-commons">${sharedList.map(s => `<li class="st-common" onclick="window.pickAffinityFriend(${jsArg(s.f.uid)})"><span class="feed-avatar" style="background:var(--lav-tint);width:38px;height:38px">${personAvatar({ uid: s.f.uid, name: s.f.name })}</span><div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] truncate">${esc(window.liveUser(s.f.uid, s.f.name).name)}</div><div class="text-[12px] text-gray-500 font-semibold">${s.n} œuvre${s.n > 1 ? 's' : ''} en commun</div></div>${s.pct !== null ? `<span class="st-pill" style="background:var(--miel-tint)"><b>${s.pct} %</b></span>` : ''}<i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></li>`).join('')}</ul>`) : ''}`;
 };
 
 // Détail avec un ami
@@ -4253,7 +4642,8 @@ const statsAffinity = () => {
         const av = safeImg(u.avatar);
         return `<button type="button" class="story ${ST.friend === f.uid ? 'is-picked' : ''}" onclick="window.pickAffinityFriend(${jsArg(f.uid)})"><span class="story-ring" style="background:${ST.friend === f.uid ? '#16151A' : '#E4DED4'}"><span>${av ? `<img src="${av}" alt="">` : initial(f.name)}</span></span><span class="story-name">${esc(FIRST(u.name))}</span></button>`;
     }).join('')}</div>`;
-    return pickers + (ST.friend ? statsFriendDetail(friends) : `<p class="st-note -mt-1 mb-3">Touche un ami pour voir vos stats à deux.</p>${statsFriendsBoard(friends)}`);
+    const back = `<button type="button" class="st-back" onclick="window.pickAffinityFriend(${jsArg(ST.friend)})"><i class="fa-solid fa-arrow-left"></i>Tous mes amis</button>`;
+    return pickers + (ST.friend ? back + statsFriendDetail(friends) : `<p class="st-note -mt-1 mb-3">Touche un ami pour voir vos stats à deux.</p>${statsFriendsBoard(friends)}`);
 };
 
 // ---------- Rendu de la page ----------
@@ -4469,6 +4859,380 @@ window.startStatsEnrichment = async () => {
     }
 };
 
+        /* --- J.8 FICHES ENRICHIES ---
+           • Revisionnages / relectures / réécoutes : liste { date, note } rangée dans l'œuvre (champ « rewatches »).
+           • Bande-annonce (films, séries), vidéo (YouTube), extraits de 30 s (albums, fournis par Deezer).
+           • « Si tu as aimé… » : titres similaires (TMDB), autres albums proches (Deezer), même auteur (livres).
+           Pour ne rien ralentir : une seule recherche à l'ouverture de la fiche (gardée en mémoire), la vidéo et
+           le son ne se chargent qu'au toucher, et les titres similaires seulement quand on arrive en bas de la fiche. */
+        const RW = {
+            'Film': { title: 'Revisionnages', did: 'Vu', add: "Je l'ai revu" },
+            'Série': { title: 'Revisionnages', did: 'Vue', add: "Je l'ai revue" },
+            'Livre': { title: 'Relectures', did: 'Lu', add: "Je l'ai relu" },
+            'Album': { title: 'Réécoutes', did: 'Écouté', add: "Je l'ai réécouté" },
+            'YouTube': { title: 'Revisionnages', did: 'Vue', add: "Je l'ai revue" }
+        };
+        const frDate = (d) => { const x = new Date(String(d || '') + (String(d || '').length === 10 ? 'T12:00:00' : '')); return isNaN(x) ? '' : x.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); };
+        const rewatchesOf = (item) => (Array.isArray(item && item.rewatches) ? item.rewatches : []).filter(r => r && typeof r === 'object');
+
+        window.rewatchHtml = (item, isMine) => {
+            const w = RW[item.type];
+            if (!w || !isMine || !isFinished(item)) return '';
+            const list = rewatchesOf(item).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || num(b.at) - num(a.at));
+            const times = 1 + list.length;
+            const row = (date, rating, label, at) => `<li><span class="pv-rw-dot"></span><span class="flex-1 min-w-0"><span class="block text-[13px] font-bold">${esc(label)}</span><span class="block text-[12px] font-semibold text-gray-500">${date ? esc(frDate(date)) : 'Sans date'}</span></span>${rating !== null && rating !== undefined && rating !== '' ? `<span class="pv-rw-r">${esc(rating)}</span>` : ''}${at ? `<button type="button" class="pv-rw-del" aria-label="Supprimer" onclick="window.deleteRewatch(${jsArg(at)})"><i class="fa-solid fa-xmark"></i></button>` : ''}</li>`;
+            return `<div class="pv-rw">
+                <div class="flex items-center justify-between gap-3">
+                    <div><div class="pv-label">${w.title}</div><div class="font-display font-extrabold text-[22px] leading-none mt-1">${w.did} ${times} fois</div></div>
+                    <button type="button" class="pv-rw-add" onclick="window.addRewatch()"><i class="fa-solid fa-rotate-right"></i>${w.add}</button>
+                </div>
+                ${list.length ? `<ul class="pv-rw-list">${list.map((r, k) => row(r.date, r.rating, `${list.length - k + 1}ᵉ fois`, r.at)).join('')}${row(item.noDate ? '' : item.finishDate, item.rating, '1ʳᵉ fois', null)}</ul>` : ''}
+            </div>`;
+        };
+
+        // Petite fenêtre : date + note du revisionnage
+        window.addRewatch = () => {
+            const it = window.tempItem;
+            if (!it || !it.docId || it._fromFriend || !window.currentUser || document.getElementById('rw-dialog')) return;
+            const w = RW[it.type] || RW['Film'];
+            const overlay = document.createElement('div');
+            overlay.className = 'ui-overlay';
+            overlay.id = 'rw-dialog';
+            overlay.style.zIndex = '41000';
+            const today = new Date().toISOString().slice(0, 10);
+            let rating = null;
+            overlay.innerHTML = `<div class="ui-box" role="dialog" aria-modal="true">
+                <p class="font-display" style="font-size:20px;font-weight:800;margin:0 0 4px;text-align:center">${esc(w.add)}</p>
+                <p class="text-center text-[13px] font-semibold text-gray-500 mb-4 truncate">${esc(it.title)}</p>
+                <label class="block text-[12px] font-extrabold uppercase tracking-wider text-gray-500 mb-1.5">Quand ?</label>
+                <input type="date" class="ui-input" id="rw-date" value="${today}" max="${today}">
+                <label class="block text-[12px] font-extrabold uppercase tracking-wider text-gray-500 mb-1.5">Ta note cette fois-ci</label>
+                <div class="rw-notes" id="rw-notes">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => `<button type="button" data-n="${n}">${n}</button>`).join('')}</div>
+                <p class="text-[12px] font-semibold text-gray-500 mb-4 mt-2" id="rw-hint">Facultatif : touche une note.</p>
+                <div class="ui-actions"><button type="button" class="ui-btn" id="rw-cancel">Annuler</button><button type="button" class="ui-btn ui-ok" id="rw-ok">Enregistrer</button></div>
+            </div>`;
+            document.body.appendChild(overlay);
+            requestAnimationFrame(() => overlay.classList.add('show'));
+            const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); };
+            overlay.querySelectorAll('#rw-notes button').forEach(b => b.onclick = () => {
+                const n = Number(b.dataset.n);
+                rating = rating === n ? null : n;
+                overlay.querySelectorAll('#rw-notes button').forEach(x => x.classList.toggle('active', Number(x.dataset.n) === rating));
+                overlay.querySelector('#rw-hint').textContent = rating === null ? 'Facultatif : touche une note.' : `Note : ${rating}/10 (ta note principale ne change pas).`;
+            });
+            overlay.querySelector('#rw-cancel').onclick = close;
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+            overlay.querySelector('#rw-ok').onclick = async () => {
+                const date = String(overlay.querySelector('#rw-date').value || '');
+                const entry = { date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '', rating, at: Date.now() };
+                const next = [...rewatchesOf(it), entry].slice(-100);
+                try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', it.docId), { rewatches: next });
+                    it.rewatches = next;
+                    close();
+                    if (window.tempItem === it && document.getElementById('preview-modal').classList.contains('open')) window.openPreview(it);
+                    window.ui.toast('Ajouté ✓');
+                } catch (e) { console.error(e); window.ui.alert("Ça n'a pas pu être enregistré. Réessaie."); }
+            };
+        };
+        window.deleteRewatch = async (at) => {
+            const it = window.tempItem;
+            if (!it || !it.docId || !window.currentUser) return;
+            if (!(await window.ui.confirm('Supprimer cette fois-ci ?', { okLabel: 'Supprimer', danger: true }))) return;
+            const next = rewatchesOf(it).filter(r => r.at !== at);
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', it.docId), { rewatches: next });
+                it.rewatches = next;
+                if (window.tempItem === it) window.openPreview(it);
+            } catch (e) { console.error(e); window.ui.alert("La suppression n'a pas pu se faire."); }
+        };
+
+        // ---------- Vidéo et extraits ----------
+        const pvCache = new Map();
+        let pvAudio = null, pvPlaying = null;
+        window.stopPreviewMedia = () => {
+            if (pvAudio) { try { pvAudio.pause(); } catch (e) {} }
+            pvPlaying = null;
+            const v = document.querySelector('#pv-media iframe');
+            if (v) v.remove();
+        };
+        const extrasKey = (item) => `${item.type}|${item.id || ''}|${titleKey(item.title)}`;
+        const ytThumb = (key) => `https://i.ytimg.com/vi/${encodeURIComponent(key)}/hqdefault.jpg`;
+        window.playVideo = (btn) => {
+            const key = btn && btn.dataset.key;
+            if (!key || !/^[A-Za-z0-9_-]{6,20}$/.test(key)) return;
+            if (pvAudio) { try { pvAudio.pause(); } catch (e) {} }
+            const wrap = btn.parentElement;
+            wrap.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${key}?autoplay=1&playsinline=1&rel=0&modestbranding=1" title="Vidéo" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"></iframe>`;
+        };
+        const videoCard = (key, label) => `<div class="pv-section"><div class="font-display text-lg font-extrabold mb-2">${label}</div><div class="pv-video"><button type="button" class="pv-video-btn" data-key="${esc(key)}" onclick="window.playVideo(this)" aria-label="Lancer la vidéo"><img src="${ytThumb(key)}" alt="" loading="lazy"><span class="pv-play"><i class="fa-solid fa-play"></i></span></button></div></div>`;
+
+        // Films / séries : une seule requête TMDB (bande-annonce + recommandations)
+        const tmdbIdFor = async (item) => {
+            const id = String(item.id || '');
+            if (/^\d+$/.test(id)) return id;
+            const ep = item.type === 'Film' ? 'movie' : 'tv';
+            const d = await httpJson(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${encodeURIComponent(item.title || '')}&language=fr-FR`);
+            const want = titleKey(item.title);
+            const hit = ((d && d.results) || []).find(r => [r.title, r.name, r.original_title, r.original_name].some(t => titleKey(t) === want));
+            return hit ? String(hit.id) : null;
+        };
+        const loadScreenExtras = async (item) => {
+            const id = await tmdbIdFor(item);
+            if (!id) return { video: null, similar: [] };
+            const ep = item.type === 'Film' ? 'movie' : 'tv';
+            const d = await httpJson(`https://api.themoviedb.org/3/${ep}/${id}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=videos,recommendations,similar&include_video_language=fr,en,null`);
+            const vids = (((d && d.videos) || {}).results || []).filter(v => v && v.site === 'YouTube' && v.key);
+            const score = (v) => (v.type === 'Trailer' ? 4 : v.type === 'Teaser' ? 2 : 0) + (v.iso_639_1 === 'fr' ? 3 : 0) + (v.official ? 1 : 0);
+            const best = vids.sort((a, b) => score(b) - score(a))[0];
+            const recos = (((d && d.recommendations) || {}).results || []).length ? d.recommendations.results : (((d && d.similar) || {}).results || []);
+            const similar = recos.filter(r => r && r.id && (r.poster_path)).slice(0, 12).map(m => ({
+                id: String(m.id), title: m.title || m.name, img: `https://image.tmdb.org/t/p/w300${m.poster_path}`,
+                desc: String(m.overview || '').replace(/[\n\r]/g, ' '), type: item.type, releaseDate: m.release_date || m.first_air_date || '',
+                metricValue: 0, author: '', cast: '', needsDetails: true
+            }));
+            return { video: best ? { key: best.key, label: best.type === 'Trailer' ? 'Bande-annonce' : 'Vidéo' } : null, similar };
+        };
+
+        // Albums : titres avec extraits de 30 s (Deezer) ; albums proches = artistes similaires
+        const deezerAlbumId = async (item) => {
+            const id = String(item.id || '');
+            if (/^\d+$/.test(id)) return id;
+            const d = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent([item.title, item.author].filter(Boolean).join(' '))}&limit=5`);
+            const want = titleKey(item.title);
+            const hit = ((d && d.data) || []).find(a => titleKey(a.title) === want) || null;
+            return hit ? String(hit.id) : null;
+        };
+        const loadAlbumExtras = async (item) => {
+            const id = await deezerAlbumId(item);
+            if (!id) return { tracks: [], artistId: null };
+            const d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(id)}?`);
+            const tracks = (((d && d.tracks) || {}).data || []).map(t => ({ title: String(t.title_short || t.title || ''), preview: /^https:\/\//.test(String(t.preview || '')) ? String(t.preview) : '', duration: num(t.duration) })).filter(t => t.title);
+            return { tracks, artistId: d && d.artist && d.artist.id ? String(d.artist.id) : null, albumTitle: d && d.title };
+        };
+        const loadRelatedAlbums = async (artistId, item) => {
+            const rel = await window.deezerJSONP(`https://api.deezer.com/artist/${encodeURIComponent(artistId)}/related?limit=10`);
+            const artists = ((rel && rel.data) || []).slice(0, 8);
+            const tops = await Promise.allSettled(artists.map(a => window.deezerJSONP(`https://api.deezer.com/artist/${encodeURIComponent(a.id)}/top?limit=1`)));
+            const seen = new Set();
+            return tops.map((r, k) => {
+                const tr = r.status === 'fulfilled' && r.value && r.value.data && r.value.data[0];
+                const al = tr && tr.album;
+                if (!al || !al.id || seen.has(al.id)) return null;
+                seen.add(al.id);
+                return { id: String(al.id), title: al.title, img: al.cover_xl || al.cover_big || al.cover_medium || '', desc: '', type: 'Album', releaseDate: '', metricValue: 0, author: artists[k].name, platform: 'Deezer', needsDetails: true };
+            }).filter(Boolean);
+        };
+
+        // Livres : d'autres livres du même auteur
+        const loadBookSimilar = async (item) => {
+            const author = String(item.author || '').split(',')[0].trim();
+            if (!author || author === 'Inconnu') return [];
+            const found = await searchGoogleBooks(`inauthor:"${author}"`);
+            const mine = bookKey(item.title, item.author);
+            const seen = new Set([mine]);
+            return found.filter(b => {
+                const k = bookKey(b.title, b.author);
+                if (seen.has(k) || !b.img) return false;
+                seen.add(k); return true;
+            }).slice(0, 12);
+        };
+
+        const fmtDur = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+        window.playTrack = (k) => {
+            const data = pvCache.get(window._pvKey);
+            const t = data && data.tracks && data.tracks[k];
+            if (!t || !t.preview) return;
+            if (!pvAudio) {
+                pvAudio = new Audio();
+                pvAudio.preload = 'none';
+                pvAudio.addEventListener('ended', () => { pvPlaying = null; paintTracks(); });
+                pvAudio.addEventListener('timeupdate', () => {
+                    const bar = document.querySelector('.pv-track.is-playing .pv-track-bar span');
+                    if (bar && pvAudio.duration) bar.style.width = Math.min(100, pvAudio.currentTime / pvAudio.duration * 100) + '%';
+                });
+            }
+            if (pvPlaying === k && !pvAudio.paused) { pvAudio.pause(); pvPlaying = null; paintTracks(); return; }
+            const v = document.querySelector('#pv-media iframe'); if (v) v.remove();
+            pvAudio.src = t.preview;
+            pvPlaying = k;
+            pvAudio.play().catch(e => { console.warn('Extrait', e); pvPlaying = null; paintTracks(); window.ui.toast("L'extrait n'a pas pu être lu."); });
+            paintTracks();
+        };
+        const paintTracks = () => {
+            document.querySelectorAll('.pv-track').forEach(li => {
+                const on = Number(li.dataset.k) === pvPlaying;
+                li.classList.toggle('is-playing', on);
+                const i = li.querySelector('.pv-track-btn i');
+                if (i) i.className = on ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+                if (!on) { const bar = li.querySelector('.pv-track-bar span'); if (bar) bar.style.width = '0%'; }
+            });
+        };
+        window.showAllTracks = () => { const ul = document.querySelector('.pv-tracks'); if (ul) ul.classList.add('show-all'); const b = document.getElementById('pv-tracks-more'); if (b) b.remove(); };
+        const tracksHtml = (tracks) => {
+            const playable = tracks.filter(t => t.preview).length;
+            if (!tracks.length) return '';
+            return `<div class="pv-section"><div class="flex items-baseline justify-between gap-2 mb-2"><div class="font-display text-lg font-extrabold">Titres</div>${playable ? `<span class="text-[12px] font-bold text-gray-500">Extraits de 30 s</span>` : ''}</div>
+                <ol class="pv-tracks">${tracks.map((t, k) => `<li class="pv-track${k >= 8 ? ' is-extra' : ''}" data-k="${k}">
+                    ${t.preview ? `<button type="button" class="pv-track-btn" onclick="window.playTrack(${k})" aria-label="Écouter l'extrait"><i class="fa-solid fa-play"></i></button>` : `<span class="pv-track-btn is-off">${k + 1}</span>`}
+                    <span class="flex-1 min-w-0"><span class="block text-[14px] font-bold truncate">${esc(t.title)}</span><span class="pv-track-bar"><span></span></span></span>
+                    <span class="text-[12px] font-semibold text-gray-500">${t.duration ? fmtDur(t.duration) : ''}</span></li>`).join('')}</ol>
+                ${tracks.length > 8 ? `<button type="button" class="st-more" id="pv-tracks-more" onclick="window.showAllTracks()">Voir les ${tracks.length} titres</button>` : ''}</div>`;
+        };
+
+        const similarHtml = (item, list) => {
+            if (!list || !list.length) return '';
+            const title = item.type === 'Livre' ? `Du même auteur` : `Si tu as aimé ${esc(item.title)}`;
+            const aspect = item.type === 'Album' ? 'aspect-square' : 'aspect-[2/3]';
+            return `<div class="pv-section"><div class="font-display text-lg font-extrabold mb-2 leading-tight">${title}</div><div class="pv-similar">${list.map(s => {
+                const owned = window.findInLibrary(s.type, s.id, s.title, s.author);
+                const key = regItem(owned || s);
+                return `<button type="button" class="pv-sim" onclick="window.openPreviewKey(${jsArg(key)})"><span class="pv-sim-img ${aspect}">${coverImg(s.img, s.title, '', 'loading="lazy"')}${owned && owned.rating ? `<span class="grid-rating">${esc(owned.rating)}</span>` : owned ? `<span class="pv-sim-own"><i class="fa-solid fa-check"></i></span>` : ''}</span><span class="pv-sim-t">${esc(s.title)}</span>${s.author ? `<span class="pv-sim-a">${esc(s.author)}</span>` : ''}</button>`;
+            }).join('')}</div></div>`;
+        };
+        const similarSkeleton = () => `<div class="pv-section"><div class="pv-skel-t"></div><div class="pv-similar">${'<span class="pv-sim"><span class="pv-sim-img aspect-[2/3] pv-skel"></span></span>'.repeat(4)}</div></div>`;
+
+        // Rendu (appelé à chaque ouverture / rafraîchissement de la fiche)
+        window.loadPreviewExtras = (item) => {
+            if (!item || !item.type || HIDDEN_TYPES.includes(item.type)) return;
+            const key = extrasKey(item);
+            window._pvKey = key;
+            const still = () => window._pvKey === key && window.tempItem === item && document.getElementById('preview-modal').classList.contains('open');
+            const media = () => document.getElementById('pv-media');
+            const sim = () => document.getElementById('pv-similar');
+
+            // YouTube : la vidéo elle-même, directement (aucune requête)
+            if (item.type === 'YouTube') {
+                const vid = String(item.id || '');
+                if (/^[A-Za-z0-9_-]{6,20}$/.test(vid) && media()) media().innerHTML = videoCard(vid, 'Regarder');
+                return;
+            }
+            const paint = (data) => {
+                if (!still() || !data) return;
+                if ((item.type === 'Film' || item.type === 'Série') && data.video && media()) media().innerHTML = videoCard(data.video.key, data.video.label);
+                if (item.type === 'Album' && data.tracks && data.tracks.length && media()) {
+                    media().innerHTML = tracksHtml(data.tracks);
+                    const desc = document.getElementById('pv-desc'); if (desc) desc.style.display = 'none'; // la liste des titres remplace le « résumé » d'un album
+                    paintTracks();
+                }
+                if (data.similar && sim()) sim().innerHTML = similarHtml(item, data.similar);
+            };
+            const cached = pvCache.get(key);
+            if (cached && !cached.pending) { paint(cached); if (cached.similar || !cached.lazySimilar) return; }
+
+            // Titres similaires : seulement quand on arrive près du bas de la fiche
+            const whenNearBottom = (fn) => {
+                const target = sim();
+                if (!target) return;
+                if (!('IntersectionObserver' in window)) { fn(); return; }
+                const io = new IntersectionObserver((entries) => { if (entries.some(e => e.isIntersecting)) { io.disconnect(); fn(); } }, { root: document.getElementById('preview-modal'), rootMargin: '0px 0px 300px 0px' });
+                io.observe(target);
+            };
+            if (cached && cached.lazySimilar) {
+                whenNearBottom(async () => {
+                    if (!still()) return;
+                    if (sim()) sim().innerHTML = similarSkeleton();
+                    try { cached.similar = await cached.lazySimilar(); } catch (e) { console.warn('Similaires', e); cached.similar = []; }
+                    cached.lazySimilar = null;
+                    if (still() && sim()) sim().innerHTML = similarHtml(item, cached.similar);
+                });
+                return;
+            }
+            if (cached && cached.pending) return;
+            const entry = { pending: true };
+            pvCache.set(key, entry);
+            (async () => {
+                try {
+                    if (item.type === 'Film' || item.type === 'Série') {
+                        Object.assign(entry, await loadScreenExtras(item));
+                    } else if (item.type === 'Album') {
+                        const a = await loadAlbumExtras(item);
+                        Object.assign(entry, a);
+                        if (a.artistId) entry.lazySimilar = () => loadRelatedAlbums(a.artistId, item);
+                    } else if (item.type === 'Livre') {
+                        entry.lazySimilar = () => loadBookSimilar(item);
+                    }
+                } catch (e) { console.warn('Fiche enrichie', e); }
+                entry.pending = false;
+                if (pvCache.size > 80) pvCache.delete(pvCache.keys().next().value);
+                if (still()) window.loadPreviewExtras(item);
+            })();
+        };
+
+        /* --- J.9 NOUVEAUTÉS : fenêtre affichée une fois après la mise à jour + annonce à tous ---
+           • Chaque téléphone voit la fenêtre UNE fois par version (mémorisé sur l'appareil). Elle reste
+             accessible depuis Profil → Réglages → « Nouveautés de l'appli ».
+           • L'annonce à tous (bouton visible seulement si le profil porte admin = true, à régler une fois
+             dans la console Firebase) dépose une notification « annonce » chez chaque membre : elle arrive
+             dans la cloche ET sur les téléphones où les notifications sont activées. */
+        const WHATS_NEW_VERSION = '2026-11-v5.2';
+        const WHATS_NEW = [
+            { icon: 'fa-solid fa-bell', bg: 'var(--mint)', t: 'Les notifications', d: 'Likes, commentaires, réponses et conseils arrivent directement sur ton téléphone.' },
+            { icon: 'fa-solid fa-chart-simple', bg: 'var(--miel)', t: 'Des stats repensées', d: 'Tout le détail par catégorie, tes affinités et le match de l’année entre amis.' },
+            { icon: 'fa-solid fa-palette', bg: 'var(--lav)', t: 'Un nouveau look', d: 'Une interface plus claire, plus colorée, et une appli à installer sur ton écran d’accueil.' },
+            { icon: 'fa-solid fa-wand-magic-sparkles', bg: 'var(--rose)', t: 'Profil et fiches enrichis', d: 'Ton top 3 par catégorie, bandes-annonces, extraits audio, revisionnages et réponses aux commentaires.' },
+            { icon: 'fa-solid fa-screwdriver-wrench', bg: 'var(--corail)', t: 'Plus fluide', d: 'Plein de bugs corrigés et une appli plus rapide au quotidien.' }
+        ];
+        const ANNOUNCE_TITLE = 'Nouvelle version de MaBiblio 🎉';
+        const ANNOUNCE_TEXT = 'Notifications, stats repensées, nouveau look et plein d’améliorations : ouvre l’appli pour tout découvrir !';
+        window.showWhatsNew = (force = false) => {
+            if (document.getElementById('whats-new')) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'ui-overlay';
+            overlay.id = 'whats-new';
+            overlay.innerHTML = `<div class="ui-box wn-box" role="dialog" aria-modal="true" aria-labelledby="wn-title">
+                <div class="wn-head"><span class="wn-blob" style="background:var(--miel);left:-18px;top:-22px"></span><span class="wn-blob" style="background:var(--rose);right:-14px;top:-30px;width:70px;height:70px"></span><span class="wn-blob" style="background:var(--mint);right:46px;bottom:-26px;width:46px;height:46px"></span>
+                    <span class="wn-kicker">Mise à jour</span><p class="font-display wn-title" id="wn-title">Quoi de neuf sur MaBiblio ?</p></div>
+                <ul class="wn-list">${WHATS_NEW.map((w, k) => `<li style="animation-delay:${0.05 + k * 0.06}s"><span class="wn-ic" style="background:${w.bg}"><i class="${w.icon}"></i></span><span><b>${w.t}</b><span>${w.d}</span></span></li>`).join('')}</ul>
+                <button type="button" class="ui-btn ui-ok w-full" id="wn-ok">C'est parti !</button>
+            </div>`;
+            document.body.appendChild(overlay);
+            requestAnimationFrame(() => overlay.classList.add('show'));
+            try { localStorage.setItem('mabiblio_whats_new', WHATS_NEW_VERSION); } catch (e) {}
+            const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); };
+            overlay.querySelector('#wn-ok').onclick = close;
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+        };
+        // Première ouverture après la mise à jour : une seule fois, quand aucune autre fenêtre n'est ouverte
+        (() => {
+            const started = Date.now();
+            const tryShow = () => {
+                let seen = '';
+                try { seen = localStorage.getItem('mabiblio_whats_new') || ''; } catch (e) {}
+                if (seen === WHATS_NEW_VERSION) return;
+                if (!window.currentUser || !window.userProfile || !window.userProfile.name || !Array.isArray(window.myCollection)) { if (Date.now() - started < 60000) setTimeout(tryShow, 1500); return; }
+                // Compte tout neuf (rien dans la bibliothèque) : pas de « nouveautés », il découvre tout
+                if (!window.myCollection.length) { try { localStorage.setItem('mabiblio_whats_new', WHATS_NEW_VERSION); } catch (e) {} return; }
+                if (document.querySelector('.ui-overlay') || document.querySelector('.modal.open') || document.querySelector('.sheet-overlay.open')) { setTimeout(tryShow, 2500); return; }
+                window.showWhatsNew();
+            };
+            setTimeout(tryShow, 4000);
+        })();
+
+        window.sendAnnouncement = async () => {
+            if (!window.currentUser || !window.userProfile || window.userProfile.admin !== true) return;
+            let all;
+            try { window._allProfilesAt = 0; all = await window.loadAllProfiles(); } catch (e) { console.error(e); window.ui.alert("La liste des membres n'a pas pu être lue."); return; }
+            const me = window.currentUser.uid;
+            const targets = [...new Set(all.map(u => u.uid))].filter(u => u && u !== me && !window.myBlocked().includes(u));
+            const already = window.userProfile.announceSent === WHATS_NEW_VERSION;
+            const ok = await window.ui.confirm(`${already ? '⚠️ Annonce DÉJÀ envoyée pour cette version.\n\n' : ''}Envoyer cette annonce à ${targets.length} membre${targets.length > 1 ? 's' : ''} ?\n\n« ${ANNOUNCE_TEXT} »\n\nElle arrive dans leur cloche, et sur leur téléphone s'ils ont activé les notifications.`, { okLabel: 'Envoyer à tous', danger: already });
+            if (!ok) return;
+            let sent = 0, failed = 0;
+            window.ui.toast(`Envoi en cours… (0/${targets.length})`, { duration: 60000 });
+            for (let i = 0; i < targets.length; i += 10) {
+                const chunk = targets.slice(i, i + 10);
+                const res = await Promise.allSettled(chunk.map(uid => addDoc(collection(db, 'artifacts', appId, 'users', uid, 'notifications'), {
+                    type: 'annonce', title: ANNOUNCE_TITLE, message: ANNOUNCE_TEXT, text: ANNOUNCE_TEXT, user: 'MaBiblio',
+                    fromUid: me, itemTitle: '', actId: null, v: WHATS_NEW_VERSION, timestamp: Date.now(), read: false
+                })));
+                res.forEach(r => r.status === 'fulfilled' ? sent++ : failed++);
+                window.ui.toast(`Envoi en cours… (${sent + failed}/${targets.length})`, { duration: 60000 });
+            }
+            try { await updateDoc(doc(db, 'artifacts', appId, 'users', me, 'profile', 'info'), { announceSent: WHATS_NEW_VERSION }); } catch (e) { /* simple mémo */ }
+            window.ui.toast(failed ? `Annonce envoyée à ${sent} membre(s), ${failed} échec(s)` : `Annonce envoyée à ${sent} membre${sent > 1 ? 's' : ''} ✓`, { duration: 5000 });
+        };
+
         /* --- J.5 INITIALISATION FINALE --- */
         /* --- J.6 APPLI INSTALLABLE (écran d'accueil du téléphone) --- */
         const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
@@ -4503,6 +5267,10 @@ window.startStatsEnrichment = async () => {
         window.installCardHtml = () => {
             if (isStandalone()) return '';
             return `<div class="install-card" role="button" onclick="window.installApp()"><span class="cell-icon" style="background:#fff"><i class="fa-solid fa-mobile-screen-button"></i></span><span class="flex-1 text-left"><span class="block font-extrabold text-[15px]">Installer l'appli</span><span class="block text-xs font-semibold" style="color:#2D2547">Sur l'écran d'accueil de ton téléphone, en plein écran</span></span><i class="fa-solid fa-chevron-right text-xs"></i></div>`;
+        };
+        window.installRowHtml = () => {
+            if (isStandalone()) return '';
+            return `<button type="button" class="pf-row" onclick="window.installApp()"><span class="cell-icon" style="background:var(--lav-tint)"><i class="fa-solid fa-mobile-screen-button"></i></span><span class="flex-1 text-left"><span class="block font-bold text-[14px]">Installer l'appli</span><span class="pf-sub">Sur l'écran d'accueil, en plein écran</span></span><i class="fa-solid fa-chevron-right text-gray-400 text-xs"></i></button>`;
         };
         // Petit rappel discret (au plus toutes les 2 semaines), seulement sur téléphone et hors appli installée
         setTimeout(() => {
@@ -4610,6 +5378,14 @@ window.startStatsEnrichment = async () => {
             const sub = on ? 'Activées sur ce téléphone' : oldIOS ? "Réinstalle l'appli pour les recevoir (10 secondes)" : pushPermission() === 'denied' ? 'Refusées dans les réglages du téléphone' : 'Likes, commentaires, abonnements, conseils…';
             return `<div class="install-card" style="background:var(--mint);margin-top:12px" role="button" onclick="${on ? 'window.disablePush()' : 'window.enablePush()'}"><span class="cell-icon" style="background:#fff"><i class="fa-${on ? 'solid' : 'regular'} fa-bell"></i></span><span class="flex-1 text-left"><span class="block font-extrabold text-[15px]">${on ? 'Notifications activées' : 'Activer les notifications'}</span><span class="block text-xs font-semibold" style="color:#1F4D3B">${sub}</span></span><span class="text-xs font-extrabold">${on ? 'Désactiver' : '<i class="fa-solid fa-chevron-right"></i>'}</span></div>`;
         };
+        // Version compacte pour la liste « Réglages » du profil (interrupteur)
+        window.pushRowHtml = () => {
+            if (!VAPID_KEY) return '';
+            const on = !!myPushDevice() && pushPermission() === 'granted';
+            const oldIOS = isIOS() && isStandalone() && !pushSupported();
+            const sub = on ? 'Activées sur ce téléphone' : oldIOS ? "Réinstalle l'appli pour les recevoir" : pushPermission() === 'denied' ? 'Refusées dans les réglages du téléphone' : 'Likes, commentaires, conseils…';
+            return `<button type="button" class="pf-row" role="switch" aria-checked="${on}" onclick="${on ? 'window.disablePush()' : 'window.enablePush()'}"><span class="cell-icon" style="background:var(--mint-tint)"><i class="fa-${on ? 'solid' : 'regular'} fa-bell"></i></span><span class="flex-1 text-left"><span class="block font-bold text-[14px]">Notifications</span><span class="pf-sub">${sub}</span></span><span class="pf-switch ${on ? 'is-on' : ''}"></span></button>`;
+        };
         // Ouverture depuis une notification du téléphone : on va directement au bon endroit
         window.openFromPush = (notifId, tries = 0) => {
             if (!notifId || typeof notifId !== 'string') return;
@@ -4618,6 +5394,7 @@ window.startStatsEnrichment = async () => {
             if (!n && tries < 12) { setTimeout(() => window.openFromPush(notifId, tries + 1), 500); return; }
             if (!n) { window.openNotifications(); return; }
             if (n.type === 'reco') window.openRecoNotif(n.id);
+            else if (n.type === 'annonce') window.showWhatsNew(true);
             else if (n.type === 'follow') window.openPublicProfile(n.fromUid);
             else if (n.type === 'like') window.goToActivity(n.actId);
             else window.goToActivityComments(n.actId);
@@ -4681,7 +5458,7 @@ window.startStatsEnrichment = async () => {
             if (document.readyState === 'complete') registerSW(); else window.addEventListener('load', registerSW);
         }
 
-        console.log("MaBiblio v5.1 (appli installable + notifications)");
+        console.log("MaBiblio v5.2 (profil, fiches enrichies, réponses, match de l'année)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();

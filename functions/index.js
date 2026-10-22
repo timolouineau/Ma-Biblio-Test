@@ -1,6 +1,6 @@
 /* =====================================================================
    MABIBLIO — envoi des notifications sur les téléphones
-   Dès qu'une notification est créée dans l'app (j'aime, commentaire, mention, abonnement, conseil),
+   Dès qu'une notification est créée dans l'app (j'aime, commentaire, réponse, mention, abonnement, conseil, annonce),
    ce programme l'envoie sur les téléphones où le destinataire a activé les notifications.
    Il ne modifie JAMAIS les bibliothèques ni les posts : il lit le profil et les téléphones du
    destinataire, envoie, et supprime seulement les téléphones devenus invalides.

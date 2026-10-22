@@ -12,6 +12,8 @@ const buildPush = (n, notifId) => {
         case 'like_comment': title = `${who} a aimé ton commentaire`; body = work ? `Sur ${work}` : ''; break;
         case 'comment': title = `${who} a commenté ton post`; body = work ? `Sur ${work}` : 'Ouvre MaBiblio pour lire'; break;
         case 'mention': title = `${who} t'a mentionné`; body = work ? `Dans un commentaire sur ${work}` : 'Dans un commentaire'; break;
+        case 'reply': title = `${who} a répondu à ton commentaire`; body = work ? `Sur ${work}` : 'Ouvre MaBiblio pour lire'; break;
+        case 'annonce': title = clip(n.title, 80) || 'Nouveautés sur MaBiblio'; body = text || 'Ouvre MaBiblio pour découvrir la nouvelle version'; break;
         case 'follow': title = `${who} s'est abonné à toi`; body = 'Découvre sa bibliothèque'; break;
         case 'reco': title = `${who} te conseille ${work || 'une œuvre'}`; body = clip(n.note, 160) ? `« ${clip(n.note, 160)} »` : 'Touche pour voir la fiche'; break;
         default: title = `${who}`; body = text || 'Nouvelle activité sur MaBiblio';
