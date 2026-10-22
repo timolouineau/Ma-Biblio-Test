@@ -1,6 +1,11 @@
 {
   "functions": [
-    { "source": "functions", "codebase": "default", "runtime": "nodejs20" }
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" install --omit=dev --no-audit --no-fund"]
+    }
   ],
   "firestore": {
     "rules": "firestore.rules",
