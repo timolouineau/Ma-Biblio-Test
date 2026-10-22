@@ -276,6 +276,71 @@
             .goal-input { width: 38px; font-size: 11px; }
         }
 
+
+        /* --- STATISTIQUES DÉTAILLÉES --- */
+        .st-tabs { padding-top: 16px; padding-bottom: 6px; }
+        .st-card { background: #fff; border-radius: 26px; padding: 18px 16px; margin-bottom: 14px; }
+        .st-h { font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 12px; }
+        .st-h-out { margin: 22px 2px 12px; font-size: 22px; }
+        .st-empty { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
+        .st-note { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 0; }
+        .st-lead { font-size: 14px; font-weight: 700; margin: 4px 0 10px; }
+        .st-sub { display: flex; gap: 8px; margin: 2px 0 14px; }
+        .st-sub .type-chip { height: 36px; font-size: 13px; padding: 0 14px; }
+        .st-avg { margin-top: 12px; font-size: 13px; font-weight: 600; color: #C9C5D3; }
+        .st-avg i { color: var(--miel); margin-right: 2px; } .st-avg b { color: #fff; font-size: 15px; } .st-avg span { opacity: .8; }
+        .st-minis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .st-minis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .st-mini { border-radius: 20px; padding: 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .st-mini i { font-size: 13px; margin-bottom: 4px; }
+        .st-mini-big { font-family: var(--font-display); font-size: 22px; font-weight: 800; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .st-mini-l { font-size: 12px; font-weight: 700; color: #3B3842; }
+        .st-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .st-rank li { display: flex; gap: 10px; align-items: center; }
+        .st-rank-n { width: 26px; height: 26px; border-radius: 50%; background: var(--ground); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .st-rank-body { flex: 1; min-width: 0; }
+        .st-rank-line { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+        .st-rank-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .st-rank-val { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+        .st-rank-val b { color: var(--ink); }
+        .st-rank-bar { height: 6px; border-radius: 3px; background: var(--ground); margin-top: 5px; overflow: hidden; }
+        .st-rank-bar span { display: block; height: 100%; border-radius: 3px; }
+        .st-chart { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; height: 150px; align-items: end; }
+        .st-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+        .st-col-v { font-size: 10px; font-weight: 800; color: var(--muted); margin-bottom: 3px; min-height: 13px; }
+        .st-col-bar { width: 100%; max-width: 30px; border-radius: 8px 8px 4px 4px; overflow: hidden; display: flex; flex-direction: column-reverse; background: transparent; min-height: 0; }
+        .st-col-bar span { display: block; width: 100%; }
+        .st-col-l { font-size: 10px; font-weight: 700; color: var(--muted); margin-top: 5px; white-space: nowrap; }
+        .st-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--muted); }
+        .st-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+        .st-long { display: flex; gap: 14px; align-items: center; }
+        .st-long-img { width: 64px; height: 96px; border-radius: 14px; object-fit: cover; flex-shrink: 0; background: #E9E3DA; }
+        .st-long-pages { display: inline-block; margin-top: 8px; background: var(--miel); border-radius: 12px; padding: 3px 10px; font-size: 13px; font-weight: 800; }
+        .st-big-line { display: flex; flex-direction: column; gap: 6px; }
+        .st-sentences { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        .st-sentences li { display: flex; gap: 12px; align-items: center; font-size: 14px; line-height: 1.35; }
+        .st-score { width: 44px; height: 44px; border-radius: 14px; background: var(--miel-tint); font-family: var(--font-display); font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .st-pill { display: inline-flex; gap: 6px; align-items: center; height: 34px; padding: 0 14px; border-radius: 17px; font-size: 13px; font-weight: 700; }
+        .st-banner { background: var(--lav-tint); border-radius: 20px; padding: 12px 14px; margin: 10px 0 4px; font-size: 13px; font-weight: 700; }
+        .story.is-picked .story-name { font-weight: 800; }
+        .st-aff { background: var(--ink); color: #fff; border-radius: 30px; padding: 22px; text-align: center; margin: 4px 0 14px; }
+        .st-aff-pct { font-family: var(--font-display); font-size: 64px; font-weight: 800; line-height: 1; }
+        .st-aff-pct small { font-size: 30px; }
+        .st-aff-l { font-size: 15px; font-weight: 700; margin-top: 6px; }
+        .st-aff-s { font-size: 12px; font-weight: 600; color: #C9C5D3; margin-top: 4px; }
+        .st-duo-head { display: flex; justify-content: flex-end; gap: 6px; font-size: 11px; font-weight: 800; color: var(--muted); margin: -4px 0 6px; }
+        .st-duo-head span, .st-duo span { width: 40px; text-align: center; }
+        .st-commons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .st-common { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .st-common-img { width: 38px; height: 54px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #E9E3DA; }
+        .st-duo { display: flex; gap: 6px; flex-shrink: 0; }
+        .st-duo span { height: 30px; border-radius: 10px; background: var(--miel); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+        .st-duo span.is-friend, .st-duo-head span.is-friend { background: var(--lav); }
+        .st-duo-head span.is-friend { background: transparent; }
+        .st-recos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .st-reco { position: relative; cursor: pointer; min-width: 0; }
+        .st-reco-img { width: 100%; aspect-ratio: 2/3; border-radius: 14px; object-fit: cover; background: #E9E3DA; display: block; }
+        .st-reco-t { display: block; font-size: 12px; font-weight: 700; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         /* Fenêtres et messages de l'app */
         .ui-overlay { position: fixed; inset: 0; z-index: 40000; background: rgba(22,21,26,.38); display: flex; align-items: center; justify-content: center; padding: 24px; opacity: 0; transition: opacity .18s; }
         .ui-overlay.show { opacity: 1; }
@@ -3559,65 +3624,165 @@
 
     window.closePublicProfile = () => document.getElementById('public-profile-modal').classList.remove('open');
 
-        /* --- J.4 RENDU DES STATISTIQUES (CORRIGÉ LOGO YOUTUBE) --- */
+        /* --- J.4 STATISTIQUES DÉTAILLÉES ---
+           6 onglets : Vue d'ensemble, Films & séries, Livres, Musique, Habitudes, Affinité.
+           Les infos manquantes des œuvres déjà enregistrées (genres, réalisateur, acteurs, pays, langue,
+           durée…) sont complétées automatiquement en arrière-plan (voir J.4.a). */
 window.toggleStatsMode = (mode) => {
     if (!window.extState) window.extState = {};
     window.extState.statsMode = mode;
     window.renderStatsView();
 };
 
-window.renderStatsView = () => {
-    // Initialisation
-    if (!window.extState) window.extState = { statsMode: 'all' };
-    
-    const isYear = window.extState.statsMode === 'year';
-    const finished = (window.myCollection || []).filter(i => i.status !== 'Wishlist' && i.status !== 'En cours');
-    
-    let filteredItems = finished;
-    const curYear = new Date().getFullYear().toString();
-    
-    // Filtre Année
-    if (isYear) {
-        // Les œuvres "Non daté" ne comptent pas dans les statistiques de l'année (elles comptent dans "Toujours")
-        filteredItems = finished.filter(i => window.itemYear(i) === curYear);
+const ST = window._statsUI = { tab: 'overview', fs: 'both', friend: null, friendItems: {}, friendLoading: null };
+const STATS_TABS = [['overview', "Vue d'ensemble"], ['screen', 'Films & séries'], ['books', 'Livres'], ['music', 'Musique'], ['habits', 'Habitudes'], ['affinity', 'Affinité']];
+window.setStatsTab = (t) => {
+    if (!STATS_TABS.some(([k]) => k === t)) return;
+    ST.tab = t;
+    window.renderStatsView();
+    const page = document.getElementById('page-scroll'); if (page) page.scrollTop = 0;
+};
+window.setStatsScreenFilter = (v) => { if (['both', 'Film', 'Série'].includes(v)) { ST.fs = v; window.renderStatsView(); } };
+
+// ---------- Outils de calcul ----------
+const isDone = (i) => i && i.status !== 'Wishlist' && i.status !== 'En cours';
+const ratingOf = (i) => { const r = num(i && i.rating, NaN); return Number.isFinite(r) && r > 0 ? r : null; };
+const yearOfRelease = (i) => { const m = String((i && i.releaseDate) || '').match(/^(1[89]\d\d|20\d\d)/); return m ? +m[1] : null; };
+const monthKeyOf = (i) => { const d = window.itemDateKey(i); return /^(19|20)\d\d-\d\d/.test(d) ? d.slice(0, 7) : null; };
+const fr1 = (n) => Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+const frInt = (n) => Math.round(Number(n) || 0).toLocaleString('fr-FR');
+const MONTHS_S = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const MONTHS_L = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const DNAMES = (() => { try { return { lang: new Intl.DisplayNames(['fr'], { type: 'language' }), region: new Intl.DisplayNames(['fr'], { type: 'region' }) }; } catch (e) { return null; } })();
+const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const langName = (c) => { const k = String(c || '').trim(); if (!k || k === 'xx') return ''; try { return cap(DNAMES ? DNAMES.lang.of(k) : k.toUpperCase()); } catch (e) { return k.toUpperCase(); } };
+const regionName = (c) => { const k = String(c || '').trim().toUpperCase(); if (!/^[A-Z]{2}$/.test(k)) return ''; try { return DNAMES ? DNAMES.region.of(k) : k; } catch (e) { return k; } };
+
+// Genres de livres : Google Livres et Open Library répondent en anglais → traduction des plus courants
+const BOOK_GENRES = {
+    'fiction': 'Fiction', 'literary': 'Littérature', 'literary fiction': 'Littérature', 'literature': 'Littérature', 'classics': 'Classiques',
+    'thrillers': 'Thriller', 'thriller': 'Thriller', 'suspense': 'Thriller', 'mystery & detective': 'Policier', 'mystery': 'Policier', 'detective and mystery stories': 'Policier', 'crime': 'Policier', 'true crime': 'Faits divers',
+    'science fiction': 'Science-fiction', 'fantasy': 'Fantasy', 'horror': 'Horreur', 'romance': 'Romance', 'love stories': 'Romance', 'historical': 'Historique', 'historical fiction': 'Historique',
+    'juvenile fiction': 'Jeunesse', 'juvenile nonfiction': 'Jeunesse', "children's stories": 'Jeunesse', 'young adult fiction': 'Young adult', 'young adult nonfiction': 'Young adult',
+    'comics & graphic novels': 'BD & romans graphiques', 'comic books, strips, etc.': 'BD & romans graphiques', 'graphic novels': 'BD & romans graphiques', 'manga': 'Manga',
+    'biography & autobiography': 'Biographie', 'biography': 'Biographie', 'autobiography': 'Biographie', 'history': 'Histoire', 'philosophy': 'Philosophie', 'psychology': 'Psychologie',
+    'self-help': 'Développement personnel', 'personal growth': 'Développement personnel', 'business & economics': 'Économie', 'economics': 'Économie', 'political science': 'Politique', 'politics': 'Politique',
+    'science': 'Sciences', 'nature': 'Nature', 'travel': 'Voyage', 'cooking': 'Cuisine', 'health & fitness': 'Santé & forme', 'sports & recreation': 'Sport', 'sports': 'Sport',
+    'political': 'Politique', 'personal memoirs': 'Mémoires', 'memoir': 'Mémoires', 'humor': 'Humour', 'poetry': 'Poésie', 'art': 'Art', 'music': 'Musique', 'religion': 'Religion', 'social science': 'Société', 'essays': 'Essai', 'drama': 'Théâtre',
+    'dystopias': 'Dystopie', 'dystopian': 'Dystopie', 'adventure': 'Aventure', 'action & adventure': 'Aventure', 'war & military': 'Guerre', 'short stories': 'Nouvelles', 'family life': 'Vie de famille'
+};
+const SKIP_GENRE = new Set(['general', 'fiction, general', 'open_syllabus_project', 'accessible book', 'protected daisy', 'in library', 'large type books', 'french fiction', 'american fiction', 'english fiction', 'french literature', 'nyt']);
+const bookGenreNames = (i) => {
+    const out = [];
+    for (const raw of (Array.isArray(i.genres) ? i.genres : [])) {
+        const s = String(raw || '').trim();
+        if (!s || s.includes(':') || s.length > 40) continue;
+        const parts = s.split('/').map(p => p.trim().toLowerCase()).filter(p => p && !SKIP_GENRE.has(p));
+        if (!parts.length) continue;
+        // On garde la partie la plus précise que l'on sait traduire (« Fiction / Thrillers » → Thriller)
+        const known = parts.map(p => BOOK_GENRES[p]).filter(Boolean);
+        const name = known.length ? known[known.length - 1] : (/^[a-z]/.test(parts[0]) && !/[a-z]{3,} [a-z]{3,} [a-z]{3,}/.test(parts[0]) ? null : cap(parts[0]));
+        if (name && !out.includes(name)) out.push(name);
+        if (out.length >= 3) break;
     }
+    return out;
+};
 
-    const sumMetric = (type) => filteredItems.filter(i => i.type === type).reduce((acc, i) => acc + (parseInt(i.metricValue) || 0), 0);
-    
-    const totalMinutes = sumMetric('Film');
-    const totalMinutesYT = sumMetric('YouTube');
-    const totalHeuresJeu = sumMetric('Jeu');
+// Comptage : [{ name, count, avg }] trié du plus fréquent au moins fréquent
+const tally = (items, keysOf) => {
+    const m = new Map();
+    items.forEach(i => {
+        const keys = [...new Set((keysOf(i) || []).map(k => String(k || '').trim()).filter(Boolean))];
+        const r = ratingOf(i);
+        keys.forEach(k => { const e = m.get(k) || { name: k, count: 0, sum: 0, n: 0 }; e.count++; if (r !== null) { e.sum += r; e.n++; } m.set(k, e); });
+    });
+    return [...m.values()].map(e => ({ ...e, avg: e.n ? e.sum / e.n : null }))
+        .sort((a, b) => b.count - a.count || (b.avg || 0) - (a.avg || 0) || a.name.localeCompare(b.name));
+};
+const avgRating = (items) => { const rs = items.map(ratingOf).filter(r => r !== null); return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null; };
+const filmMinutes = (i) => num(i.metricValue) || num(i.durationMin);
+// Séries : saisons vues × épisodes par saison × durée d'un épisode (estimation, connue après complétion)
+const seriesMinutes = (i) => (num(i.episodesPerSeason) && num(i.episodeRunTime)) ? Math.max(1, num(i.metricValue) || 1) * num(i.episodesPerSeason) * num(i.episodeRunTime) : 0;
+const directorsOf = (i) => String(i.author || '').split(',').map(s => s.trim()).filter(s => s && s !== 'Inconnu');
+const actorsOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).slice(0, 5).map(s => String(s).trim());
+const countriesOf = (i) => (Array.isArray(i.countryCodes) && i.countryCodes.length ? i.countryCodes.map(regionName) : (Array.isArray(i.countries) ? i.countries : [])).filter(Boolean);
 
-    // Dictionnaire Pluriels
-    const pluralLabels = {
-        'Film': 'Films',
-        'Série': 'Séries',
-        'Livre': 'Livres',
-        'Album': 'Albums',
-        'YouTube': 'YouTube',
-        'Jeu': 'Jeux'
-    };
+// ---------- Petits blocs d'affichage ----------
+const sCard = (title, body, extra = '') => `<section class="st-card" ${extra}><h3 class="st-h">${title}</h3>${body}</section>`;
+const sEmpty = (txt) => `<p class="st-empty">${txt}</p>`;
+const rankList = (rows, color, opts = {}) => {
+    const max = opts.max || 5;
+    const list = rows.slice(0, max);
+    if (!list.length) return sEmpty(opts.empty || 'Pas encore assez d\'infos.');
+    const top = list[0].count || 1;
+    return `<ol class="st-rank">${list.map((r, k) => `
+        <li><span class="st-rank-n">${k + 1}</span><div class="st-rank-body"><div class="st-rank-line"><span class="st-rank-name">${esc(r.name)}</span><span class="st-rank-val">${r.count}${opts.unit ? ' ' + opts.unit(r.count) : ''}${opts.showAvg && r.avg !== null ? ` · <b>${fr1(r.avg)}</b>★` : ''}</span></div><div class="st-rank-bar"><span style="width:${Math.max(6, Math.round(r.count / top * 100))}%;background:${color}"></span></div></div></li>`).join('')}</ol>`;
+};
+// Histogramme vertical, éventuellement empilé par catégorie : cols = [{ label, parts: [{ v, color }] , title }]
+const barChart = (cols, opts = {}) => {
+    const totals = cols.map(c => c.parts.reduce((a, p) => a + p.v, 0));
+    const max = Math.max(1, ...totals);
+    return `<div class="st-chart" style="--n:${cols.length}">${cols.map((c, k) => `
+        <div class="st-col" title="${esc(c.title || '')}"><span class="st-col-v">${totals[k] ? (opts.fmt ? opts.fmt(totals[k]) : totals[k]) : ''}</span>
+            <div class="st-col-bar" style="height:${Math.round(totals[k] / max * 100)}%">${c.parts.filter(p => p.v > 0).map(p => `<span style="flex:${p.v};background:${p.color}"></span>`).join('')}</div>
+            <span class="st-col-l">${esc(c.label)}</span></div>`).join('')}</div>`;
+};
+const miniTile = (bg, icon, big, label) => `<div class="st-mini" style="background:${bg}"><i class="${icon}"></i><span class="st-mini-big">${big}</span><span class="st-mini-l">${label}</span></div>`;
+
+// Période choisie (cette année / toujours)
+const statsScope = () => {
+    if (!window.extState) window.extState = { statsMode: 'all' };
+    const isYear = window.extState.statsMode === 'year';
+    const curYear = String(new Date().getFullYear());
+    const finished = (window.myCollection || []).filter(isDone);
+    const items = isYear ? finished.filter(i => window.itemYear(i) === curYear) : finished;
+    return { isYear, curYear, finished, items };
+};
+// Graphique mois par mois (cette année) ou année par année (toujours)
+const timelineCols = (items, isYear, curYear, valueOf, colorOf) => {
+    const cols = [];
+    if (isYear) {
+        for (let m = 0; m < 12; m++) cols.push({ key: `${curYear}-${String(m + 1).padStart(2, '0')}`, label: MONTHS_S[m].replace('.', ''), title: `${MONTHS_L[m]} ${curYear}` });
+    } else {
+        const years = items.map(i => window.itemYear(i)).filter(Boolean).map(Number);
+        const last = years.length ? Math.max(...years) : +curYear;
+        const first = years.length ? Math.max(Math.min(...years), last - 7) : last;
+        for (let y = first; y <= last; y++) cols.push({ key: String(y), label: String(y), title: String(y) });
+    }
+    return cols.map(c => {
+        const inCol = items.filter(i => isYear ? monthKeyOf(i) === c.key : window.itemYear(i) === c.key);
+        const groups = new Map();
+        inCol.forEach(i => { const col = colorOf(i); groups.set(col, (groups.get(col) || 0) + valueOf(i)); });
+        return { label: c.label, title: c.title, parts: [...groups.entries()].map(([color, v]) => ({ color, v })) };
+    });
+};
+
+// ---------- Onglet 1 : vue d'ensemble ----------
+const statsOverview = (sc) => {
+    const { isYear, curYear, items } = sc;
+    const sumMetric = (type) => items.filter(i => i.type === type).reduce((acc, i) => acc + (num(i.metricValue) || 0), 0);
+    const byType = (t) => items.filter(i => i.type === t);
+    const filmMin = byType('Film').reduce((a, i) => a + filmMinutes(i), 0);
+    const series = byType('Série');
+    const seriesMin = series.reduce((a, i) => a + seriesMinutes(i), 0);
+    const seriesUnknown = series.filter(i => !seriesMinutes(i)).length;
+    const pages = sumMetric('Livre');
+    const musicMin = byType('Album').reduce((a, i) => a + num(i.durationMin), 0);
+    const ytMin = sumMetric('YouTube');
+    const avg = avgRating(items);
+    const rated = items.filter(i => ratingOf(i) !== null).length;
+    const total = items.length;
 
     const stats = [
-        { type: 'Film', key: 'goalFilm', icon: 'fa-film', color: '#AF52DE', count: filteredItems.filter(i => i.type === 'Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(totalMinutes/60)}h ${totalMinutes%60}m` },
-        { type: 'Série', key: 'goalSerie', icon: 'fa-tv', color: '#34C759', count: filteredItems.filter(i => i.type === 'Série').length, goal: window.userProfile.goalSerie || window.userProfile['goalSérie'] || 10, sub: `${sumMetric('Série')} saisons` },
-        { type: 'Livre', key: 'goalLivre', icon: 'fa-book-open', color: '#FF9500', count: filteredItems.filter(i => i.type === 'Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${sumMetric('Livre')} pages` },
-        { type: 'Album', key: 'goalAlbum', icon: 'fa-music', color: '#E91E63', count: filteredItems.filter(i => i.type === 'Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
-        { type: 'YouTube', key: 'goalYouTube', icon: 'fa-youtube', color: '#FF0000', count: filteredItems.filter(i => i.type === 'YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(totalMinutesYT/60)}h` },
-
+        { type: 'Film', key: 'goalFilm', icon: 'fa-film', count: byType('Film').length, goal: window.userProfile.goalFilm || 50, sub: `${Math.floor(filmMin / 60)}h ${filmMin % 60}m` },
+        { type: 'Série', key: 'goalSerie', icon: 'fa-tv', count: series.length, goal: window.userProfile.goalSerie || window.userProfile['goalSérie'] || 10, sub: `${sumMetric('Série')} saisons` },
+        { type: 'Livre', key: 'goalLivre', icon: 'fa-book-open', count: byType('Livre').length, goal: window.userProfile.goalLivre || 12, sub: `${frInt(pages)} pages` },
+        { type: 'Album', key: 'goalAlbum', icon: 'fa-music', count: byType('Album').length, goal: window.userProfile.goalAlbum || 50, sub: `${sumMetric('Album')} titres` },
+        { type: 'YouTube', key: 'goalYouTube', icon: 'fa-youtube', count: byType('YouTube').length, goal: window.userProfile.goalYouTube || 100, sub: `${Math.floor(ytMin / 60)}h` }
     ];
+    const pluralLabels = { 'Film': 'Films', 'Série': 'Séries', 'Livre': 'Livres', 'Album': 'Albums', 'YouTube': 'YouTube' };
 
-    const container = document.getElementById('main-content');
-    
-    const switcherHtml = `
-        <div class="stats-toggle" role="tablist" aria-label="Période">
-            <button role="tab" aria-selected="${isYear}" onclick="window.toggleStatsMode('year')" class="${isYear ? 'active' : ''}">Cette année</button>
-            <button role="tab" aria-selected="${!isYear}" onclick="window.toggleStatsMode('all')" class="${!isYear ? 'active' : ''}">Toujours</button>
-        </div>
-    `;
-
-    // Anneau de répartition par catégorie (une couleur par catégorie)
-    const total = filteredItems.length;
+    // Anneau de répartition
     const C = 2 * Math.PI * 40;
     let offset = 0;
     const ringSegs = total > 0 ? stats.filter(s => s.count > 0).map(s => {
@@ -3630,12 +3795,10 @@ window.renderStatsView = () => {
     const cardsHtml = stats.map(s => {
         const showGoal = isYear;
         const prog = showGoal ? Math.min(100, (s.count / (s.goal || 1)) * 100) : 0;
-        const label = pluralLabels[s.type] || s.type;
+        const label = pluralLabels[s.type];
         const iconStyle = s.type === 'YouTube' ? 'fa-brands' : 'fa-solid';
-        const cat = catOf(s.type);
-
         return `
-        <div class="stat-tile" style="background:${cat.c}">
+        <div class="stat-tile" style="background:${catOf(s.type).c}">
             <div class="flex items-center justify-between gap-2">
                 <span class="font-extrabold text-[14px] flex items-center gap-1.5 min-w-0"><i class="${iconStyle} ${s.icon} text-[13px]"></i><span class="truncate">${label}</span></span>
                 ${showGoal ? `<input type="number" value="${num(s.goal)}" onchange="window.updateGoal(${jsArg(s.key)}, this.value)" class="goal-input" aria-label="Objectif ${label}" title="Mon objectif">` : ''}
@@ -3652,33 +3815,237 @@ window.renderStatsView = () => {
         </div>`;
     }).join('');
 
+    const timeTiles = [
+        miniTile(catOf('Film').c, 'fa-solid fa-film', `${frInt(Math.floor(filmMin / 60))} h`, 'de films'),
+        miniTile(catOf('Série').c, 'fa-solid fa-tv', series.length ? `${seriesMin ? '≈ ' : ''}${frInt(Math.floor(seriesMin / 60))} h` : '0 h', 'de séries'),
+        miniTile(catOf('Livre').c, 'fa-solid fa-book-open', frInt(pages), 'pages lues'),
+        miniTile(catOf('Album').c, 'fa-solid fa-music', `${frInt(Math.floor(musicMin / 60))} h`, 'de musique'),
+    ].join('');
+
+    const chart = barChart(timelineCols(items, isYear, curYear, () => 1, i => catOf(i.type).c));
+    const legend = `<div class="st-legend">${['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => `<span><i style="background:${catOf(t).c}"></i>${catOf(t).label}</span>`).join('')}</div>`;
+
+    return `
+        <div class="bg-gray-900 text-white p-5 rounded-[30px] mb-3.5 flex items-center gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="font-extrabold uppercase text-[11px] tracking-widest mb-1.5" style="color:#C9C5D3">Total ${isYear ? curYear : 'global'}</div>
+                <div class="font-display text-[52px] font-extrabold leading-none">${total}</div>
+                <div class="text-sm font-semibold mt-1" style="color:#C9C5D3">œuvres terminées</div>
+                <div class="st-avg"><i class="fa-solid fa-star"></i> ${avg !== null ? `<b>${fr1(avg)}</b> / 10 de moyenne` : 'pas encore de note'}${rated ? ` <span>· ${rated} notée${rated > 1 ? 's' : ''}</span>` : ''}</div>
+            </div>
+            <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="Répartition par catégorie" class="shrink-0">
+                <circle cx="52" cy="52" r="40" fill="none" stroke="#2E2C35" stroke-width="14"/>
+                ${ringSegs}
+            </svg>
+        </div>
+        ${sCard('Temps passé', `<div class="st-minis">${timeTiles}</div>${seriesUnknown && series.length ? `<p class="st-note">Séries : estimation à partir du nombre d'épisodes${seriesUnknown ? ` (${seriesUnknown} série${seriesUnknown > 1 ? 's' : ''} encore sans info)` : ''}.</p>` : ''}${ytMin ? `<p class="st-note">+ ${frInt(ytMin / 60)} h de vidéos YouTube.</p>` : ''}`)}
+        ${sCard(isYear ? 'Mois par mois' : 'Année par année', chart + legend)}
+        <h3 class="st-h st-h-out">${isYear ? 'Mes objectifs' : 'Par catégorie'}</h3>
+        <div class="stats-grid">${cardsHtml}</div>`;
+};
+
+// ---------- Onglet 2 : films & séries ----------
+const statsScreen = (sc) => {
+    const pool = sc.items.filter(i => (i.type === 'Film' || i.type === 'Série') && (ST.fs === 'both' || i.type === ST.fs));
+    const films = pool.filter(i => i.type === 'Film');
+    const lav = catOf('Film').c, mint = catOf('Série').c;
+    const color = ST.fs === 'Série' ? mint : lav;
+    const filter = `<div class="st-sub">${[['both', 'Les deux'], ['Film', 'Films'], ['Série', 'Séries']].map(([v, l]) => `<button type="button" class="type-chip ${ST.fs === v ? 'active' : ''}" onclick="window.setStatsScreenFilter('${v}')">${l}</button>`).join('')}</div>`;
+    if (!pool.length) return filter + sEmpty('Aucun film ni série terminé sur cette période.');
+    const decades = tally(pool, i => { const y = yearOfRelease(i); return y ? [`${Math.floor(y / 10) * 10}`] : []; }).sort((a, b) => a.name.localeCompare(b.name));
+    const decadeChart = barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color }] })));
+    const plural = (n) => n > 1 ? 'œuvres' : 'œuvre';
+    return filter + `
+        <div class="st-minis st-minis-3 mb-3.5">
+            ${miniTile(lav, 'fa-solid fa-film', films.length, `film${films.length > 1 ? 's' : ''}`)}
+            ${miniTile(mint, 'fa-solid fa-tv', pool.length - films.length, `série${pool.length - films.length > 1 ? 's' : ''}`)}
+            ${miniTile('#fff', 'fa-solid fa-star', avgRating(pool) !== null ? fr1(avgRating(pool)) : '–', 'note moyenne')}
+        </div>
+        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tally(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film' })) : ''}
+        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tally(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série' })) : ''}
+        ${sCard('Top acteurs', rankList(tally(pool, actorsOf), color, { max: 8, unit: plural }))}
+        ${sCard('Genres préférés', rankList(tally(pool, i => i.genres), color, { max: 6, showAvg: true }))}
+        ${sCard('Pays les plus vus', rankList(tally(pool, countriesOf), color, { max: 6 }))}
+        ${sCard('Langues originales', rankList(tally(pool, i => [langName(i.originalLanguage)]), color, { max: 6 }))}
+        ${sCard('Décennies de sortie', decades.length ? decadeChart : sEmpty('Pas encore de dates de sortie.'))}
+        ${sCard('Plateformes', rankList(tally(pool, i => [i.platform]), color, { max: 6, empty: 'Aucune plateforme renseignée.' }))}`;
+};
+
+// ---------- Onglet 3 : livres ----------
+const statsBooks = (sc) => {
+    const books = sc.items.filter(i => i.type === 'Livre');
+    const miel = catOf('Livre').c;
+    if (!books.length) return sEmpty('Aucun livre terminé sur cette période.');
+    const pages = books.reduce((a, i) => a + num(i.metricValue), 0);
+    const longest = [...books].sort((a, b) => num(b.metricValue) - num(a.metricValue))[0];
+    const longestHtml = longest && num(longest.metricValue) ? `<div class="st-long">${coverImg(longest.img, longest.title, 'st-long-img', 'loading="lazy"')}<div class="min-w-0"><div class="font-display font-extrabold text-lg leading-tight">${esc(longest.title)}</div><div class="text-sm font-semibold text-gray-600 mt-0.5">${esc(longest.author || '')}</div><div class="st-long-pages">${frInt(longest.metricValue)} pages</div></div></div>` : sEmpty('Nombre de pages inconnu.');
+    return `
+        <div class="st-minis st-minis-3 mb-3.5">
+            ${miniTile(miel, 'fa-solid fa-book-open', books.length, `livre${books.length > 1 ? 's' : ''}`)}
+            ${miniTile('#FFF1D6', 'fa-solid fa-file-lines', frInt(pages), 'pages lues')}
+            ${miniTile('#fff', 'fa-solid fa-star', avgRating(books) !== null ? fr1(avgRating(books)) : '–', 'note moyenne')}
+        </div>
+        ${sCard(sc.isYear ? 'Pages par mois' : 'Pages par année', barChart(timelineCols(books, sc.isYear, sc.curYear, i => num(i.metricValue), () => miel), { fmt: (v) => v >= 1000 ? fr1(v / 1000) + 'k' : v }))}
+        ${sCard('Top auteurs', rankList(tally(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre' }))}
+        ${sCard('Genres', rankList(tally(books, bookGenreNames), miel, { max: 6, showAvg: true }))}
+        ${sCard('Le livre le plus long', longestHtml)}`;
+};
+
+// ---------- Onglet 4 : musique ----------
+const statsMusic = (sc) => {
+    const albums = sc.items.filter(i => i.type === 'Album');
+    const rose = catOf('Album').c;
+    if (!albums.length) return sEmpty('Aucun album écouté sur cette période.');
+    const mins = albums.reduce((a, i) => a + num(i.durationMin), 0);
+    const decades = tally(albums, i => { const y = yearOfRelease(i); return y ? [`${Math.floor(y / 10) * 10}`] : []; }).sort((a, b) => a.name.localeCompare(b.name));
+    return `
+        <div class="st-minis st-minis-3 mb-3.5">
+            ${miniTile(rose, 'fa-solid fa-compact-disc', albums.length, `album${albums.length > 1 ? 's' : ''}`)}
+            ${miniTile('#FFE4F0', 'fa-solid fa-headphones', `${frInt(mins / 60)} h`, "d'écoute")}
+            ${miniTile('#fff', 'fa-solid fa-star', avgRating(albums) !== null ? fr1(avgRating(albums)) : '–', 'note moyenne')}
+        </div>
+        ${sCard('Top artistes', rankList(tally(albums, i => [String(i.author || '').trim()]), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album' }))}
+        ${sCard('Genres', rankList(tally(albums, i => i.genres), rose, { max: 6, showAvg: true }))}
+        ${sCard('Albums par décennie', decades.length ? barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color: rose }] }))) : sEmpty('Pas encore de dates de sortie.'))}`;
+};
+
+// ---------- Onglet 5 : habitudes ----------
+const statsHabits = (sc) => {
+    const { items } = sc;
+    if (!items.length) return sEmpty('Pas encore d\'œuvres terminées sur cette période.');
+    // Mois le plus chargé
+    const months = tally(items, i => [monthKeyOf(i)]);
+    let busiest = '';
+    if (months.length) {
+        const b = months[0];
+        const [y, m] = b.name.split('-');
+        const inMonth = items.filter(i => monthKeyOf(i) === b.name);
+        const parts = ['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => [t, inMonth.filter(i => i.type === t).length]).filter(([, n]) => n);
+        busiest = `<div class="st-big-line"><span class="font-display text-[34px] font-extrabold leading-none">${cap(MONTHS_L[+m - 1])} ${y}</span><span class="font-semibold text-gray-600">${b.count} œuvre${b.count > 1 ? 's' : ''} terminée${b.count > 1 ? 's' : ''}</span></div>
+            <div class="flex flex-wrap gap-1.5 mt-3">${parts.map(([t, n]) => `<span class="cat-chip" style="background:${catOf(t).c}">${n} ${esc(n > 1 ? catOf(t).label.toLowerCase() : ({ 'Film': 'film', 'Série': 'série', 'Livre': 'livre', 'Album': 'album', 'YouTube': 'vidéo YouTube' })[t])}</span>`).join('')}</div>`;
+    }
+    // Genres les mieux (et moins bien) notés : au moins 3 œuvres notées
+    const genreKeys = (i) => i.type === 'Livre' ? bookGenreNames(i) : (Array.isArray(i.genres) ? i.genres : []);
+    const genres = tally(items, genreKeys).filter(g => g.n >= 3 && g.avg !== null).sort((a, b) => b.avg - a.avg || b.n - a.n);
+    const sentence = (g) => `<li><span class="st-score">${fr1(g.avg)}</span><span>Tu mets en moyenne <b>${fr1(g.avg)}</b> au genre <b>${esc(g.name)}</b> <span class="text-gray-500">(${g.n} œuvres)</span></span></li>`;
+    const best = genres.slice(0, 5);
+    const worst = genres.length > 5 ? genres.slice(-3).reverse() : [];
+    // Répartition des notes
+    const dist = Array.from({ length: 10 }, (_, k) => ({ label: String(k + 1), title: `${k + 1}/10`, parts: [{ v: items.filter(i => Math.round(ratingOf(i) || 0) === k + 1).length, color: '#FFC567' }] }));
+    const typeAvg = ['Film', 'Série', 'Livre', 'Album', 'YouTube'].map(t => [t, avgRating(items.filter(i => i.type === t))]).filter(([, a]) => a !== null).sort((a, b) => b[1] - a[1]);
+    return `
+        ${sCard('Ton mois le plus chargé', busiest || sEmpty('Pas de dates de fin sur cette période.'))}
+        ${sCard('Les genres que tu notes le mieux', best.length ? `<ul class="st-sentences">${best.map(sentence).join('')}</ul>` : sEmpty('Il faut au moins 3 œuvres notées dans un même genre.'))}
+        ${worst.length ? sCard('Ceux qui te plaisent moins', `<ul class="st-sentences">${worst.map(sentence).join('')}</ul>`) : ''}
+        ${typeAvg.length ? sCard('Ta note moyenne par catégorie', `<div class="flex flex-wrap gap-2">${typeAvg.map(([t, a]) => `<span class="st-pill" style="background:${catOf(t).c}">${esc(catOf(t).label)} <b>${fr1(a)}</b></span>`).join('')}</div>`) : ''}
+        ${sCard('Tes notes', barChart(dist))}`;
+};
+
+// ---------- Onglet 6 : affinité avec un ami ----------
+const workKeys = (i) => {
+    const keys = [];
+    const id = String(i.id || '');
+    if (id && !/^manual_|_public$/.test(id)) keys.push(`${i.type}|id|${id}`);
+    const t = normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim();
+    if (t) keys.push(`${i.type}|t|${t}`);
+    return keys;
+};
+window.pickAffinityFriend = async (uid) => {
+    if (!uid || typeof uid !== 'string') return;
+    ST.friend = uid;
+    const cached = ST.friendItems[uid];
+    if (!cached || Date.now() - cached.at > 5 * 60 * 1000) {
+        ST.friendLoading = uid;
+        window.renderStatsView();
+        try {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
+            ST.friendItems[uid] = { at: Date.now(), items: snap.docs.map(d => d.data()).filter(i => !HIDDEN_TYPES.includes(i.type)) };
+        } catch (e) { console.error('Affinité', e); ST.friendItems[uid] = { at: Date.now(), items: [], error: true }; }
+        ST.friendLoading = null;
+    }
+    if (window.currentView === 'stats' && ST.tab === 'affinity') window.renderStatsView();
+};
+window.computeAffinity = (mine, theirs) => {
+    const myDone = mine.filter(isDone), theirDone = theirs.filter(isDone);
+    const index = new Map();
+    myDone.forEach(i => workKeys(i).forEach(k => { if (!index.has(k)) index.set(k, i); }));
+    const common = [], seen = new Set();
+    theirDone.forEach(f => {
+        const m = workKeys(f).map(k => index.get(k)).find(Boolean);
+        if (m && !seen.has(m)) { seen.add(m); common.push({ mine: m, theirs: f }); }
+    });
+    const rated = common.filter(c => ratingOf(c.mine) !== null && ratingOf(c.theirs) !== null);
+    // Accord sur chaque œuvre : 100 % si même note, 0 % si 9 points d'écart ; lissé vers 50 % s'il y a peu d'œuvres
+    const agree = rated.map(c => 1 - Math.min(9, Math.abs(ratingOf(c.mine) - ratingOf(c.theirs))) / 9);
+    const K = 2;
+    const pct = rated.length ? Math.round(((agree.reduce((a, b) => a + b, 0) + 0.5 * K) / (rated.length + K)) * 100) : null;
+    // Conseils : ce que l'autre a adoré (8+) et que je n'ai pas encore vu, et inversement
+    const theirIndex = new Map();
+    theirs.forEach(i => workKeys(i).forEach(k => theirIndex.set(k, i)));
+    const myAll = new Map();
+    mine.forEach(i => workKeys(i).forEach(k => myAll.set(k, i)));
+    const forMe = theirDone.filter(f => (ratingOf(f) || 0) >= 8 && !workKeys(f).some(k => { const m = myAll.get(k); return m && isDone(m); })).sort((a, b) => ratingOf(b) - ratingOf(a));
+    const forThem = myDone.filter(m => (ratingOf(m) || 0) >= 8 && !workKeys(m).some(k => { const t = theirIndex.get(k); return t && isDone(t); })).sort((a, b) => ratingOf(b) - ratingOf(a));
+    return { common, rated, pct, forMe, forThem };
+};
+const statsAffinity = () => {
+    const friends = (window.followingData || []).map(p => ({ uid: p.uid || p.id, name: p.name, avatar: p.avatar })).filter(f => f.uid && !window.isHiddenUser(f.uid));
+    if (!friends.length) return sEmpty('Abonne-toi à des amis pour comparer vos goûts.');
+    if (!ST.friend || !friends.some(f => f.uid === ST.friend)) ST.friend = null;
+    const pickers = `<div class="stories">${friends.map(f => {
+        const av = safeImg(window.liveUser(f.uid, f.name, f.avatar).avatar);
+        const first = String(window.liveUser(f.uid, f.name).name || '').trim().split(/\s+/)[0] || '?';
+        return `<button type="button" class="story ${ST.friend === f.uid ? 'is-picked' : ''}" onclick="window.pickAffinityFriend(${jsArg(f.uid)})"><span class="story-ring" style="background:${ST.friend === f.uid ? '#16151A' : '#E4DED4'}"><span>${av ? `<img src="${av}" alt="">` : initial(f.name)}</span></span><span class="story-name">${esc(first)}</span></button>`;
+    }).join('')}</div>`;
+    if (!ST.friend) return `<p class="st-lead">Choisis un ami pour comparer vos bibliothèques :</p>${pickers}`;
+    const name = window.liveUser(ST.friend).name || 'Ton ami';
+    const data = ST.friendItems[ST.friend];
+    if (ST.friendLoading === ST.friend || !data) return pickers + `<div class="text-center py-10 text-gray-500 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Lecture de la bibliothèque de ${esc(name)}…</div>`;
+    if (data.error) return pickers + sEmpty("Sa bibliothèque n'a pas pu être lue. Réessaie dans un instant.");
+    const a = window.computeAffinity(window.myCollection || [], data.items);
+    const pctHtml = a.pct !== null && a.rated.length >= 3
+        ? `<div class="st-aff-pct">${a.pct}<small>%</small></div><div class="st-aff-l">d'affinité avec ${esc(name)}</div><div class="st-aff-s">calculée sur ${a.rated.length} œuvres notées par vous deux</div>`
+        : `<div class="st-aff-pct">–</div><div class="st-aff-l">Pas encore assez d'œuvres notées en commun</div><div class="st-aff-s">Il en faut au moins 3 (${a.rated.length} pour l'instant)</div>`;
+    const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, c.mine.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div><div class="st-duo"><span title="Ma note">${ratingOf(c.mine) !== null ? fr1(ratingOf(c.mine)) : '–'}</span><span title="Sa note" class="is-friend">${ratingOf(c.theirs) !== null ? fr1(ratingOf(c.theirs)) : '–'}</span></div></li>`;
+    const recos = (list, empty) => list.length ? `<div class="st-recos">${list.slice(0, 9).map(i => `<div class="st-reco" onclick="window.openPreviewKey(${jsArg(regItem({ ...i, docId: null, _fromFriend: true }))})">${coverImg(i.img, i.title, 'st-reco-img', 'loading="lazy"')}<span class="feed-rating">${esc(ratingOf(i) !== null ? fr1(ratingOf(i)) : '')}</span><span class="st-reco-t">${esc(i.title)}</span></div>`).join('')}</div>` : sEmpty(empty);
+    const sortedCommon = [...a.common].sort((x, y) => String(window.itemDateKey(y.mine)).localeCompare(String(window.itemDateKey(x.mine))));
+    return pickers + `
+        <div class="st-aff">${pctHtml}</div>
+        ${sCard(`${a.common.length} œuvre${a.common.length > 1 ? 's' : ''} en commun`, a.common.length ? `<div class="st-duo-head"><span>Moi</span><span class="is-friend">${esc(String(name).split(/\s+/)[0])}</span></div><ul class="st-commons">${sortedCommon.slice(0, 30).map(row).join('')}</ul>${a.common.length > 30 ? `<p class="st-note">… et ${a.common.length - 30} autres.</p>` : ''}` : sEmpty('Aucune œuvre terminée en commun pour le moment.'))}
+        ${sCard(`${esc(String(name).split(/\s+/)[0])} te conseille`, recos(a.forMe, "Rien de noté 8 ou plus que tu n'aies pas déjà vu."))}
+        ${sCard(`Tu pourrais lui conseiller`, recos(a.forThem, 'Rien à lui conseiller pour le moment.'))}`;
+};
+
+// ---------- Rendu de la page ----------
+window.renderStatsView = () => {
+    const sc = statsScope();
+    const container = document.getElementById('main-content');
+    // Complétion des anciennes œuvres : lancée à l'ouverture des stats, en arrière-plan
+    if (window.currentView === 'stats' && window.startStatsEnrichment) setTimeout(() => window.startStatsEnrichment(), 0);
+    const E = window._enrich || {};
+    const banner = E.running && E.total
+        ? `<div class="st-banner"><div class="flex items-center justify-between gap-2"><span><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Je complète tes œuvres déjà enregistrées…</span><b>${E.done}/${E.total}</b></div><div class="stat-bar mt-2" style="background:rgba(22,21,26,.12)"><span style="width:${Math.round(E.done / E.total * 100)}%"></span></div></div>`
+        : '';
+    const switcherHtml = ST.tab === 'affinity' ? '' : `
+        <div class="stats-toggle" role="tablist" aria-label="Période">
+            <button role="tab" aria-selected="${sc.isYear}" onclick="window.toggleStatsMode('year')" class="${sc.isYear ? 'active' : ''}">Cette année</button>
+            <button role="tab" aria-selected="${!sc.isYear}" onclick="window.toggleStatsMode('all')" class="${!sc.isYear ? 'active' : ''}">Toujours</button>
+        </div>`;
+    const tabs = `<div class="type-chips st-tabs" role="tablist" aria-label="Rubriques">${STATS_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${ST.tab === k}" class="type-chip ${ST.tab === k ? 'active' : ''}" onclick="window.setStatsTab('${k}')">${l}</button>`).join('')}</div>`;
+    let body = '';
+    try {
+        body = ST.tab === 'screen' ? statsScreen(sc) : ST.tab === 'books' ? statsBooks(sc) : ST.tab === 'music' ? statsMusic(sc)
+            : ST.tab === 'habits' ? statsHabits(sc) : ST.tab === 'affinity' ? statsAffinity() : statsOverview(sc);
+    } catch (e) { console.error('Stats', e); body = sEmpty("Une statistique n'a pas pu être calculée."); }
     container.innerHTML = `
         <div class="pt-16 px-4 pb-32">
             <h1 class="page-title">Statistiques</h1>
-            <p class="text-gray-500 font-semibold text-sm mt-1.5 mb-4">Ta consommation culturelle</p>
-            
+            <p class="text-gray-500 font-semibold text-sm mt-1.5 mb-1">Ta consommation culturelle</p>
+            ${tabs}
+            ${banner}
             ${switcherHtml}
-            
-            <div class="bg-gray-900 text-white p-5 rounded-[30px] mb-3.5 flex items-center gap-4">
-                <div class="flex-1 min-w-0">
-                    <div class="font-extrabold uppercase text-[11px] tracking-widest mb-1.5" style="color:#C9C5D3">Total ${isYear ? curYear : 'global'}</div>
-                    <div class="font-display text-[52px] font-extrabold leading-none">${total}</div>
-                    <div class="text-sm font-semibold mt-1" style="color:#C9C5D3">œuvres terminées</div>
-                </div>
-                <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="Répartition par catégorie" class="shrink-0">
-                    <circle cx="52" cy="52" r="40" fill="none" stroke="#2E2C35" stroke-width="14"/>
-                    ${ringSegs}
-                </svg>
-            </div>
-
-            <div class="stats-grid">
-                ${cardsHtml}
-                <div class="stat-tile" style="background:#fff;border:2px dashed #D9D2C6;justify-content:space-between">
-                    <span class="font-extrabold text-[15px]">Stats détaillées</span>
-                    <span class="text-[12px] font-semibold text-gray-500">Réalisateurs, pays, acteurs, artistes, genres…</span>
-                    <span class="self-start bg-gray-900 text-white rounded-xl px-2.5 py-1 text-[11px] font-extrabold">Bientôt</span>
-                </div>
-            </div>
+            ${ST.tab === 'affinity' ? '<p class="st-note -mt-1 mb-3">Sur tout l\'historique de vos deux bibliothèques.</p>' : ''}
+            ${body}
         </div>
     `;
 };
@@ -3694,12 +4061,176 @@ window.updateGoal = async (key, val) => {
         const ref = doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info');
         await setDoc(ref, { [key]: n }, { merge: true });
         if(window.userProfile) window.userProfile[key] = n;
-        window.renderStatsView(); 
+        window.renderStatsView();
     } catch(e) { console.error("Erreur updateGoal", e); }
 };
 
+        /* --- J.4.a COMPLÉTION DES ŒUVRES DÉJÀ ENREGISTRÉES ---
+           Pour chaque œuvre sans « metaV », on va chercher les infos qui lui manquent (TMDB, Google Livres /
+           Open Library, Deezer) et on les AJOUTE au document. Règles de sécurité :
+             - on n'ajoute que des champs vides : notes, avis, dates, statut, affiche ne sont jamais touchés ;
+             - updateDoc uniquement : une œuvre supprimée entre-temps n'est jamais recréée ;
+             - une erreur réseau ne marque rien (on réessaiera à la prochaine ouverture des stats). */
+const META_V = 1;
+const ENRICH_TYPES = ['Film', 'Série', 'Livre', 'Album'];
+window._enrich = { running: false, done: 0, total: 0 };
+const isEmptyVal = (v) => v === undefined || v === null || v === '' || v === 0 || (Array.isArray(v) && v.length === 0);
+const fill = (patch, item, key, val) => { if (isEmptyVal(item[key]) && !isEmptyVal(val)) patch[key] = val; };
+const titleKey = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim();
+const httpJson = async (url) => {
+    const r = await fetch(url);
+    if (r.status === 404) return null;               // introuvable : on n'insistera pas
+    if (!r.ok) throw new Error('HTTP ' + r.status);    // quota, panne : on réessaiera plus tard
+    return r.json();
+};
+
+const enrichScreen = async (it) => {
+    const ep = it.type === 'Film' ? 'movie' : 'tv';
+    let tid = /^\d+$/.test(String(it.tmdbId || '')) ? String(it.tmdbId) : (/^\d+$/.test(String(it.id || '')) ? String(it.id) : null);
+    const patch = {};
+    if (!tid) {
+        // Œuvre ajoutée à la main ou depuis le fil : on la retrouve par son titre
+        const y = yearOfRelease(it);
+        const s = await httpJson(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${encodeURIComponent(it.title || '')}&language=fr-FR`);
+        const want = titleKey(it.title);
+        const hit = ((s && s.results) || []).find(r => [r.title, r.name, r.original_title, r.original_name].some(t => titleKey(t) === want) && (!y || String(r.release_date || r.first_air_date || '').startsWith(String(y))));
+        if (!hit) return { metaV: META_V, metaMissing: true };
+        tid = String(hit.id);
+        patch.tmdbId = tid;
+    }
+    const d = await httpJson(`https://api.themoviedb.org/3/${ep}/${tid}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`);
+    if (!d) return { ...patch, metaV: META_V, metaMissing: true };
+    const credits = d.credits || {};
+    const castList = (credits.cast || []).slice(0, 8).map(c => c.name).filter(Boolean);
+    fill(patch, it, 'castList', castList);
+    fill(patch, it, 'cast', castList.slice(0, 4).join(', '));
+    if (it.type === 'Film') {
+        const dir = (credits.crew || []).filter(x => x.job === 'Director').map(x => x.name);
+        fill(patch, it, 'author', dir.join(', '));
+        fill(patch, it, 'metricValue', d.runtime || 0);
+        fill(patch, it, 'durationMin', d.runtime || 0);
+    } else {
+        fill(patch, it, 'author', (d.created_by || []).map(c => c.name).join(', '));
+        const seasons = d.number_of_seasons || 0;
+        const runtimes = (d.episode_run_time || []).filter(n => n > 0);
+        const lastEp = d.last_episode_to_air && d.last_episode_to_air.runtime;
+        fill(patch, it, 'episodesPerSeason', seasons ? Math.round((d.number_of_episodes || 0) / seasons) : 0);
+        fill(patch, it, 'episodeRunTime', runtimes.length ? Math.round(runtimes.reduce((a, b) => a + b, 0) / runtimes.length) : (lastEp || 0));
+    }
+    fill(patch, it, 'genres', (d.genres || []).map(g => g.name));
+    fill(patch, it, 'countries', (d.production_countries || []).map(c => c.name));
+    fill(patch, it, 'countryCodes', (d.production_countries || []).map(c => c.iso_3166_1).concat(d.origin_country || []).filter((v, k, a) => v && a.indexOf(v) === k));
+    fill(patch, it, 'originalLanguage', d.original_language || '');
+    fill(patch, it, 'releaseDate', d.release_date || d.first_air_date || '');
+    return { ...patch, metaV: META_V };
+};
+
+const enrichBook = async (it) => {
+    const patch = {};
+    let genres = [], pages = 0, date = '', author = '';
+    const id = String(it.id || '');
+    if (it.olKey) {
+        const d = await httpJson(`https://openlibrary.org${String(it.olKey).replace(/[^A-Za-z0-9/]/g, '')}.json`);
+        if (d && Array.isArray(d.subjects)) genres = d.subjects.slice(0, 12);
+    } else if (id && !/^manual_|_public$|^OL/.test(id) && /^[A-Za-z0-9_-]{6,20}$/.test(id)) {
+        const d = await httpJson(`https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}`);
+        const v = d && d.volumeInfo;
+        if (v) { genres = v.categories || []; pages = v.pageCount || 0; date = v.publishedDate || ''; author = (v.authors || []).join(', '); }
+    }
+    if (!genres.length) {
+        // Dernier recours : recherche par titre (+ auteur), avec les deux sources de livres
+        const found = await window.searchBooks(`${it.title || ''} ${it.author || ''}`.trim());
+        const want = titleKey(it.title);
+        const hit = (found || []).find(b => titleKey(b.title) === want);
+        if (hit) { genres = hit.genres || []; pages = pages || hit.metricValue || 0; date = date || hit.releaseDate || ''; author = author || hit.author || ''; }
+        if (!hit && !pages) return { metaV: META_V, metaMissing: true };
+    }
+    fill(patch, it, 'genres', (genres || []).filter(g => typeof g === 'string').slice(0, 12));
+    fill(patch, it, 'metricValue', pages);
+    fill(patch, it, 'releaseDate', date);
+    fill(patch, it, 'author', author);
+    return { ...patch, metaV: META_V };
+};
+
+const enrichAlbum = async (it) => {
+    const patch = {};
+    let d = null;
+    if (/^\d+$/.test(String(it.id || ''))) d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(it.id)}?`);
+    if (!d || d.error) {
+        const s = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(`${it.title || ''} ${it.author || ''}`.trim())}&limit=5`);
+        const want = titleKey(it.title);
+        const hit = ((s && s.data) || []).find(a => titleKey(a.title) === want);
+        if (!hit) return { metaV: META_V, metaMissing: true };
+        d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(hit.id)}?`);
+        if (!d || d.error) return { metaV: META_V, metaMissing: true };
+    }
+    fill(patch, it, 'genres', ((d.genres && d.genres.data) || []).map(g => g.name));
+    fill(patch, it, 'releaseDate', d.release_date || '');
+    fill(patch, it, 'durationMin', d.duration ? Math.round(d.duration / 60) : 0);
+    fill(patch, it, 'author', d.artist && d.artist.name);
+    fill(patch, it, 'metricValue', d.nb_tracks || 0);
+    return { ...patch, metaV: META_V };
+};
+
+window.startStatsEnrichment = async () => {
+    const E = window._enrich;
+    if (E.running || !window.currentUser) return;
+    const uid = window.currentUser.uid;
+    const todo = (window.myCollection || []).filter(i => i.docId && ENRICH_TYPES.includes(i.type) && !i.metaV && !(E.skip && E.skip.has(i.docId)));
+    if (!todo.length) return;
+    E.skip = E.skip || new Set();
+    Object.assign(E, { running: true, done: 0, total: todo.length });
+    const queue = [...todo];
+    let pending = [];
+    let lastRender = 0;
+    const repaint = (force) => {
+        if (window.currentView !== 'stats') return;
+        const a = document.activeElement;
+        if (!force && a && a.tagName === 'INPUT' && document.getElementById('main-content').contains(a)) return; // ne pas gêner la saisie d'un objectif
+        if (!force && Date.now() - lastRender < 1200) return;
+        lastRender = Date.now();
+        window.renderStatsView();
+    };
+    const flush = async () => {
+        if (!pending.length || !window.currentUser || window.currentUser.uid !== uid) { pending = []; return; }
+        const chunk = pending; pending = [];
+        const ref = (id) => doc(db, 'artifacts', appId, 'users', uid, 'items', id);
+        try {
+            const batch = writeBatch(db);
+            chunk.forEach(([id, p]) => batch.update(ref(id), p));
+            await batch.commit();
+        } catch (e) {
+            // Une œuvre supprimée entre-temps fait échouer le lot : on repasse une par une
+            for (const [id, p] of chunk) { try { await updateDoc(ref(id), p); } catch (err) { /* œuvre supprimée : on l'ignore */ } }
+        }
+    };
+    const worker = async () => {
+        while (queue.length && window.currentUser && window.currentUser.uid === uid) {
+            const it = queue.shift();
+            try {
+                const job = it.type === 'Livre' ? enrichBook(it) : it.type === 'Album' ? enrichAlbum(it) : enrichScreen(it);
+                // 20 s maximum par œuvre : un service qui ne répond pas ne bloque jamais la complétion
+                const patch = await Promise.race([job, new Promise((_, rej) => setTimeout(() => rej(new Error('délai dépassé')), 20000))]);
+                if (patch) { pending.push([it.docId, patch]); Object.assign(it, patch); }
+            } catch (e) {
+                E.skip.add(it.docId); // panne réseau ou quota : on réessaiera à la prochaine ouverture de l'app
+            }
+            E.done++;
+            if (pending.length >= 20) await flush();
+            repaint(false);
+        }
+    };
+    try {
+        await Promise.all([worker(), worker(), worker()]);
+        await flush();
+    } finally {
+        E.running = false;
+        repaint(true);
+    }
+};
+
         /* --- J.5 INITIALISATION FINALE --- */
-        console.log("MaBiblio v4.2 (nouvelle DA)");
+        console.log("MaBiblio v4.3 (nouvelle DA + statistiques détaillées)");
         if(window.currentUser) {
             window.renderPills();
             window.renderList();
