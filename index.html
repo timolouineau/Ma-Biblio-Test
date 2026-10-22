@@ -269,6 +269,8 @@
         .stat-bar > span { display: block; height: 100%; background: var(--ink); border-radius: 4px; transition: width 1s ease-out; }
         .goal-input { width: 44px; flex-shrink: 0; height: 30px; border-radius: 15px; border: none; background: rgba(255,255,255,.7); text-align: center; font-family: inherit; font-weight: 800; font-size: 12px; color: var(--ink); outline: none; }
         .goal-input:focus { background: #fff; }
+        .goal-input { padding: 0; -moz-appearance: textfield; appearance: textfield; }
+        .goal-input::-webkit-inner-spin-button, .goal-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         /* Petits écrans (iPhone SE, anciens Android) : cartes de stats un peu plus serrées */
         @media (max-width: 370px) {
             .stats-grid { gap: 8px; }
@@ -330,6 +332,8 @@
         .st-aff-pct small { font-size: 30px; }
         .st-aff-l { font-size: 15px; font-weight: 700; margin-top: 6px; }
         .st-aff-s { font-size: 12px; font-weight: 600; color: #C9C5D3; margin-top: 4px; }
+        .st-duo-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: flex-end; font-size: 12px; font-weight: 700; color: var(--muted); margin: -4px 0 10px; }
+        .st-duo-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
         .st-duo-head { display: flex; justify-content: flex-end; gap: 6px; font-size: 11px; font-weight: 800; color: var(--muted); margin: -4px 0 6px; }
         .st-duo-head span, .st-duo span { width: 40px; text-align: center; }
         .st-commons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -344,7 +348,6 @@
         .st-reco-img { width: 100%; aspect-ratio: 2/3; border-radius: 14px; object-fit: cover; background: #E9E3DA; display: block; }
         .st-reco-t { display: block; font-size: 12px; font-weight: 700; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .stats-grid > .stat-tile:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
         .st-lead-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
         .st-lead-row { display: flex; gap: 12px; align-items: flex-start; }
         .st-lead-av { width: 44px; height: 44px; border-radius: 50%; padding: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: var(--font-display); font-weight: 800; }
@@ -4199,7 +4202,7 @@ const statsFriendDetail = (friends) => {
         : `<div class="st-aff-pct">–</div><div class="st-aff-l">Pas encore assez d'œuvres notées en commun</div><div class="st-aff-s">Il en faut au moins 3 (${a.rated.length} pour l'instant)</div>`;
     const duo = (c) => `<div class="st-duo"><span title="Ma note">${ratingOf(c.mine) !== null ? fr1(ratingOf(c.mine)) : '–'}</span><span title="Sa note" class="is-friend">${ratingOf(c.theirs) !== null ? fr1(ratingOf(c.theirs)) : '–'}</span></div>`;
     const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, c.mine.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div>${duo(c)}</li>`;
-    const head = `<div class="st-duo-head"><span>Moi</span><span class="is-friend">${first}</span></div>`;
+    const head = `<div class="st-duo-legend"><span><i style="background:var(--miel)"></i>Ma note</span><span><i style="background:var(--lav)"></i>Note de ${first}</span></div>`;
     // Les œuvres que vous avez le plus aimées tous les deux d'abord (500 œuvres en commun ne s'affichent pas d'un coup)
     const both = (c) => Math.min(ratingOf(c.mine) ?? 0, ratingOf(c.theirs) ?? 0) * 100 + (ratingOf(c.mine) ?? 0) + (ratingOf(c.theirs) ?? 0);
     const sortedCommon = [...a.common].sort((x, y) => both(y) - both(x));
