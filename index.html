@@ -310,6 +310,55 @@
         .st-rank li.is-tap, .st-sentences li.is-tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .st-rank li.is-tap:active, .st-sentences li.is-tap:active { opacity: .6; }
         .st-rank-go { color: #B9B3BF; font-size: 11px; flex-shrink: 0; }
+        /* Page Recommandations */
+        .rc-chips { margin-top: 14px; }
+        .rc-row { margin-top: 22px; }
+        .rc-h { padding: 0 16px; margin-bottom: 10px; }
+        .rc-h h3 { font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.15; }
+        .rc-h p { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+        .rc-seed { font-style: italic; }
+        .rc-strip { display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; padding: 2px 16px 8px; scroll-snap-type: x proximity; scroll-padding: 0 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .rc-strip::-webkit-scrollbar { display: none; }
+        .rc-tile { width: 112px; flex-shrink: 0; text-align: left; background: none; border: none; padding: 0; font-family: inherit; color: var(--ink); cursor: pointer; scroll-snap-align: start; }
+        .rc-tile.is-big { width: 148px; }
+        .rc-tile.is-square { width: 128px; }
+        .rc-tile.is-square.is-big { width: 156px; }
+        .rc-tile.is-wide { width: 208px; }
+        .rc-tile:active { transform: scale(.97); }
+        .rc-img { position: relative; display: block; width: 100%; aspect-ratio: 2 / 3; border-radius: 16px; overflow: hidden; background: #E9E3DA; box-shadow: 0 5px 14px rgba(22,21,26,.12); }
+        .rc-tile.is-square .rc-img { aspect-ratio: 1 / 1; }
+        .rc-tile.is-wide .rc-img { aspect-ratio: 16 / 9; }
+        .rc-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .rc-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; font-weight: 800; line-height: 1.25; margin-top: 7px; }
+        .rc-m { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rc-by { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); }
+        .rc-av { width: 16px; height: 16px; border-radius: 50%; background: var(--lav); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; overflow: hidden; }
+        .rc-av img { width: 100%; height: 100%; object-fit: cover; }
+        /* Fiche : amis qui l'ont vu + conseiller */
+        .pv-fr { background: var(--ground); border-radius: 22px; padding: 10px 10px 10px 12px; margin: -6px 0 18px; }
+        .pv-fr-top { display: flex; align-items: center; gap: 8px; }
+        .pv-fr-who { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; background: none; border: none; padding: 0; font-family: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+        .pv-fr-who:disabled { cursor: default; color: var(--muted); }
+        .pv-fr-stack { display: flex; flex-shrink: 0; }
+        .pv-fr-stack .pv-fr-av + .pv-fr-av { margin-left: -9px; }
+        .pv-fr-av { width: 30px; height: 30px; border-radius: 50%; background: var(--lav); box-shadow: 0 0 0 2.5px var(--ground); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; overflow: hidden; flex-shrink: 0; color: var(--ink); }
+        .pv-fr-av img { width: 100%; height: 100%; object-fit: cover; }
+        .pv-fr-av.is-empty { background: #fff; color: var(--muted); font-size: 11px; }
+        .pv-fr-chev { font-size: 10px; color: var(--muted); transition: transform .2s; }
+        .pv-fr-who.open .pv-fr-chev { transform: rotate(180deg); }
+        .pv-fr-reco { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 13px; border-radius: 18px; background: var(--ink); color: #fff; font-weight: 800; font-size: 12.5px; border: none; font-family: inherit; cursor: pointer; }
+        .pv-fr-reco:active { transform: scale(.96); }
+        .pv-fr-list { list-style: none; margin: 10px 0 2px; padding: 0; display: none; flex-direction: column; gap: 8px; }
+        .pv-fr-list.open { display: flex; }
+        .pv-fr-list li { display: flex; align-items: center; gap: 10px; cursor: pointer; padding-right: 4px; }
+        /* Choix des amis à qui conseiller */
+        .rp-list { list-style: none; margin: 0; padding: 0 16px; overflow-y: auto; flex: 1; min-height: 0; }
+        .rp-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; cursor: pointer; }
+        .rp-row input { position: absolute; opacity: 0; pointer-events: none; }
+        .rp-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #D8D2C8; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 12px; flex-shrink: 0; transition: .15s; }
+        .rp-row input:checked ~ .rp-check { background: var(--ink); border-color: var(--ink); color: #fff; }
+        .rp-tag { display: inline-block; margin-top: 2px; font-size: 11px; font-weight: 800; background: var(--mint-tint); padding: 2px 8px; border-radius: 9px; }
+        .rp-note { width: 100%; height: 48px; border-radius: 24px; border: none; background: #fff; padding: 0 18px; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); outline: none; }
         /* Liste d'une personne / d'un genre */
         #works-modal { background: var(--ground); z-index: 21000; }
         #works-modal.is-under { z-index: 19000; }
@@ -627,7 +676,7 @@
             <div class="home-top">
                 <button type="button" class="home-hello" onclick="window.switchView('profile')" aria-label="Mon profil">
                     <span class="home-avatar" id="home-avatar"></span>
-                    <span class="home-hello-text"><span class="home-hello-small">Salut,</span><span class="home-hello-name" id="home-name"></span></span>
+                    <span class="home-hello-text"><span class="home-hello-name" id="home-name"></span><span class="home-hello-small">Mon profil <i class="fa-solid fa-chevron-right" style="font-size:9px"></i></span></span>
                 </button>
                 <div class="round-btn notif-btn" role="button" aria-label="Notifications" onclick="window.openNotifications()"><i class="fa-regular fa-bell"></i><div class="notif-badge" id="notif-badge">0</div></div>
             </div>
@@ -685,8 +734,8 @@
             <div id="nav-home" class="nav-btn active" role="button" aria-label="Accueil" onclick="window.switchView('home')"><i class="fa-solid fa-house"></i><span>Accueil</span></div>
             <div id="nav-friends" class="nav-btn" role="button" aria-label="Amis" onclick="window.switchView('friends')"><i class="fa-solid fa-user-group"></i><span>Amis</span></div>
             <div class="nav-plus" role="button" aria-label="Ajouter une œuvre" onclick="window.openSearchModal()"><i class="fa-solid fa-plus"></i></div>
+            <div id="nav-reco" class="nav-btn" role="button" aria-label="Recommandations" onclick="window.switchView('reco')"><i class="fa-regular fa-compass"></i><span>Recommandations</span></div>
             <div id="nav-stats" class="nav-btn" role="button" aria-label="Statistiques" onclick="window.switchView('stats')"><i class="fa-solid fa-chart-simple"></i><span>Stats</span></div>
-            <div id="nav-profile" class="nav-btn" role="button" aria-label="Moi" onclick="window.switchView('profile')"><i class="fa-solid fa-circle-user"></i><span>Moi</span></div>
         </nav>
     </div>
 
@@ -1276,6 +1325,7 @@
                 })).filter(i => !HIDDEN_TYPES.includes(i.type));
                 window.refreshCurrentView();
                 if (window.scheduleStatsSummary) window.scheduleStatsSummary(); // résumé pour les classements entre amis
+                if (window.scheduleRecoShowcase) window.scheduleRecoShowcase(); // vitrine (œuvres notées 8+) pour les recommandations des amis
             }, (err) => console.error('Écoute bibliothèque', err));
         };
 
@@ -1435,6 +1485,7 @@
                         userName: window.userProfile.name,
                         userAvatar: '', // la photo actuelle est lue dans le profil à l'affichage
                         itemTitle: itemToSave.title,
+                        itemId: String(itemToSave.id || '').slice(0, 80), // pour retrouver la fiche depuis « Le top MaBiblio »
                         itemImg: itemToSave.img || '',
                         itemDesc: itemToSave.desc || '', // Important pour le feed
                         type: itemToSave.type,
@@ -1550,6 +1601,7 @@
             if (window.currentView === 'profile') window.renderProfile();
             if (window.currentView === 'friends') window.renderSocialFeed();
             if (window.currentView === 'stats') window.renderStatsView();
+            if (window.currentView === 'reco' && window.renderRecoView) window.renderRecoView();
         };
 
         const TMDB_KEY = "fa1123067cae30eea6420cfaef569bc2";
@@ -2136,6 +2188,7 @@
                     </div>
                     ${chips.length ? `<div class="flex flex-wrap gap-1.5 mb-4">${chips.join('')}</div>` : ''}
                     ${metaInfos}
+                    ${window.previewFriendsHtml ? window.previewFriendsHtml(item) : ''}
                     ${item.needsDetails && !item.detailsLoaded && !item.docId ? `<div class="text-gray-500 text-xs mb-4 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Chargement des détails…</div>` : ''}
                     ${actionButtonsHtml}
                     ${commentHtml}
@@ -3673,7 +3726,7 @@
 
             container.innerHTML = `
                 <div class="pt-16 px-4 pb-32">
-                    <h1 class="page-title" style="margin-bottom:16px">Profil</h1>
+                    <div class="flex items-center gap-3" style="margin-bottom:16px"><button type="button" class="round-btn shrink-0" onclick="window.switchView('home')" aria-label="Retour à l'accueil"><i class="fa-solid fa-arrow-left"></i></button><h1 class="page-title">Profil</h1></div>
 
                     <section class="pf-hero">
                         <div class="flex items-center gap-4">
@@ -4510,27 +4563,35 @@ window.computeAffinity = (mine, theirs) => {
 
 // Conseiller une œuvre à un ami : elle arrive dans ses notifications (cloche)
 const recoSentKey = (uid, it) => `${uid}|${workKeys(it)[0] || ''}`;
-window.recommendTo = async (friendUid, key) => {
-    const it = itemRegistry.get(key);
-    if (!it || !friendUid || !window.currentUser || window.isHiddenUser(friendUid)) return;
-    const name = FIRST(window.liveUser(friendUid).name);
-    const note = await window.ui.prompt(`Conseiller « ${it.title} » à ${name}.\nUn petit mot ? (facultatif)`, '', { maxLength: 200, okLabel: 'Envoyer' });
-    if (note === null) return;
+// Envoi d'un conseil (depuis l'onglet Amis ou depuis n'importe quelle fiche) : vrai si c'est parti
+const sendRecoNotif = async (friendUid, it, note) => {
+    if (!it || !friendUid || !window.currentUser || window.isHiddenUser(friendUid)) return false;
     const clean = (v, n) => String(v || '').slice(0, n);
+    // Ma note seulement si l'œuvre est dans MA bibliothèque (jamais celle d'un ami)
+    const mine = it.docId && !it._fromFriend ? it : (window.ownedItemFor ? window.ownedItemFor(it) : null);
     try {
         await addDoc(collection(db, 'artifacts', appId, 'users', friendUid, 'notifications'), {
             type: 'reco', title: 'Conseil', fromUid: window.currentUser.uid, user: window.userProfile.name || '',
             message: `te conseille « ${clean(it.title, 120)} »`, text: `te conseille « ${clean(it.title, 120)} »`,
-            itemTitle: clean(it.title, 200), actId: null, note: clean(note.trim(), 200), rating: ratingOf(it),
+            itemTitle: clean(it.title, 200), actId: null, note: clean(String(note || '').trim(), 200), rating: mine ? ratingOf(mine) : null,
             item: { id: clean(it.id, 80), type: it.type, title: clean(it.title, 200), img: clean(it.img, 1000), author: clean(it.author, 200), releaseDate: clean(it.releaseDate, 30), desc: clean(it.desc, 600), genres: (Array.isArray(it.genres) ? it.genres : []).slice(0, 5).map(g => clean(g, 40)), metricValue: num(it.metricValue) },
             timestamp: Date.now(), read: false
         });
         const k = recoSentKey(friendUid, it);
         try { await updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'info'), { recosSent: arrayUnion(k) }); } catch (e) { /* simple mémo */ }
         window.userProfile.recosSent = [...new Set([...(window.userProfile.recosSent || []), k])];
-        window.ui.toast(`Conseil envoyé à ${name} ✓`);
         if (window.currentView === 'stats') window.renderStatsView();
-    } catch (e) { console.error(e); window.ui.alert("Le conseil n'a pas pu être envoyé. Réessaie."); }
+        return true;
+    } catch (e) { console.error(e); return false; }
+};
+window.recommendTo = async (friendUid, key) => {
+    const it = itemRegistry.get(key);
+    if (!it || !friendUid || !window.currentUser || window.isHiddenUser(friendUid)) return;
+    const name = FIRST(window.liveUser(friendUid).name);
+    const note = await window.ui.prompt(`Conseiller « ${it.title} » à ${name}.\nUn petit mot ? (facultatif)`, '', { maxLength: 200, okLabel: 'Envoyer' });
+    if (note === null) return;
+    if (await sendRecoNotif(friendUid, it, note)) window.ui.toast(`Conseil envoyé à ${name} ✓`);
+    else window.ui.alert("Le conseil n'a pas pu être envoyé. Réessaie.");
 };
 window.setRecoQuery = (v) => {
     ST.recoQuery = String(v || '');
@@ -5285,6 +5346,7 @@ window.startStatsEnrichment = async () => {
                 (r.type === 'Livre' && bookKey(i.title, i.author) === bookKey(r.title, r.author))));
         };
 
+        window.ownedItemFor = (it) => ownedMatch(it) || null;
         // ---- Recherches (une fois par personne, gardées en mémoire) ----
         const personCache = new Map();
         const NO_SELF = /\b(self|himself|herself|themselves|lui-même|elle-même|narrat)/i;
@@ -5494,22 +5556,671 @@ window.startStatsEnrichment = async () => {
         // Noms cliquables sur une fiche
         window.personLinks = (names, role) => names.map(n => `<button type="button" class="pv-person" onclick="event.stopPropagation(); ${window.worksTap({ role, name: n })}">${esc(n)}</button>`).join('<span class="pv-person-sep">, </span>');
 
+        /* --- J.11 PAGE « RECOMMANDATIONS » (rangées à faire défiler, comme Netflix) ---
+           Une catégorie à la fois (Films, Séries, Livres, Albums, YouTube). Rangées :
+             • Pour toi : d'après mes genres, pays, réalisateurs / auteurs / artistes les mieux notés ;
+             • Parce que tu as aimé… : une rangée par œuvre notée 9 ou 10 (les plus récentes) ;
+             • Tes amis ont adoré : noté 8+ par mes amis, ceux qui me ressemblent le plus d'abord ;
+             • Les classiques qui te manquent ; • Courts et efficaces ; • Le top MaBiblio (toute la communauté).
+           Tout ce qui est déjà dans ma bibliothèque (vu, en cours, wishlist) est retiré.
+           Économe : chaque rangée est calculée une fois puis gardée 12 h sur le téléphone ; YouTube ne
+           consomme que des requêtes « bon marché » ; une seule lecture par ami (sa vitrine « profile/reco »). */
+        const RC = window._reco = window._reco || { type: 'Film', mem: null, pending: new Map(), scroll: {}, loaded: false };
+        const RC_TTL = 12 * 3600 * 1000;
+        const RC_TYPES = ['Film', 'Série', 'Livre', 'Album', 'YouTube'];
+        const YT_KEY = 'AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco';
+        const recoLsKey = () => `mabiblio_reco_${window.currentUser ? window.currentUser.uid : ''}`;
+        const recoMem = () => {
+            if (!RC.mem || RC.memUid !== (window.currentUser && window.currentUser.uid)) {
+                RC.mem = new Map(); RC.memUid = window.currentUser && window.currentUser.uid;
+                try { const o = JSON.parse(localStorage.getItem(recoLsKey()) || '{}'); Object.entries(o || {}).forEach(([k, v]) => { if (v && Array.isArray(v.items) && Date.now() - num(v.at) < RC_TTL) RC.mem.set(k, v); }); } catch (e) { /* cache illisible */ }
+            }
+            return RC.mem;
+        };
+        let recoSaveTimer = null;
+        const saveRecoCache = () => {
+            clearTimeout(recoSaveTimer);
+            recoSaveTimer = setTimeout(() => {
+                const o = {};
+                [...recoMem().entries()].filter(([, v]) => !v.error).sort((a, b) => num(b[1].at) - num(a[1].at)).slice(0, 60).forEach(([k, v]) => { o[k] = v; });
+                try { localStorage.setItem(recoLsKey(), JSON.stringify(o)); } catch (e) { try { localStorage.removeItem(recoLsKey()); } catch (e2) {} }
+            }, 800);
+        };
+        // Œuvre « allégée » (ce qui sert à l'affichage et à l'ajout) + infos d'affichage à part (jamais enregistrées)
+        const RC_FIELDS = ['id', 'type', 'title', 'img', 'author', 'releaseDate', 'desc', 'genres', 'metricValue', 'olKey', 'source', 'platform', 'needsDetails', 'durationMin'];
+        const slim = (it) => { const o = {}; RC_FIELDS.forEach(k => { if (it[k] !== undefined && it[k] !== null && it[k] !== '') o[k] = k === 'desc' ? String(it[k]).slice(0, 500) : k === 'genres' ? (Array.isArray(it[k]) ? it[k].slice(0, 5) : []) : it[k]; }); return o; };
+        const wrap = (it, x) => ({ w: slim(it), x: x || null });
+
+        // ---- Ce que j'ai déjà (index reconstruit seulement quand ma bibliothèque change) ----
+        let ownedIdx = null, ownedFor = null;
+        const ownedIndex = () => {
+            if (ownedFor === window.myCollection && ownedIdx) return ownedIdx;
+            const ids = new Set(), titles = new Map(), books = new Set();
+            (window.myCollection || []).forEach(i => {
+                if (i.id) ids.add(`${i.type}|${i.id}`);
+                if (i.tmdbId) ids.add(`${i.type}|${i.tmdbId}`);
+                const t = titleKey(i.title);
+                if (t) { const k = `${i.type}|${t}`; if (!titles.has(k)) titles.set(k, new Set()); titles.get(k).add(yearOfRelease(i) || 0); }
+                if (i.type === 'Livre') books.add(bookKey(i.title, i.author));
+            });
+            ownedFor = window.myCollection; ownedIdx = { ids, titles, books };
+            return ownedIdx;
+        };
+        const isOwned = (it) => {
+            const o = ownedIndex();
+            if (it.id && o.ids.has(`${it.type}|${it.id}`)) return true;
+            const ys = o.titles.get(`${it.type}|${titleKey(it.title)}`);
+            if (ys) { const y = yearOfRelease(it); if (!y || ys.has(0) || [...ys].some(v => Math.abs(v - y) <= 1)) return true; }
+            return it.type === 'Livre' && o.books.has(bookKey(it.title, it.author));
+        };
+
+        // ---- Mes goûts pour une catégorie ----
+        const recoTaste = (type) => {
+            const rated = (window.myCollection || []).filter(i => i.type === type && isDone(i) && ratingOf(i) !== null);
+            const avg = avgRating(rated) ?? 7;
+            const lift = new Map();
+            tally(rated, i => type === 'Livre' ? rawBookSubjects(i) : i.genres).forEach(g => lift.set(g.name, { n: g.n, avg: g.avg, score: g.n * 0.5 + ((g.avg ?? avg) - avg) * 1.5 }));
+            const topGenres = [...lift.entries()].filter(([, g]) => (g.avg ?? 0) >= avg - 0.5).sort((a, b) => b[1].score - a[1].score).map(([name]) => name);
+            const byDate = (a, b) => String(window.itemDateKey(b) || '').localeCompare(String(window.itemDateKey(a) || ''));
+            const seeds = rated.filter(i => ratingOf(i) >= 8).sort((a, b) => ratingOf(b) - ratingOf(a) || byDate(a, b));
+            const loved = rated.filter(i => ratingOf(i) >= 9).sort(byDate);
+            const people = tally(rated, i => type === 'Album' ? [String(i.author || '').trim()] : directorsOf(i)).filter(p => p.name && (p.avg ?? 0) >= 8).sort((a, b) => (b.n * 2 + b.avg) - (a.n * 2 + a.avg));
+            const countries = tally(rated, i => Array.isArray(i.countryCodes) ? i.countryCodes : []).filter(c => (c.avg ?? 0) >= avg).map(c => c.name);
+            return { rated, avg, lift, topGenres, seeds, loved, people, countries };
+        };
+        // Sujets « bruts » d'un livre (anglais, comme les attendent Google Livres et Open Library)
+        const rawBookSubjects = (i) => {
+            const out = [];
+            (Array.isArray(i.genres) ? i.genres : []).forEach(g => {
+                const parts = String(g || '').split('/').map(p => p.trim()).filter(p => p && p.length < 32 && !p.includes(':') && !SKIP_GENRE.has(p.toLowerCase()));
+                const best = parts[parts.length - 1];
+                if (best && !out.includes(best)) out.push(best);
+            });
+            return out.slice(0, 3);
+        };
+
+        // ---- Sources ----
+        const tmdb = (path, params = '') => httpJson(`https://api.themoviedb.org/3/${path}?api_key=${TMDB_KEY}&language=fr-FR${params}`);
+        const tmdbGenreCache = {};
+        const tmdbGenres = (ep) => tmdbGenreCache[ep] || (tmdbGenreCache[ep] = tmdb(`genre/${ep}/list`).then(d => new Map(((d && d.genres) || []).map(g => [g.name, g.id]))).catch(() => { delete tmdbGenreCache[ep]; return new Map(); }));
+        const tmdbHit = (m, type) => ({ id: String(m.id), title: m.title || m.name || '', img: m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '', desc: String(m.overview || '').replace(/[\n\r]/g, ' '), type, releaseDate: m.release_date || m.first_air_date || '', metricValue: 0, author: '', needsDetails: true, _va: num(m.vote_average), _g: m.genre_ids || [], _oc: m.origin_country || [] });
+        const tmdbList = async (path, params, type) => { const d = await tmdb(path, params); return ((d && d.results) || []).filter(m => m && m.id && m.poster_path).map(m => tmdbHit(m, type)); };
+        const seedTmdbId = async (i) => /^\d+$/.test(String(i.tmdbId || '')) ? String(i.tmdbId) : tmdbIdFor(i);
+        const epOf = (type) => type === 'Film' ? 'movie' : 'tv';
+        const genreIds = async (type, names, max) => { const m = await tmdbGenres(epOf(type)); return names.map(n => m.get(n)).filter(Boolean).slice(0, max); };
+
+        const olBook = (d) => ({ id: 'ol_' + String(d.key || '').replace('/works/', ''), olKey: d.key || '', title: d.title, img: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : '', desc: '', type: 'Livre', releaseDate: d.first_publish_year ? String(d.first_publish_year) : '', metricValue: d.number_of_pages_median || 0, author: (d.author_name || []).slice(0, 3).join(', '), genres: (d.subject || []).slice(0, 5), source: 'openlibrary', needsDetails: !!d.key });
+        const olSearch = async (params) => {
+            const fields = 'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,subject,edition_count';
+            const d = await httpJson(`https://openlibrary.org/search.json?${params}&limit=40&fields=${fields}`);
+            return ((d && d.docs) || []).filter(x => x.title && x.cover_i).map(olBook);
+        };
+        const gbSubject = (s) => searchGoogleBooks(`subject:"${s}"`).catch(() => []);
+
+        const dzArtistId = async (name) => {
+            const s = await window.deezerJSONP(`https://api.deezer.com/search/artist?q=${encodeURIComponent(name)}&limit=5`);
+            const want = personKey(name); const list = (s && s.data) || [];
+            const a = list.find(x => personKey(x.name) === want) || list[0];
+            return a ? String(a.id) : null;
+        };
+        const dzBestAlbum = async (artistId, artistName) => {
+            const al = await window.deezerJSONP(`https://api.deezer.com/artist/${encodeURIComponent(artistId)}/albums?limit=50`);
+            const list = ((al && al.data) || []).filter(x => x && x.id && x.record_type === 'album').sort((a, b) => num(b.fans) - num(a.fans));
+            const x = list[0];
+            return x ? { id: String(x.id), title: x.title, img: x.cover_xl || x.cover_big || x.cover_medium || '', desc: '', type: 'Album', releaseDate: x.release_date || '', metricValue: 0, author: artistName || '', platform: 'Deezer', needsDetails: true } : null;
+        };
+
+        const ytFetch = async (path) => { const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}&key=${YT_KEY}`); if (!r.ok) throw new Error('YouTube ' + r.status); return r.json(); };
+        const ytMinutes = (iso) => { const m = String(iso || '').match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/); return m ? num(m[1]) * 60 + num(m[2]) + (num(m[3]) > 30 ? 1 : 0) : 0; };
+        // Chaînes de mes vidéos (1 requête pour 50 vidéos)
+        const ytChannels = async () => {
+            const vids = (window.myCollection || []).filter(i => i.type === 'YouTube' && /^[A-Za-z0-9_-]{6,20}$/.test(String(i.id || ''))).sort((a, b) => (ratingOf(b) || 0) - (ratingOf(a) || 0)).slice(0, 50);
+            if (!vids.length) return new Map();
+            const d = await ytFetch(`videos?part=snippet&id=${vids.map(v => v.id).join(',')}`);
+            const map = new Map();
+            ((d && d.items) || []).forEach(v => map.set(v.id, { ch: v.snippet && v.snippet.channelId, name: v.snippet && v.snippet.channelTitle }));
+            return map;
+        };
+        const ytUploads = async (channelId) => {
+            if (!/^UC[A-Za-z0-9_-]{10,40}$/.test(String(channelId || ''))) return [];
+            const d = await ytFetch(`playlistItems?part=snippet&maxResults=20&playlistId=UU${channelId.slice(2)}`);
+            return ((d && d.items) || []).map(p => p.snippet).filter(s => s && s.resourceId && s.resourceId.videoId && s.title !== 'Private video' && s.title !== 'Deleted video').map(s => ({
+                id: s.resourceId.videoId, title: s.title, img: (s.thumbnails && (s.thumbnails.high || s.thumbnails.medium || s.thumbnails.default) || {}).url || '', desc: String(s.description || '').slice(0, 400),
+                type: 'YouTube', releaseDate: s.publishedAt || '', metricValue: 0, author: s.videoOwnerChannelTitle || s.channelTitle || '', platform: 'YouTube'
+            }));
+        };
+        const ytDurations = async (list) => {
+            const ids = list.map(v => v.id).slice(0, 50);
+            if (!ids.length) return list;
+            const d = await ytFetch(`videos?part=contentDetails&id=${ids.join(',')}`);
+            const m = new Map(((d && d.items) || []).map(v => [v.id, ytMinutes(v.contentDetails && v.contentDetails.duration)]));
+            list.forEach(v => { if (m.has(v.id)) v.metricValue = m.get(v.id); });
+            return list;
+        };
+
+        // ---- Fusion + classement ----
+        const merge = (lists, keyOf = (i) => `${i.type}|${i.id || titleKey(i.title)}`) => {
+            const m = new Map();
+            lists.forEach(({ items, weight = 1 }) => (items || []).forEach((it, k) => {
+                if (!it || !it.title) return;
+                const key = keyOf(it);
+                const cur = m.get(key) || { it, hits: 0, rank: 0 };
+                cur.hits += weight; cur.rank += Math.max(0, 1 - k / 25) * weight;
+                if (!cur.it.img && it.img) cur.it.img = it.img;
+                m.set(key, cur);
+            }));
+            return [...m.values()];
+        };
+        const fresh = (list, max = 24) => list.filter(e => (e.it || e).img && !isOwned(e.it || e)).slice(0, max);
+
+        // Pour toi
+        const buildForYou = async (type) => {
+            const T = recoTaste(type);
+            if (type === 'Film' || type === 'Série') {
+                const ep = epOf(type);
+                const seeds = T.seeds.slice(0, 6);
+                const ids = (await Promise.all(seeds.map(s => seedTmdbId(s).catch(() => null)))).filter(Boolean);
+                const gids = await genreIds(type, T.topGenres, 2);
+                const jobs = [
+                    ...ids.map(id => tmdbList(`${ep}/${id}/recommendations`, '', type).then(items => ({ items, weight: 1.2 }))),
+                    ...gids.map(g => tmdbList(`discover/${ep}`, `&with_genres=${g}&sort_by=popularity.desc&vote_count.gte=${ep === 'movie' ? 300 : 100}&vote_average.gte=6.8`, type).then(items => ({ items, weight: 0.8 }))),
+                    ...T.people.slice(0, 2).map(p => loadPerson(type === 'Film' ? 'director' : 'creator', p.name).then(d => ({ items: (d.works || []).filter(w => w.type === type), weight: 1.5 })))
+                ];
+                if (!jobs.length) jobs.push(tmdbList(`trending/${ep}/week`, '', type).then(items => ({ items })));
+                const lists = (await Promise.allSettled(jobs)).filter(r => r.status === 'fulfilled').map(r => r.value);
+                const gm = await tmdbGenres(ep); const byId = new Map([...gm.entries()].map(([n, id]) => [id, n]));
+                const scored = merge(lists).map(e => {
+                    const gs = (e.it._g || []).map(id => T.lift.get(byId.get(id))).filter(Boolean);
+                    const gFit = gs.length ? gs.reduce((a, g) => a + g.score, 0) / gs.length : 0;
+                    const cFit = (e.it._oc || []).some(c => T.countries.includes(c)) ? 0.6 : 0;
+                    return { ...e, s: e.hits * 1.4 + e.rank + (e.it._va || 6.5) * 0.35 + gFit * 0.5 + cFit };
+                }).sort((a, b) => b.s - a.s);
+                return fresh(scored.map(e => e.it)).map(it => wrap(it));
+            }
+            if (type === 'Livre') {
+                const authors = T.people.slice(0, 3);
+                const subjects = T.topGenres.slice(0, 2);
+                const lists = (await Promise.allSettled([
+                    ...authors.map(a => loadPerson('author', a.name).then(d => ({ items: (d.works || []).slice(0, 8), weight: 1.6 }))),
+                    ...subjects.map(s => gbSubject(s).then(items => ({ items, weight: 1 })))
+                ])).filter(r => r.status === 'fulfilled').map(r => r.value);
+                if (!lists.length) lists.push({ items: await olSearch('q=subject:fiction&sort=rating&language=fre') });
+                return fresh(merge(lists, b => bookKey(b.title, b.author)).sort((a, b) => (b.hits + b.rank) - (a.hits + a.rank)).map(e => e.it)).map(it => wrap(it));
+            }
+            if (type === 'Album') {
+                const artists = T.people.slice(0, 3);
+                const ids = (await Promise.all(artists.map(a => dzArtistId(a.name).catch(() => null)))).filter(Boolean);
+                const lists = (await Promise.allSettled(ids.map(id => loadRelatedAlbums(id, {}).then(items => ({ items }))))).filter(r => r.status === 'fulfilled').map(r => r.value);
+                if (!lists.length) { const c = await window.deezerJSONP('https://api.deezer.com/chart/0/albums?limit=30'); lists.push({ items: ((c && c.data) || []).map(x => ({ id: String(x.id), title: x.title, img: x.cover_xl || x.cover_big || '', type: 'Album', author: x.artist ? x.artist.name : '', platform: 'Deezer', needsDetails: true })) }); }
+                return fresh(merge(lists).sort((a, b) => (b.hits + b.rank) - (a.hits + a.rank)).map(e => e.it)).map(it => wrap(it));
+            }
+            if (type === 'YouTube') {
+                const chans = await ytChannels();
+                const score = new Map();
+                T.rated.forEach(v => { const c = chans.get(v.id); if (c && c.ch) score.set(c.ch, (score.get(c.ch) || 0) + (ratingOf(v) - 5)); });
+                const top = [...score.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([ch]) => ch);
+                const lists = (await Promise.allSettled(top.map(ch => ytUploads(ch)))).filter(r => r.status === 'fulfilled').map(r => r.value);
+                const all = lists.flat().sort((a, b) => String(b.releaseDate).localeCompare(String(a.releaseDate)));
+                const list = fresh(all, 30);
+                await ytDurations(list).catch(() => list);
+                return list.map(it => wrap(it));
+            }
+            return [];
+        };
+
+        // Parce que tu as aimé… (une œuvre précise)
+        const buildBecause = async (seed) => {
+            const type = seed.type;
+            if (type === 'Film' || type === 'Série') {
+                const id = await seedTmdbId(seed);
+                if (!id) return [];
+                let items = await tmdbList(`${epOf(type)}/${id}/recommendations`, '', type);
+                if (items.length < 6) items = items.concat(await tmdbList(`${epOf(type)}/${id}/similar`, '', type));
+                return fresh(items, 20).map(it => wrap(it));
+            }
+            if (type === 'Livre') {
+                const author = String(seed.author || '').split(',')[0].trim();
+                const [byAuthor, bySubject] = await Promise.all([
+                    author && author !== 'Inconnu' ? loadPerson('author', author).then(d => d.works || []) : [],
+                    rawBookSubjects(seed)[0] ? gbSubject(rawBookSubjects(seed)[0]) : []
+                ]);
+                const me = bookKey(seed.title, seed.author);
+                return fresh(merge([{ items: byAuthor.slice(0, 8), weight: 1.5 }, { items: bySubject }], b => bookKey(b.title, b.author)).filter(e => bookKey(e.it.title, e.it.author) !== me).map(e => e.it), 20).map(it => wrap(it));
+            }
+            if (type === 'Album') {
+                const a = await loadAlbumExtras(seed);
+                let artistId = a.artistId;
+                if (!artistId && seed.author) artistId = await dzArtistId(seed.author);
+                if (!artistId) return [];
+                return fresh(await loadRelatedAlbums(artistId, seed), 20).map(it => wrap(it));
+            }
+            if (type === 'YouTube') {
+                const chans = await ytChannels();
+                const c = chans.get(seed.id);
+                if (!c || !c.ch) return [];
+                const list = fresh(await ytUploads(c.ch), 20);
+                await ytDurations(list).catch(() => list);
+                return list.map(it => wrap(it));
+            }
+            return [];
+        };
+
+        // Les classiques qui te manquent
+        const buildClassics = async (type) => {
+            const T = recoTaste(type);
+            if (type === 'Film' || type === 'Série') {
+                const ep = epOf(type);
+                const gids = await genreIds(type, T.topGenres, 2);
+                const base = `&sort_by=vote_count.desc&vote_average.gte=${ep === 'movie' ? 7.5 : 7.8}`;
+                const lists = gids.length ? await Promise.all(gids.map(g => tmdbList(`discover/${ep}`, `${base}&with_genres=${g}`, type))) : [await tmdbList(`discover/${ep}`, base, type)];
+                // On alterne les genres pour garder du mélange
+                const out = []; for (let k = 0; k < 20; k++) lists.forEach(l => { if (l[k]) out.push(l[k]); });
+                return fresh(merge([{ items: out }]).map(e => e.it)).map(it => wrap(it));
+            }
+            if (type === 'Livre') {
+                const subj = String(T.topGenres[0] || 'fiction').toLowerCase();
+                let items = await olSearch(`subject=${encodeURIComponent(subj)}&sort=editions&language=fre`);
+                if (items.length < 8) items = items.concat(await olSearch('subject=classics&sort=editions&language=fre'));
+                return fresh(merge([{ items }], b => bookKey(b.title, b.author)).map(e => e.it)).map(it => wrap(it));
+            }
+            if (type === 'Album') {
+                const list = await window.deezerJSONP('https://api.deezer.com/genre?');
+                const ids = new Map((((list && list.data) || [])).map(g => [g.name, g.id]));
+                const gid = T.topGenres.map(n => ids.get(n)).find(Boolean) || 0;
+                const art = await window.deezerJSONP(`https://api.deezer.com/genre/${encodeURIComponent(gid)}/artists?limit=12`);
+                const artists = ((art && art.data) || []).slice(0, 12);
+                const albums = (await Promise.allSettled(artists.map(a => dzBestAlbum(a.id, a.name)))).map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+                return fresh(albums).map(it => wrap(it));
+            }
+            return null; // pas de « classiques » pour YouTube
+        };
+
+        // Courts et efficaces
+        const buildShort = async (type) => {
+            const T = recoTaste(type);
+            if (type === 'Film') {
+                const gids = await genreIds(type, T.topGenres, 3);
+                const items = await tmdbList('discover/movie', `&with_runtime.lte=90&with_runtime.gte=40&sort_by=vote_average.desc&vote_count.gte=400${gids.length ? '&with_genres=' + gids.join('%7C') : ''}`, type);
+                return fresh(items).map(it => wrap(it, { short: '≤ 1 h 30' }));
+            }
+            if (type === 'Série') {
+                const gids = await genreIds(type, T.topGenres, 3);
+                const items = await tmdbList('discover/tv', `&with_type=2&sort_by=vote_average.desc&vote_count.gte=80${gids.length ? '&with_genres=' + gids.join('%7C') : ''}`, type);
+                return fresh(items).map(it => wrap(it, { short: 'Mini-série' }));
+            }
+            if (type === 'Livre') {
+                const subjects = T.topGenres.slice(0, 3);
+                const lists = await Promise.all((subjects.length ? subjects : ['Fiction']).map(s => gbSubject(s)));
+                const ol = await olSearch(`subject=${encodeURIComponent(String(subjects[0] || 'fiction').toLowerCase())}&sort=rating&language=fre`).catch(() => []);
+                const all = [...lists.flat(), ...ol].filter(b => num(b.metricValue) >= 40 && num(b.metricValue) < 200);
+                return fresh(merge([{ items: all }], b => bookKey(b.title, b.author)).map(e => e.it)).map(it => wrap(it, { short: `${num(it.metricValue)} p.` }));
+            }
+            if (type === 'YouTube') {
+                const pool = await rowItems(`fy:YouTube`, () => buildForYou('YouTube'));
+                return (pool || []).filter(e => num(e.w.metricValue) > 0 && num(e.w.metricValue) <= 10).map(e => wrap(e.w, { short: `${num(e.w.metricValue)} min` }));
+            }
+            return null; // pas de rangée « courts » pour les albums
+        };
+
+        // Tes amis ont adoré : vitrine de chaque ami (1 lecture), sinon son résumé de stats
+        const TYPE_FROM = { F: 'Film', S: 'Série', L: 'Livre', A: 'Album', Y: 'YouTube' };
+        const guessImg = (type, id) => {
+            id = String(id || '');
+            if (type === 'YouTube' && /^[A-Za-z0-9_-]{6,20}$/.test(id)) return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+            if (type === 'Album' && /^\d+$/.test(id)) return `https://api.deezer.com/album/${id}/image`;
+            if (type === 'Livre' && /^[A-Za-z0-9_-]{10,14}$/.test(id) && !/^ol_|^OL/.test(id)) return `https://books.google.com/books/content?id=${encodeURIComponent(id)}&printsec=frontcover&img=1&zoom=1`;
+            return '';
+        };
+        const buildFriendsLoved = async () => {
+            const friends = statsFriends();
+            const out = [];
+            await Promise.all(friends.map(async (f) => {
+                let list = null;
+                try {
+                    const s = await getDoc(doc(db, 'artifacts', appId, 'users', f.uid, 'profile', 'reco'));
+                    const d = s.exists() ? s.data() : null;
+                    if (d && Array.isArray(d.items)) list = d.items.map(x => ({ type: TYPE_FROM[x.k], id: String(x.i || ''), title: String(x.t || ''), img: String(x.m || ''), author: String(x.a || ''), releaseDate: x.y ? String(x.y) : '', genres: Array.isArray(x.g) ? x.g : [], r: num(x.r) }));
+                } catch (e) { /* vitrine illisible : on se rabat sur le résumé */ }
+                if (!list) {
+                    const s = friendSummary(f) || f.summary;
+                    list = s ? parseSummaryWorks(s).filter(w => (w.rating || 0) >= 8).map(w => ({ type: w.type, id: w.id, title: w.title, img: guessImg(w.type, w.id), author: '', releaseDate: '', r: w.rating, _titleOnly: true })) : [];
+                }
+                list.filter(x => x.type && x.title && x.r >= 8).forEach(x => out.push({ ...x, uid: f.uid }));
+            }));
+            return out;
+        };
+        const posterCache = new Map();
+        const buildFriendsRow = async (type) => {
+            const all = await rowItems('fr:all', async () => (await buildFriendsLoved()).map(x => ({ w: { ...slim(x), _titleOnly: x._titleOnly ? 1 : undefined }, x: { uid: x.uid, r: x.r } })));
+            // Affinité avec chaque ami (même calcul que l'onglet Amis)
+            const aff = new Map();
+            statsFriends().forEach(f => {
+                const full = ST.friendItems[f.uid]; const s = friendSummary(f);
+                const theirs = full && full.items && !full.error ? full.items : s ? parseSummaryWorks(s) : null;
+                const a = theirs ? window.computeAffinity(window.myCollection || [], theirs) : null;
+                aff.set(f.uid, a && a.rated.length >= 3 && a.pct !== null ? a.pct / 100 : 0.5);
+            });
+            const groups = new Map();
+            (all || []).filter(e => e.w.type === type).forEach(e => {
+                const k = `${e.w.id || ''}|${titleKey(e.w.title)}`;
+                const key = [...groups.keys()].find(g => (e.w.id && g.startsWith(e.w.id + '|')) || g.endsWith('|' + titleKey(e.w.title))) || k;
+                const g = groups.get(key) || { w: e.w, by: [] };
+                if (!g.w.img && e.w.img) g.w = { ...g.w, img: e.w.img };
+                if (g.w._titleOnly && !e.w._titleOnly) g.w = e.w;
+                if (!g.by.some(b => b.uid === e.x.uid)) g.by.push(e.x);
+                groups.set(key, g);
+            });
+            const ranked = [...groups.values()].filter(g => !isOwned(g.w)).map(g => ({ ...g, s: g.by.reduce((a, b) => a + (b.r - 6) * (0.4 + (aff.get(b.uid) ?? 0.5)), 0) }))
+                .sort((a, b) => b.s - a.s).slice(0, 24);
+            // Films / séries connus seulement par leur numéro : on va chercher l'affiche (20 au plus)
+            await Promise.all(ranked.filter(g => !g.w.img && (type === 'Film' || type === 'Série') && /^\d+$/.test(String(g.w.id))).slice(0, 20).map(async g => {
+                const pk = `${type}|${g.w.id}`;
+                try {
+                    if (!posterCache.has(pk)) posterCache.set(pk, tmdb(`${epOf(type)}/${g.w.id}`).catch(() => null));
+                    const d = await posterCache.get(pk);
+                    if (d && d.poster_path) g.w = { ...g.w, img: `https://image.tmdb.org/t/p/w300${d.poster_path}`, title: d.title || d.name || g.w.title, releaseDate: d.release_date || d.first_air_date || '', needsDetails: true, _titleOnly: undefined };
+                } catch (e) {}
+            }));
+            return ranked.filter(g => g.w.id || type !== 'YouTube').map(g => ({ w: g.w, x: { by: g.by.sort((a, b) => (aff.get(b.uid) ?? 0.5) - (aff.get(a.uid) ?? 0.5)) } }));
+        };
+
+        // Le top MaBiblio : les publications récentes de toute la communauté (300 au plus, gardées 12 h)
+        const buildCommunity = async () => {
+            const snap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), orderBy('timestamp', 'desc'), limit(300)));
+            const per = new Map();
+            snap.docs.map(d => d.data()).forEach(a => {
+                const r = num(a.rating);
+                if (!a || !a.type || !a.itemTitle || !(r > 0) || HIDDEN_TYPES.includes(a.type)) return;
+                const key = `${a.type}|${titleKey(a.itemTitle)}`;
+                const g = per.get(key) || { type: a.type, title: String(a.itemTitle), img: String(a.itemImg || ''), id: a.itemId ? String(a.itemId) : '', desc: String(a.itemDesc || '').slice(0, 400), users: new Map() };
+                if (!g.users.has(a.userId)) g.users.set(a.userId, r); // la plus récente de chaque membre
+                if (!g.id && a.itemId) g.id = String(a.itemId);
+                per.set(key, g);
+            });
+            return [...per.values()].map(g => { const rs = [...g.users.values()]; return { w: { id: g.id, type: g.type, title: g.title, img: g.img, desc: g.desc, _resolve: g.id ? undefined : 1 }, x: { avg: rs.reduce((a, b) => a + b, 0) / rs.length, n: rs.length } }; });
+        };
+        const buildTopRow = async (type) => {
+            const all = await rowItems('top:all', buildCommunity);
+            const list = (all || []).filter(e => e.w.type === type && e.w.img && !isOwned(e.w) && (e.w.id || type !== 'YouTube'));
+            const bayes = (e) => (e.x.avg * e.x.n + 7 * 2) / (e.x.n + 2);
+            const two = list.filter(e => e.x.n >= 2);
+            return (two.length >= 5 ? two : list).sort((a, b) => bayes(b) - bayes(a)).slice(0, 24);
+        };
+
+        // ---- Exécution des rangées (une fois, puis mémoire 12 h) ----
+        const rowItems = (key, builder) => {
+            const mem = recoMem();
+            const hit = mem.get(key);
+            if (hit && Date.now() - num(hit.at) < RC_TTL) return Promise.resolve(hit.items);
+            if (RC.pending.has(key)) return RC.pending.get(key);
+            const p = builder().then(items => {
+                if (items === null) { mem.set(key, { at: Date.now(), items: null }); return null; }
+                const clean = (items || []).filter(e => e && e.w && e.w.title);
+                mem.set(key, { at: Date.now(), items: clean }); saveRecoCache();
+                return clean;
+            }).catch(e => {
+                console.warn('Recommandations', key, e);
+                mem.set(key, { at: Date.now() - RC_TTL + 10 * 60 * 1000, items: hit ? hit.items : [], error: true }); // on réessaiera dans 10 min
+                return hit ? hit.items : [];
+            }).finally(() => { RC.pending.delete(key); scheduleRecoPaint(); });
+            RC.pending.set(key, p);
+            return p;
+        };
+        const rowNow = (key, builder) => {
+            const hit = recoMem().get(key);
+            if (hit && Date.now() - num(hit.at) < RC_TTL) return hit.items;
+            rowItems(key, builder);
+            return hit && hit.items ? hit.items : undefined; // undefined = en cours de chargement
+        };
+        let recoPaintTimer = null;
+        const scheduleRecoPaint = () => { clearTimeout(recoPaintTimer); recoPaintTimer = setTimeout(() => { if (window.currentView === 'reco') window.renderRecoView(); }, 120); };
+
+        // ---- Affichage ----
+        const seedKey = (s) => s.docId || `${s.type}_${s.id}`;
+        const recoRows = (type) => {
+            const T = recoTaste(type);
+            const rows = [{ key: `fy:${type}`, title: 'Pour toi', sub: { 'Film': "D'après tes genres, pays et réalisateurs préférés", 'Série': "D'après tes genres, pays et créateurs préférés", 'Livre': "D'après tes genres et tes auteurs préférés", 'Album': "D'après tes artistes préférés", 'YouTube': 'Les nouveautés de tes chaînes préférées' }[type], big: true, build: () => buildForYou(type) }];
+            T.loved.slice(0, 3).forEach(s => rows.push({ key: `by:${type}:${seedKey(s)}`, title: `Parce que tu as aimé <span class="rc-seed">${esc(s.title)}</span>`, sub: type === 'YouTube' ? 'Les autres vidéos de la même chaîne' : type === 'Album' ? 'Des artistes proches' : '', build: () => buildBecause(s) }));
+            rows.push({ key: `fr:${type}`, title: 'Tes amis ont adoré', sub: 'Noté 8 ou plus, les amis qui ont tes goûts d\'abord', build: () => buildFriendsRow(type), friends: true });
+            if (type !== 'YouTube') rows.push({ key: `cl:${type}`, title: 'Les classiques qui te manquent', sub: type === 'Album' ? 'Les incontournables de ton genre préféré' : 'Les incontournables de tes genres préférés', build: () => buildClassics(type) });
+            if (type !== 'Album') rows.push({ key: `sh:${type}`, title: 'Courts et efficaces', sub: { 'Film': 'Moins d\'1 h 30', 'Série': 'Une seule saison', 'Livre': 'Moins de 200 pages', 'YouTube': 'Moins de 10 minutes' }[type], build: () => buildShort(type) });
+            rows.push({ key: `tp:${type}`, title: 'Le top MaBiblio', sub: 'Les mieux notés par toute la communauté', build: () => buildTopRow(type), top: true });
+            return rows;
+        };
+        // Rangées dérivées (amis, top) : recalculées quand mes œuvres ou mes amis changent, à partir des données gardées
+        const derived = new Map();
+        const derivedStamp = (row) => { const b = recoMem().get(row.friends ? 'fr:all' : 'top:all'); return `${b ? b.at : 0}|${(window.myCollection || []).length}|${(window.followingData || []).length}`; };
+        const rowState = (row) => {
+            if (!row.friends && !row.top) return rowNow(row.key, row.build);
+            const stamp = derivedStamp(row);
+            const d = derived.get(row.key);
+            if (d && d.stamp === stamp) return d.items;
+            if (!(d && d.pending)) {
+                derived.set(row.key, { stamp: d ? d.stamp : null, items: d ? d.items : undefined, pending: true });
+                row.build().then(items => { derived.set(row.key, { stamp: derivedStamp(row), items: items || [] }); })
+                    .catch(e => { console.warn('Recommandations', row.key, e); derived.set(row.key, { stamp: derivedStamp(row), items: [] }); })
+                    .finally(scheduleRecoPaint);
+            }
+            return d ? d.items : undefined;
+        };
+        const tileMeta = (e, row) => {
+            const w = e.w, x = e.x || {};
+            if (x.by && x.by.length) {
+                const f = x.by[0]; const u = window.liveUser(f.uid);
+                const av = safeImg(u.avatar);
+                return `<span class="rc-by"><span class="rc-av">${av ? `<img src="${av}" alt="">` : initial(u.name)}</span>${esc(FIRST(u.name))} <b>${fr1(f.r)}</b>${x.by.length > 1 ? ` <span class="text-gray-500">+${x.by.length - 1}</span>` : ''}</span>`;
+            }
+            if (x.avg) return `<span class="rc-by"><i class="fa-solid fa-star" style="color:var(--miel)"></i> <b>${fr1(x.avg)}</b> <span class="text-gray-500">· ${x.n} avis</span></span>`;
+            const y = yearOfRelease(w);
+            const bits = [];
+            if (w.type === 'Livre' || w.type === 'Album' || w.type === 'YouTube') { if (w.author) bits.push(esc(String(w.author).split(',')[0])); }
+            if (x.short) bits.push(esc(x.short)); else if (w.type === 'YouTube' && num(w.metricValue)) bits.push(`${num(w.metricValue)} min`); else if (y && w.type !== 'YouTube') bits.push(y);
+            return bits.join(' · ');
+        };
+        const tileHtml = (e, row, k) => {
+            const w = e.w;
+            const shape = w.type === 'Album' ? 'is-square' : w.type === 'YouTube' ? 'is-wide' : '';
+            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(regItem(e))})"><span class="rc-img">${coverImg(w.img, w.title, '', k < 4 ? '' : 'loading="lazy"')}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
+        };
+        const skeleton = (type) => `<div class="rc-strip">${`<span class="rc-tile ${type === 'Album' ? 'is-square' : type === 'YouTube' ? 'is-wide' : ''}"><span class="rc-img pv-skel"></span><span class="pv-skel-t" style="width:80%;margin-top:8px;height:12px"></span></span>`.repeat(5)}</div>`;
+        window.setRecoType = (t) => { if (!RC_TYPES.includes(t)) return; RC.type = t; window.renderRecoView(); window.scrollMainTop(); };
+        window.refreshReco = () => {
+            const t = RC.type; const mem = recoMem();
+            [...mem.keys()].forEach(k => { if (k.includes(`:${t}`) || k === 'fr:all' || k === 'top:all') mem.delete(k); });
+            derived.clear(); saveRecoCache(); window.renderRecoView();
+            window.ui.toast('Nouvelles idées en préparation…');
+        };
+        window.renderRecoView = () => {
+            const c = document.getElementById('main-content');
+            if (!c || window.currentView !== 'reco' || !window.currentUser) return;
+            c.querySelectorAll('.rc-strip[data-k]').forEach(s => { RC.scroll[s.dataset.k] = s.scrollLeft; });
+            const type = RC.type;
+            const chips = `<div class="type-chips st-tabs rc-chips" role="tablist" aria-label="Catégories">${RC_TYPES.map(t => `<button type="button" role="tab" aria-selected="${t === type}" class="type-chip ${t === type ? 'active' : ''}" onclick="window.setRecoType('${t}')"><span class="dot" style="background:${catOf(t).c}"></span>${catOf(t).label}</button>`).join('')}</div>`;
+            const rows = recoRows(type);
+            const noTaste = !recoTaste(type).rated.length;
+            let shown = 0;
+            const body = rows.map(row => {
+                let items = rowState(row);
+                if (items === null) return '';
+                // Ce que je viens d'ajouter (vu, wishlist…) disparaît tout de suite des idées
+                if (Array.isArray(items)) items = items.filter(e => e && e.w && !isOwned(e.w));
+                if (Array.isArray(items) && !items.length) return '';
+                shown++;
+                return `<section class="rc-row">
+                    <div class="rc-h"><h3>${row.title}</h3>${row.sub ? `<p>${esc(row.sub)}</p>` : ''}</div>
+                    ${items === undefined ? skeleton(type) : `<div class="rc-strip" data-k="${esc(row.key)}">${items.map((e, k) => tileHtml(e, row, k)).join('')}</div>`}
+                </section>`;
+            }).join('');
+            const loading = rows.some(r => rowState(r) === undefined);
+            c.innerHTML = `
+                <div class="pt-16 pb-32">
+                    <div class="px-4 flex items-end justify-between gap-3">
+                        <div><h1 class="page-title">Recommandations</h1><p class="text-gray-500 font-semibold text-sm mt-1.5">Des idées choisies d'après tes goûts</p></div>
+                        <button type="button" class="round-btn shrink-0" onclick="window.refreshReco()" aria-label="Nouvelles idées" title="Nouvelles idées"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                    <div class="px-4">${chips}</div>
+                    ${noTaste ? `<div class="px-4"><div class="st-banner"><i class="fa-solid fa-star mr-1.5"></i>Note quelques ${({ 'Film': 'films', 'Série': 'séries', 'Livre': 'livres', 'Album': 'albums', 'YouTube': 'vidéos' })[type]} pour des idées vraiment faites pour toi.</div></div>` : ''}
+                    ${body}
+                    ${!shown && !loading ? `<div class="px-4">${sEmpty('Pas encore d\'idée ici. Reviens après avoir noté quelques œuvres !')}</div>` : ''}
+                </div>`;
+            c.querySelectorAll('.rc-strip[data-k]').forEach(s => { const v = RC.scroll[s.dataset.k]; if (v) s.scrollLeft = v; });
+        };
+        // Ouvrir une idée : sa fiche (avec « Ajouter », « Wishlist », « Conseiller à… », « Qui l'a vu »)
+        window.openRecoTile = async (key) => {
+            const e = itemRegistry.get(key);
+            if (!e || !e.w) return;
+            let it = { ...e.w };
+            if (it._titleOnly) it.title = cap(it.title);
+            delete it._titleOnly; delete it._resolve;
+            if (!it.id) {
+                // Œuvre du top MaBiblio publiée sans identifiant : on la retrouve par son titre
+                window.ui.toast('Recherche de la fiche…');
+                try {
+                    if (it.type === 'Film' || it.type === 'Série') { const id = await tmdbIdFor(it); if (id) Object.assign(it, { id, needsDetails: true }); }
+                    else if (it.type === 'Livre') { const f = await window.searchBooks(it.title); const h = (f || []).find(b => titleKey(b.title) === titleKey(it.title)) || (f || [])[0]; if (h) it = { ...h }; }
+                    else if (it.type === 'Album') { const id = await deezerAlbumId(it); if (id) Object.assign(it, { id, needsDetails: true, platform: 'Deezer' }); }
+                } catch (err) { console.warn(err); }
+                if (!it.id) { window.ui.alert("La fiche de cette œuvre n'a pas pu être retrouvée. Cherche-la avec le bouton +."); return; }
+            }
+            it.docId = null;
+            window.openPreview(it);
+        };
+
+        // ---- Ma vitrine (œuvres notées 8+), lue par mes amis pour « Tes amis ont adoré » ----
+        let showcaseTimer = null;
+        window.scheduleRecoShowcase = () => { clearTimeout(showcaseTimer); showcaseTimer = setTimeout(() => window.publishRecoShowcase(), 9000); };
+        window.publishRecoShowcase = async () => {
+            if (!window.currentUser || !Array.isArray(window.myCollection)) return;
+            const CODE = { 'Film': 'F', 'Série': 'S', 'Livre': 'L', 'Album': 'A', 'YouTube': 'Y' };
+            const items = window.myCollection.filter(i => CODE[i.type] && isDone(i) && (ratingOf(i) || 0) >= 8)
+                .sort((a, b) => String(window.itemDateKey(b) || '').localeCompare(String(window.itemDateKey(a) || ''))).slice(0, 200)
+                .map(i => {
+                    const id = String(i.id || '');
+                    const o = { k: CODE[i.type], i: /^manual_|_public$/.test(id) ? '' : id.slice(0, 60), t: String(i.title || '').slice(0, 120), r: ratingOf(i) };
+                    const img = String(i.img || ''); if (/^https:\/\//.test(img) && img.length < 400) o.m = img;
+                    if (i.author) o.a = String(i.author).slice(0, 80);
+                    const y = yearOfRelease(i); if (y) o.y = y;
+                    if (Array.isArray(i.genres) && i.genres.length) o.g = i.genres.slice(0, 3).map(g => String(g).slice(0, 40));
+                    return o;
+                });
+            const key = JSON.stringify(items);
+            const lsKey = `mabiblio_showcase_${window.currentUser.uid}`;
+            let last = ''; try { last = localStorage.getItem(lsKey) || ''; } catch (e) {}
+            const hash = String(key.length) + ':' + key.slice(0, 200) + key.slice(-200);
+            if (last === hash) return;
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'reco'), { v: 1, at: Date.now(), items });
+                try { localStorage.setItem(lsKey, hash); } catch (e) {}
+            } catch (e) { console.warn('Vitrine', e); }
+        };
+
+        /* --- J.12 SUR CHAQUE FICHE : « Qui l'a vu parmi mes amis ? » et « Conseiller à… » ---
+           Les œuvres de mes amis viennent de leurs résumés (déjà chargés avec leur profil) : aucune lecture en plus. */
+        const friendIdx = new WeakMap();
+        const indexOfFriend = (f) => {
+            const full = ST.friendItems[f.uid];
+            const src = full && full.items && !full.error ? full.items : (friendSummary(f) || f.summary);
+            if (!src) return null;
+            let idx = friendIdx.get(src);
+            if (!idx) {
+                idx = new Map();
+                const list = Array.isArray(src) ? src.filter(isDone) : parseSummaryWorks(src);
+                list.forEach(w => workKeys(w).forEach(k => { if (!idx.has(k)) idx.set(k, ratingOf(w)); }));
+                friendIdx.set(src, idx);
+            }
+            return idx;
+        };
+        const friendsWhoSaw = (item) => {
+            if (!item || !item.title) return [];
+            const keys = workKeys(item);
+            if (item.tmdbId) keys.push(`${item.type}|id|${item.tmdbId}`);
+            return statsFriends().map(f => {
+                const idx = indexOfFriend(f);
+                if (!idx) return null;
+                const k = keys.find(x => idx.has(x));
+                return k ? { uid: f.uid, name: f.name, r: idx.get(k) } : null;
+            }).filter(Boolean).sort((a, b) => (b.r ?? 0) - (a.r ?? 0));
+        };
+        window.previewFriendsHtml = (item) => {
+            if (!item || HIDDEN_TYPES.includes(item.type) || !(window.followingData || []).length) return '';
+            const saw = friendsWhoSaw(item);
+            const av = (p) => { const u = window.liveUser(p.uid, p.name); const a = safeImg(u.avatar); return `<span class="pv-fr-av">${a ? `<img src="${a}" alt="">` : initial(u.name)}</span>`; };
+            const label = !saw.length ? "Aucun ami ne l'a encore" + ({ 'Livre': ' lu', 'Album': ' écouté' }[item.type] || ' vu')
+                : saw.length === 1 ? `<b>${esc(FIRST(window.liveUser(saw[0].uid, saw[0].name).name))}</b> l'a ${({ 'Livre': 'lu', 'Album': 'écouté' })[item.type] || 'vu'}`
+                : `<b>${saw.length} amis</b> l'ont ${({ 'Livre': 'lu', 'Album': 'écouté' })[item.type] || 'vu'}`;
+            const list = saw.length ? `<ul class="pv-fr-list" id="pv-fr-list">${saw.map(p => `<li onclick="window.openPublicProfile(${jsArg(p.uid)})">${av(p)}<span class="flex-1 min-w-0 truncate font-bold text-[14px]">${esc(window.liveUser(p.uid, p.name).name)}</span>${p.r !== null && p.r !== undefined ? `<span class="wl-rate">${fr1(p.r)}</span>` : '<span class="text-[12px] font-semibold text-gray-500">sans note</span>'}</li>`).join('')}</ul>` : '';
+            return `<div class="pv-fr">
+                <div class="pv-fr-top">
+                    <button type="button" class="pv-fr-who" ${saw.length ? `onclick="document.getElementById('pv-fr-list').classList.toggle('open'); this.classList.toggle('open')"` : 'disabled'}>
+                        ${saw.length ? `<span class="pv-fr-stack">${saw.slice(0, 3).map(av).join('')}</span>` : '<span class="pv-fr-stack"><span class="pv-fr-av is-empty"><i class="fa-solid fa-user-group"></i></span></span>'}
+                        <span class="min-w-0 text-[13px] font-semibold leading-tight">${label}</span>
+                        ${saw.length ? '<i class="fa-solid fa-chevron-down pv-fr-chev"></i>' : ''}
+                    </button>
+                    <button type="button" class="pv-fr-reco" onclick="window.openRecoPicker()"><i class="fa-solid fa-paper-plane"></i>Conseiller à…</button>
+                </div>
+                ${list}
+            </div>`;
+        };
+
+        // Choisir un ou plusieurs amis à qui conseiller l'œuvre affichée
+        const RP = { item: null, picked: new Set() };
+        window.openRecoPicker = () => {
+            const it = window.tempItem;
+            if (!it || !window.currentUser) return;
+            const friends = statsFriends();
+            if (!friends.length) { window.ui.alert('Abonne-toi à des amis pour leur conseiller des œuvres.'); return; }
+            RP.item = it; RP.picked = new Set();
+            const saw = new Map(friendsWhoSaw(it).map(p => [p.uid, p.r]));
+            const sent = new Set((window.userProfile.recosSent || []));
+            const rows = friends.map(f => {
+                const u = window.liveUser(f.uid, f.name); const a = safeImg(u.avatar);
+                const tag = saw.has(f.uid) ? `<span class="rp-tag">${({ 'Livre': "L'a lu", 'Album': "L'a écouté" })[it.type] || "L'a vu"}${saw.get(f.uid) ? ` · ${fr1(saw.get(f.uid))}★` : ''}</span>` : sent.has(recoSentKey(f.uid, it)) ? '<span class="rp-tag">Déjà conseillé</span>' : '';
+                return `<li><label class="rp-row"><input type="checkbox" value="${esc(f.uid)}" onchange="window.toggleRecoPick(this.value, this.checked)"><span class="pv-fr-av" style="width:40px;height:40px">${a ? `<img src="${a}" alt="">` : initial(u.name)}</span><span class="flex-1 min-w-0"><span class="block font-extrabold text-[15px] truncate">${esc(u.name)}</span>${tag}</span><span class="rp-check"><i class="fa-solid fa-check"></i></span></label></li>`;
+            }).join('');
+            const ov = document.createElement('div');
+            ov.className = 'sheet-overlay open'; ov.id = 'reco-picker';
+            ov.onclick = (ev) => { if (ev.target === ov) window.closeRecoPicker(); };
+            ov.innerHTML = `<div class="sheet flex flex-col" style="height:auto;max-height:86vh">
+                <div class="sheet-head"><button type="button" class="ghost" onclick="window.closeRecoPicker()">Annuler</button><span class="font-display font-extrabold text-lg">Conseiller</span><button type="button" class="solid" id="rp-send" onclick="window.sendRecoPicks()" disabled style="opacity:.4">Envoyer</button></div>
+                <div class="px-4 pb-3 flex items-center gap-3">${coverImg(it.img, it.title, 'st-common-img', '')}<div class="min-w-0"><div class="font-extrabold text-[15px] leading-tight">${esc(it.title)}</div><div class="text-[12px] font-semibold text-gray-500">${esc(it.type)}</div></div></div>
+                <ul class="rp-list">${rows}</ul>
+                <div class="px-4 pt-2" style="padding-bottom:calc(env(safe-area-inset-bottom) + 18px)"><input type="text" id="rp-note" maxlength="200" class="rp-note" placeholder="Un petit mot ? (facultatif)"></div>
+            </div>`;
+            document.body.appendChild(ov);
+        };
+        window.closeRecoPicker = () => { const o = document.getElementById('reco-picker'); if (o) o.remove(); };
+        window.toggleRecoPick = (uid, on) => {
+            if (on) RP.picked.add(uid); else RP.picked.delete(uid);
+            const b = document.getElementById('rp-send');
+            if (b) { b.disabled = !RP.picked.size; b.style.opacity = RP.picked.size ? '1' : '.4'; b.textContent = RP.picked.size > 1 ? `Envoyer (${RP.picked.size})` : 'Envoyer'; }
+        };
+        window.sendRecoPicks = async () => {
+            const it = RP.item; const uids = [...RP.picked];
+            if (!it || !uids.length) return;
+            const note = String((document.getElementById('rp-note') || {}).value || '').trim();
+            const b = document.getElementById('rp-send'); if (b) { b.disabled = true; b.textContent = 'Envoi…'; }
+            let ok = 0;
+            for (const uid of uids) { if (await sendRecoNotif(uid, it, note)) ok++; }
+            window.closeRecoPicker();
+            if (ok === uids.length) window.ui.toast(ok > 1 ? `Conseil envoyé à ${ok} amis ✓` : `Conseil envoyé à ${FIRST(window.liveUser(uids[0]).name)} ✓`);
+            else window.ui.alert(ok ? `Conseil envoyé à ${ok} ami${ok > 1 ? 's' : ''} sur ${uids.length}. Réessaie pour les autres.` : "Le conseil n'a pas pu être envoyé. Réessaie.");
+        };
+
         /* --- J.9 NOUVEAUTÉS : fenêtre affichée une fois après la mise à jour + annonce à tous ---
            • Chaque téléphone voit la fenêtre UNE fois par version (mémorisé sur l'appareil). Elle reste
              accessible depuis Profil → Réglages → « Nouveautés de l'appli ».
            • L'annonce à tous (bouton visible seulement si le profil porte admin = true, à régler une fois
              dans la console Firebase) dépose une notification « annonce » chez chaque membre : elle arrive
              dans la cloche ET sur les téléphones où les notifications sont activées. */
-        const WHATS_NEW_VERSION = '2026-11-v5.2';
+        const WHATS_NEW_VERSION = '2026-11-v5.4';
         const WHATS_NEW = [
-            { icon: 'fa-solid fa-bell', bg: 'var(--mint)', t: 'Les notifications', d: 'Likes, commentaires, réponses et conseils arrivent directement sur ton téléphone.' },
-            { icon: 'fa-solid fa-chart-simple', bg: 'var(--miel)', t: 'Des stats repensées', d: 'Tout le détail par catégorie, tes affinités et le match de l’année entre amis.' },
-            { icon: 'fa-solid fa-palette', bg: 'var(--lav)', t: 'Un nouveau look', d: 'Une interface plus claire, plus colorée, et une appli à installer sur ton écran d’accueil.' },
-            { icon: 'fa-solid fa-wand-magic-sparkles', bg: 'var(--rose)', t: 'Profil et fiches enrichis', d: 'Ton top 3, bandes-annonces, extraits audio, revisionnages, réponses aux commentaires, et toutes les œuvres d’un acteur ou d’un auteur en un toucher.' },
-            { icon: 'fa-solid fa-screwdriver-wrench', bg: 'var(--corail)', t: 'Plus fluide', d: 'Plein de bugs corrigés et une appli plus rapide au quotidien.' }
+            { icon: 'fa-regular fa-compass', bg: 'var(--lav)', t: 'Recommandations', d: 'Un nouvel onglet en bas : des idées pour toi, ce que tes amis ont adoré, les classiques qui te manquent…' },
+            { icon: 'fa-solid fa-user-group', bg: 'var(--mint)', t: 'Qui l’a vu parmi tes amis ?', d: 'Sur chaque fiche, leurs notes, et un bouton pour conseiller l’œuvre à qui tu veux.' },
+            { icon: 'fa-solid fa-masks-theater', bg: 'var(--miel)', t: 'Tout sur un acteur ou un auteur', d: 'Touche un nom (réalisateur, acteur, auteur, artiste) ou un genre dans tes stats pour voir ses œuvres.' },
+            { icon: 'fa-solid fa-circle-user', bg: 'var(--rose)', t: 'Ton profil', d: 'Il s’ouvre maintenant en touchant ta photo, en haut de l’accueil.' }
         ];
         const ANNOUNCE_TITLE = 'Nouvelle version de MaBiblio 🎉';
-        const ANNOUNCE_TEXT = 'Notifications, stats repensées, nouveau look et plein d’améliorations : ouvre l’appli pour tout découvrir !';
+        const ANNOUNCE_TEXT = 'Recommandations, « Qui l’a vu parmi mes amis ? », conseils depuis chaque fiche : ouvre l’appli pour tout découvrir !';
         window.showWhatsNew = (force = false) => {
             if (document.getElementById('whats-new')) return;
             const overlay = document.createElement('div');
