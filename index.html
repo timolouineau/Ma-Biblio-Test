@@ -307,6 +307,27 @@
         .st-mini-l { font-size: 12px; font-weight: 700; color: #3B3842; }
         .st-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
         .st-rank li { display: flex; gap: 10px; align-items: center; }
+        .st-rank li.is-tap, .st-sentences li.is-tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .st-rank li.is-tap:active, .st-sentences li.is-tap:active { opacity: .6; }
+        .st-rank-go { color: #B9B3BF; font-size: 11px; flex-shrink: 0; }
+        /* Liste d'une personne / d'un genre */
+        #works-modal { background: var(--ground); z-index: 21000; }
+        #works-modal.is-under { z-index: 19000; }
+        .wl-head { position: relative; padding: calc(env(safe-area-inset-top) + 74px) 20px 22px; border-radius: 0 0 32px 32px; }
+        .wl-close { position: fixed; top: calc(env(safe-area-inset-top) + 18px); left: 18px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--ink); z-index: 5; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,.14); border: none; font-size: 17px; }
+        .wl-hero { display: flex; align-items: center; gap: 16px; }
+        .wl-photo { position: relative; width: 78px; height: 78px; border-radius: 50%; background: #fff; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--ink); box-shadow: 0 6px 16px rgba(22,21,26,.12); }
+        .wl-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        .wl-kicker { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #4A4652; }
+        .wl-name { font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1.05; margin-top: 3px; overflow-wrap: anywhere; }
+        .wl-sub { font-size: 13px; font-weight: 600; color: #4A4652; margin-top: 6px; }
+        .wl-body { padding: 16px 16px calc(env(safe-area-inset-bottom) + 60px); }
+        .wl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; }
+        .wl-tile { display: block; text-align: left; background: none; border: none; padding: 0; font-family: inherit; color: var(--ink); cursor: pointer; min-width: 0; }
+        .wl-rate { background: var(--miel); font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 10px; flex-shrink: 0; }
+        .wl-tag { background: var(--lav-tint); font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 10px; flex-shrink: 0; }
+        .pv-person { background: none; border: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(22,21,26,.25); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+        .pv-person:active { opacity: .6; }
         .st-rank-n { width: 26px; height: 26px; border-radius: 50%; background: var(--ground); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .st-rank-body { flex: 1; min-width: 0; }
         .st-rank-line { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
@@ -687,6 +708,10 @@
 
         <div id="manual-modal-content" class="p-6 flex-1 overflow-y-auto bg-white">
             </div>
+    </div>
+
+    <div id="works-modal" class="modal overflow-y-auto" aria-label="Liste d'œuvres">
+        <div id="works-content"></div>
     </div>
 
     <div id="preview-modal" class="modal overflow-y-auto">
@@ -2048,11 +2073,17 @@
             // Méta-infos (réalisateur / auteur / artiste, année, casting)
             let metaInfos = '';
             if (item.author || item.cast) {
+                // Réalisateur / auteur / artiste et acteurs cliquables : leurs autres œuvres
+                const authorRole = window.personLinks ? ({ 'Film': 'director', 'Série': 'creator', 'Livre': 'author', 'Album': 'artist' })[item.type] : null;
+                const authorNames = String(item.author || '').split(',').map(x => x.trim()).filter(x => x && x !== 'Inconnu');
+                const authorHtml = authorRole && authorNames.length ? window.personLinks(authorNames, authorRole) : esc(item.author || 'Inconnu');
+                const castNames = (Array.isArray(item.castList) && item.castList.length ? item.castList : String(item.cast || '').split(',')).map(x => String(x).trim()).filter(Boolean).slice(0, 8);
+                const castHtml = window.personLinks && (item.type === 'Film' || item.type === 'Série') && castNames.length ? window.personLinks(castNames, 'actor') : esc(item.cast || '');
                 metaInfos = `
                 <div class="pv-info">
-                    <div class="min-w-0"><div class="pv-label"><i class="${iconClass} mr-1"></i> ${authorLabel}</div><div class="text-sm font-extrabold leading-tight">${esc(item.author || 'Inconnu')}</div></div>
+                    <div class="min-w-0"><div class="pv-label"><i class="${iconClass} mr-1"></i> ${authorLabel}</div><div class="text-sm font-extrabold leading-tight">${authorHtml}</div></div>
                     <div class="text-right"><div class="pv-label"><i class="fa-solid fa-calendar-day mr-1"></i> Année</div><div class="text-sm font-extrabold">${year}</div></div>
-                    ${item.cast ? `<div class="col-span-2"><div class="pv-label"><i class="fa-solid fa-users mr-1"></i> Avec</div><div class="text-[13px] font-semibold text-gray-700 leading-snug">${esc(item.cast)}</div></div>` : ''}
+                    ${item.cast || (item.castList && item.castList.length) ? `<div class="col-span-2"><div class="pv-label"><i class="fa-solid fa-users mr-1"></i> Avec</div><div class="text-[13px] font-semibold text-gray-700 leading-snug">${castHtml}</div></div>` : ''}
                 </div>`;
             } else {
                 metaInfos = `<div class="mb-5 text-gray-500 font-bold text-xs uppercase tracking-wider">Sortie en ${year}</div>`;
@@ -4056,8 +4087,10 @@ const rankList = (rows, color, opts = {}) => {
     const list = rows.slice(0, max);
     if (!list.length) return sEmpty(opts.empty || 'Pas encore assez d\'infos.');
     const top = list[0].count || 1;
-    return `<ol class="st-rank">${list.map((r, k) => `
-        <li><span class="st-rank-n">${k + 1}</span><div class="st-rank-body"><div class="st-rank-line"><span class="st-rank-name">${esc(r.name)}</span><span class="st-rank-val">${r.count}${opts.unit ? ' ' + opts.unit(r.count) : ''}${opts.showAvg && r.avg !== null ? ` · <b>${fr1(r.avg)}</b>★` : ''}</span></div><div class="st-rank-bar"><span style="width:${Math.max(6, Math.round(r.count / top * 100))}%;background:${color}"></span></div></div></li>`).join('')}</ol>`;
+    // opts.tap(ligne) → ce qu'on ouvre en touchant la ligne (une personne ou la liste de mes œuvres)
+    const tapOf = (r) => opts.tap && window.worksTap ? opts.tap(r) : null;
+    return `<ol class="st-rank">${list.map((r, k) => { const t = tapOf(r); return `
+        <li${t ? ` class="is-tap" role="button" onclick="${window.worksTap(t)}"` : ''}><span class="st-rank-n">${k + 1}</span><div class="st-rank-body"><div class="st-rank-line"><span class="st-rank-name">${esc(r.name)}</span><span class="st-rank-val">${r.count}${opts.unit ? ' ' + opts.unit(r.count) : ''}${opts.showAvg && r.avg !== null ? ` · <b>${fr1(r.avg)}</b>★` : ''}</span></div><div class="st-rank-bar"><span style="width:${Math.max(6, Math.round(r.count / top * 100))}%;background:${color}"></span></div></div>${t ? '<i class="fa-solid fa-chevron-right st-rank-go"></i>' : ''}</li>`; }).join('')}</ol>`;
 };
 // Histogramme vertical, éventuellement empilé par catégorie : cols = [{ label, parts: [{ v, color }] , title }]
 const barChart = (cols, opts = {}) => {
@@ -4202,14 +4235,14 @@ const statsScreen = (sc) => {
             ${miniTile(mint, 'fa-solid fa-tv', pool.length - films.length, `série${pool.length - films.length > 1 ? 's' : ''}`)}
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(pool) !== null ? fr1(avgRating(pool)) : '–', 'note moyenne')}
         </div>
-        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tally(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film' })) : ''}
-        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tally(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série' })) : ''}
-        ${sCard('Top acteurs', rankList(tally(pool, actorsOf), color, { max: 8, unit: plural }))}
-        ${sCard('Genres préférés', rankList(tally(pool, i => i.genres), color, { max: 6, showAvg: true }))}
-        ${sCard('Pays les plus vus', rankList(tally(pool, countriesOf), color, { max: 6 }))}
-        ${sCard('Langues originales', rankList(tally(pool, i => [langName(i.originalLanguage)]), color, { max: 6 }))}
+        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tally(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film', tap: r => ({ role: 'director', name: r.name }) })) : ''}
+        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tally(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série', tap: r => ({ role: 'creator', name: r.name }) })) : ''}
+        ${sCard('Top acteurs', rankList(tally(pool, actorsOf), color, { max: 8, unit: plural, tap: r => ({ role: 'actor', name: r.name }) }))}
+        ${sCard('Genres préférés', rankList(tally(pool, i => i.genres), color, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'screen', name: r.name }) }))}
+        ${sCard('Pays les plus vus', rankList(tally(pool, countriesOf), color, { max: 6, tap: r => ({ kind: 'country', pool: 'screen', name: r.name }) }))}
+        ${sCard('Langues originales', rankList(tally(pool, i => [langName(i.originalLanguage)]), color, { max: 6, tap: r => ({ kind: 'lang', pool: 'screen', name: r.name }) }))}
         ${sCard('Décennies de sortie', decades.length ? decadeChart : sEmpty('Pas encore de dates de sortie.'))}
-        ${sCard('Plateformes', rankList(tally(pool, i => [i.platform]), color, { max: 6, empty: 'Aucune plateforme renseignée.' }))}`;
+        ${sCard('Plateformes', rankList(tally(pool, i => [i.platform]), color, { max: 6, empty: 'Aucune plateforme renseignée.', tap: r => ({ kind: 'platform', pool: 'screen', name: r.name }) }))}`;
 };
 
 // ---------- Onglet 3 : livres ----------
@@ -4227,8 +4260,8 @@ const statsBooks = (sc) => {
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(books) !== null ? fr1(avgRating(books)) : '–', 'note moyenne')}
         </div>
         ${sCard(sc.isYear ? 'Pages par mois' : 'Pages par année', barChart(timelineCols(books, sc.isYear, sc.curYear, i => num(i.metricValue), () => miel), { fmt: (v) => v >= 1000 ? fr1(v / 1000) + 'k' : v }))}
-        ${sCard('Top auteurs', rankList(tally(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre' }))}
-        ${sCard('Genres', rankList(tally(books, bookGenreNames), miel, { max: 6, showAvg: true }))}
+        ${sCard('Top auteurs', rankList(tally(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre', tap: r => ({ role: 'author', name: r.name }) }))}
+        ${sCard('Genres', rankList(tally(books, bookGenreNames), miel, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'Livre', name: r.name }) }))}
         ${sCard('Le livre le plus long', longestHtml)}`;
 };
 
@@ -4245,8 +4278,8 @@ const statsMusic = (sc) => {
             ${miniTile('#FFE4F0', 'fa-solid fa-headphones', `${frInt(mins / 60)} h`, "d'écoute")}
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(albums) !== null ? fr1(avgRating(albums)) : '–', 'note moyenne')}
         </div>
-        ${sCard('Top artistes', rankList(tally(albums, i => [String(i.author || '').trim()]), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album' }))}
-        ${sCard('Genres', rankList(tally(albums, i => i.genres), rose, { max: 6, showAvg: true }))}
+        ${sCard('Top artistes', rankList(tally(albums, i => [String(i.author || '').trim()]), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album', tap: r => ({ role: 'artist', name: r.name }) }))}
+        ${sCard('Genres', rankList(tally(albums, i => i.genres), rose, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'Album', name: r.name }) }))}
         ${sCard('Albums par décennie', decades.length ? barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color: rose }] }))) : sEmpty('Pas encore de dates de sortie.'))}`;
 };
 
@@ -4268,7 +4301,8 @@ const statsHabits = (sc) => {
     // Genres les mieux (et moins bien) notés : au moins 3 œuvres notées
     const genreKeys = (i) => i.type === 'Livre' ? bookGenreNames(i) : (Array.isArray(i.genres) ? i.genres : []);
     const genres = tally(items, genreKeys).filter(g => g.n >= 3 && g.avg !== null).sort((a, b) => b.avg - a.avg || b.n - a.n);
-    const sentence = (g) => `<li><span class="st-score">${fr1(g.avg)}</span><span>Tu mets en moyenne <b>${fr1(g.avg)}</b> au genre <b>${esc(g.name)}</b> <span class="text-gray-500">(${g.n} œuvres)</span></span></li>`;
+    // Toucher une phrase : la liste des œuvres de ce genre
+    const sentence = (g) => `<li class="is-tap" role="button" onclick="${window.worksTap ? window.worksTap({ kind: 'genre', pool: 'all', name: g.name }) : ''}"><span class="st-score">${fr1(g.avg)}</span><span class="flex-1 min-w-0">Tu mets en moyenne <b>${fr1(g.avg)}</b> au genre <b>${esc(g.name)}</b> <span class="text-gray-500">(${g.n} œuvres)</span></span><i class="fa-solid fa-chevron-right st-rank-go"></i></li>`;
     const best = genres.slice(0, 5);
     const worst = genres.length > 5 ? genres.slice(-3).reverse() : [];
     // Répartition des notes
@@ -4283,11 +4317,14 @@ const statsHabits = (sc) => {
 };
 
 // ---------- Onglet « Amis » : affinité, classements entre amis, conseils ----------
+// Titre comparable : sans accents ni ponctuation, 60 caractères au plus (la même règle pour le résumé
+// publié dans le profil ET pour la bibliothèque complète : les deux donnent exactement les mêmes chiffres)
+const workTitle = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60).trim();
 const workKeys = (i) => {
     const keys = [];
     const id = String(i.id || '');
     if (id && !/^manual_|_public$/.test(id)) keys.push(`${i.type}|id|${id}`);
-    const t = normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim();
+    const t = workTitle(i.title);
     if (t) keys.push(`${i.type}|t|${t}`);
     return keys;
 };
@@ -4299,6 +4336,10 @@ const CODE_TYPE = { F: 'Film', S: 'Série', L: 'Livre', A: 'Album', Y: 'YouTube'
 /* Résumé de MA bibliothèque, rangé dans mon profil : mes amis le lisent avec mon profil (déjà chargé),
    ce qui permet les classements et les « œuvres en commun » sans relire des centaines d'œuvres. */
 // v2 : en plus du total, le nombre d'œuvres terminées CETTE ANNÉE (yc) pour « Le match de l'année »
+// v3 : vidéos YouTube incluses, titres et notes non arrondis → l'accueil « Amis » et le détail d'un ami
+//      affichent les mêmes chiffres (avant : 44 œuvres / 90 % sur l'accueil, 67 / 91 % dans le détail)
+const SUM_V = 3;
+const SUM_MAX = 4000;
 const curYearNum = () => new Date().getFullYear();
 const buildStatsSummary = (items) => {
     const done = (items || []).filter(isDone);
@@ -4309,13 +4350,20 @@ const buildStatsSummary = (items) => {
         counts[t] = ofType.length;
         yc[t] = ofType.filter(i => window.itemYear(i) === String(y)).length;
     });
-    const works = done.filter(i => TYPE_CODE[i.type] && i.type !== 'YouTube').slice(0, 1500).map(i => {
+    const coded = done.filter(i => TYPE_CODE[i.type]);
+    // Les vidéos YouTube en dernier : si la limite est atteinte, ce sont elles qui manquent (et on le signale)
+    const ordered = [...coded.filter(i => i.type !== 'YouTube'), ...coded.filter(i => i.type === 'YouTube')];
+    const works = ordered.slice(0, SUM_MAX).map(i => {
         const id = String(i.id || '');
         const idPart = id && !/^manual_|_public$/.test(id) ? id.replace(/[~|]/g, '').slice(0, 40) : '';
         const r = ratingOf(i);
-        return `${TYPE_CODE[i.type]}~${idPart}~${normTxt(i.title).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 32)}~${r !== null ? Math.round(r * 2) / 2 : ''}`;
+        // Vidéo YouTube avec identifiant : le titre (souvent très long) est inutile pour la reconnaître
+        const title = i.type === 'YouTube' && idPart ? '' : workTitle(i.title).replace(/[~|]/g, '');
+        return `${TYPE_CODE[i.type]}~${idPart}~${title}~${r !== null ? Math.round(r * 100) / 100 : ''}`;
     }).join('|');
-    return { v: 2, counts, y, yc, works };
+    const out = { v: SUM_V, counts, y, yc, works };
+    if (ordered.length > SUM_MAX) out.cut = true;
+    return out;
 };
 const summaryKey = (s) => s ? JSON.stringify({ v: s.v, counts: s.counts, y: s.y, yc: s.yc, works: s.works }) : '';
 const parseSummaryWorks = (s) => String((s && s.works) || '').split('|').filter(Boolean).map(w => {
@@ -4348,7 +4396,7 @@ const friendCacheKey = (uid) => `mabiblio_fsum_${window.currentUser ? window.cur
 const readFriendCache = (uid) => {
     try {
         const c = JSON.parse(localStorage.getItem(friendCacheKey(uid)) || 'null');
-        if (c && c.s && Date.now() - c.at < FRIEND_TTL && c.s.y === curYearNum()) return c.s;
+        if (c && c.s && c.s.v >= SUM_V && Date.now() - c.at < FRIEND_TTL && c.s.y === curYearNum()) return c.s;
     } catch (e) { /* cache illisible : on relira */ }
     return null;
 };
@@ -4366,18 +4414,20 @@ const loadFriendLibrary = async (uid) => {
     }
     return ST.friendItems[uid];
 };
+// Résumé publié par l'ami, utilisable tel quel : à la règle actuelle, de cette année, et complet
+const summaryUsable = (s) => !!(s && s.v >= SUM_V && s.y === curYearNum() && !s.cut);
 // Résumé le plus à jour qu'on connaisse pour cet ami (null si rien encore)
 const friendSummary = (f) => {
     const full = ST.friendItems[f.uid];
     if (full && !full.error && full.items) return full.sum || (full.sum = buildStatsSummary(full.items));
-    if (f.summary && f.summary.v >= 2 && f.summary.y === curYearNum()) return f.summary;
-    return readFriendCache(f.uid) || f.summary || null;
+    if (summaryUsable(f.summary)) return f.summary;
+    return readFriendCache(f.uid) || null;
 };
-// Il manque les chiffres de l'année (ancienne version de l'appli chez l'ami, ou rien du tout)
+// Ancien résumé (autre version de l'appli chez l'ami) ou rien : sa bibliothèque sera lue en arrière-plan
 const friendNeedsLoad = (f) => {
     const full = ST.friendItems[f.uid];
     if (full && (full.items || full.error) && Date.now() - full.at < FRIEND_TTL) return false;
-    if (f.summary && f.summary.v >= 2 && f.summary.y === curYearNum()) return false;
+    if (summaryUsable(f.summary)) return false;
     return !readFriendCache(f.uid);
 };
 ST.bg = ST.bg || { queue: [], loading: new Set(), done: 0, total: 0 };
@@ -4525,7 +4575,8 @@ const statsFriendsBoard = (friends) => {
     const mySum = buildStatsSummary(window.myCollection);
     const me = { uid: window.currentUser.uid, name: 'Toi', isMe: true, yc: mySum.yc };
     const people = [me, ...friends.map(f => {
-        const s = friendSummary(f);
+        // Pour le podium, un ancien résumé suffit (il contient déjà les chiffres de l'année)
+        const s = friendSummary(f) || f.summary;
         return { uid: f.uid, name: FIRST(window.liveUser(f.uid, f.name).name), yc: s && s.v >= 2 && s.y === year ? s.yc : null };
     })];
     const pending = ST.bg.loading.size + ST.bg.queue.length;
@@ -4654,7 +4705,7 @@ window.renderStatsView = () => {
     if (window.currentView === 'stats' && window.startStatsEnrichment) setTimeout(() => window.startStatsEnrichment(), 0);
     const E = window._enrich || {};
     // La barre ne s'affiche que pour la grosse complétion (première fois) ; les nouvelles œuvres se complètent sans bruit
-    const banner = E.running && E.total >= 10
+    const banner = E.running && E.showBar && E.total >= 10
         ? `<div class="st-banner"><div class="flex items-center justify-between gap-2"><span><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Je complète tes œuvres déjà enregistrées…</span><b>${E.done}/${E.total}</b></div><div class="stat-bar mt-2" style="background:rgba(22,21,26,.12)"><span style="width:${Math.round(E.done / E.total * 100)}%"></span></div></div>`
         : '';
     const switcherHtml = ST.tab === 'affinity' ? '' : `
@@ -4700,10 +4751,28 @@ window.updateGoal = async (key, val) => {
            Open Library, Deezer) et on les AJOUTE au document. Règles de sécurité :
              - on n'ajoute que des champs vides : notes, avis, dates, statut, affiche ne sont jamais touchés ;
              - updateDoc uniquement : une œuvre supprimée entre-temps n'est jamais recréée ;
-             - une erreur réseau ne marque rien (on réessaiera à la prochaine ouverture des stats). */
+             - une erreur réseau (service saturé, pas de réponse) n'efface rien : on réessaie plus tard, de plus en plus
+               espacé (12 h, 24 h, 48 h), et après 3 échecs l'œuvre est laissée telle quelle (« metaMissing »).
+             - la barre « Je complète tes œuvres » ne s'affiche qu'UNE fois : pour la toute première complétion. */
 const META_V = 1;
 const ENRICH_TYPES = ['Film', 'Série', 'Livre', 'Album'];
-window._enrich = { running: false, done: 0, total: 0 };
+window._enrich = { running: false, done: 0, total: 0, showBar: false };
+const ENRICH_RETRY_MS = 12 * 3600 * 1000;
+const ENRICH_MAX_TRIES = 3;
+const enrichLsKey = (uid) => `mabiblio_enrich_${uid}`;
+const readEnrichTries = (uid) => { try { const o = JSON.parse(localStorage.getItem(enrichLsKey(uid)) || '{}'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } };
+const writeEnrichTries = (uid, o) => { try { localStorage.setItem(enrichLsKey(uid), JSON.stringify(o)); } catch (e) { /* téléphone plein : tant pis */ } };
+const enrichBarSeen = (uid) => { try { return localStorage.getItem(`mabiblio_enrich_bar_${uid}`) === '1'; } catch (e) { return false; } };
+const markEnrichBarSeen = (uid) => { try { localStorage.setItem(`mabiblio_enrich_bar_${uid}`, '1'); } catch (e) {} };
+// Nombre d'essais déjà faits pour cette œuvre et date du dernier (dans l'œuvre ET sur ce téléphone)
+const enrichTries = (it, tries) => {
+    const t = tries[it.docId] || {};
+    return { n: Math.max(num(it.metaTry), num(t.n)), at: Math.max(num(it.metaTryAt), num(t.at)) };
+};
+const enrichWaiting = (it, tries) => {
+    const { n, at } = enrichTries(it, tries);
+    return !!at && Date.now() - at < ENRICH_RETRY_MS * Math.pow(2, Math.max(0, n - 1));
+};
 const isEmptyVal = (v) => v === undefined || v === null || v === '' || v === 0 || (Array.isArray(v) && v.length === 0);
 const fill = (patch, item, key, val) => { if (isEmptyVal(item[key]) && !isEmptyVal(val)) patch[key] = val; };
 const titleKey = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim();
@@ -4759,14 +4828,17 @@ const enrichBook = async (it) => {
     const patch = {};
     let genres = [], pages = 0, date = '', author = '';
     const id = String(it.id || '');
-    if (it.olKey) {
-        const d = await httpJson(`https://openlibrary.org${String(it.olKey).replace(/[^A-Za-z0-9/]/g, '')}.json`);
-        if (d && Array.isArray(d.subjects)) genres = d.subjects.slice(0, 12);
-    } else if (id && !/^manual_|_public$|^OL/.test(id) && /^[A-Za-z0-9_-]{6,20}$/.test(id)) {
-        const d = await httpJson(`https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}`);
-        const v = d && d.volumeInfo;
-        if (v) { genres = v.categories || []; pages = v.pageCount || 0; date = v.publishedDate || ''; author = (v.authors || []).join(', '); }
-    }
+    // Une source qui ne répond pas n'arrête rien : on passe à la recherche par titre (deux sources)
+    try {
+        if (it.olKey) {
+            const d = await httpJson(`https://openlibrary.org${String(it.olKey).replace(/[^A-Za-z0-9/]/g, '')}.json`);
+            if (d && Array.isArray(d.subjects)) genres = d.subjects.slice(0, 12);
+        } else if (id && !/^manual_|_public$|^OL|^ol_/.test(id) && /^[A-Za-z0-9_-]{6,20}$/.test(id)) {
+            const d = await httpJson(`https://www.googleapis.com/books/v1/volumes/${encodeURIComponent(id)}?key=AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco`);
+            const v = d && d.volumeInfo;
+            if (v) { genres = v.categories || []; pages = v.pageCount || 0; date = v.publishedDate || ''; author = (v.authors || []).join(', '); }
+        }
+    } catch (e) { console.warn('Complétion livre', e); }
     if (!genres.length) {
         // Dernier recours : recherche par titre (+ auteur), avec les deux sources de livres
         const found = await window.searchBooks(`${it.title || ''} ${it.author || ''}`.trim());
@@ -4785,9 +4857,12 @@ const enrichBook = async (it) => {
 const enrichAlbum = async (it) => {
     const patch = {};
     let d = null;
+    const busy = (r) => r && r.error && (r.error.code === 4 || r.error.code === 700);
     if (/^\d+$/.test(String(it.id || ''))) d = await window.deezerJSONP(`https://api.deezer.com/album/${encodeURIComponent(it.id)}?`);
+    if (busy(d)) throw new Error('Deezer saturé');
     if (!d || d.error) {
         const s = await window.deezerJSONP(`https://api.deezer.com/search/album?q=${encodeURIComponent(`${it.title || ''} ${it.author || ''}`.trim())}&limit=5`);
+        if (busy(s)) throw new Error('Deezer saturé');
         const want = titleKey(it.title);
         const hit = ((s && s.data) || []).find(a => titleKey(a.title) === want);
         if (!hit) return { metaV: META_V, metaMissing: true };
@@ -4806,10 +4881,18 @@ window.startStatsEnrichment = async () => {
     const E = window._enrich;
     if (E.running || !window.currentUser) return;
     const uid = window.currentUser.uid;
-    const todo = (window.myCollection || []).filter(i => i.docId && ENRICH_TYPES.includes(i.type) && !i.metaV && !(E.skip && E.skip.has(i.docId)));
+    const tries = readEnrichTries(uid);
+    const enrichable = (window.myCollection || []).filter(i => i.docId && ENRICH_TYPES.includes(i.type));
+    // Ménage : on oublie les essais des œuvres désormais complétées ou supprimées
+    const alive = new Set(enrichable.filter(i => !i.metaV).map(i => i.docId));
+    Object.keys(tries).forEach(k => { if (!alive.has(k)) delete tries[k]; });
+    const todo = enrichable.filter(i => !i.metaV && !(E.skip && E.skip.has(i.docId)) && !enrichWaiting(i, tries));
+    writeEnrichTries(uid, tries);
     if (!todo.length) return;
     E.skip = E.skip || new Set();
-    Object.assign(E, { running: true, done: 0, total: todo.length });
+    // La barre : seulement la toute première fois, quand la plupart des œuvres restent à compléter
+    const showBar = todo.length >= 10 && !enrichBarSeen(uid) && todo.length >= enrichable.length / 2;
+    Object.assign(E, { running: true, done: 0, total: todo.length, showBar });
     const queue = [...todo];
     let pending = [];
     let lastRender = 0;
@@ -4837,13 +4920,21 @@ window.startStatsEnrichment = async () => {
     const worker = async () => {
         while (queue.length && window.currentUser && window.currentUser.uid === uid) {
             const it = queue.shift();
+            // Essai noté AVANT de commencer : même si l'appli est fermée en plein milieu, on ne recommence pas tout de suite
+            const prev = enrichTries(it, tries);
+            tries[it.docId] = { n: prev.n + 1, at: Date.now() };
+            writeEnrichTries(uid, tries);
             try {
                 const job = it.type === 'Livre' ? enrichBook(it) : it.type === 'Album' ? enrichAlbum(it) : enrichScreen(it);
                 // 20 s maximum par œuvre : un service qui ne répond pas ne bloque jamais la complétion
                 const patch = await Promise.race([job, new Promise((_, rej) => setTimeout(() => rej(new Error('délai dépassé')), 20000))]);
                 if (patch) { pending.push([it.docId, patch]); Object.assign(it, patch); }
             } catch (e) {
-                E.skip.add(it.docId); // panne réseau ou quota : on réessaiera à la prochaine ouverture de l'app
+                // Panne réseau ou service saturé : on réessaiera plus tard ; au bout de 3 fois, on laisse l'œuvre telle quelle
+                E.skip.add(it.docId);
+                const n = tries[it.docId].n;
+                const patch = n >= ENRICH_MAX_TRIES ? { metaV: META_V, metaMissing: true, metaTry: n } : { metaTry: n, metaTryAt: Date.now() };
+                pending.push([it.docId, patch]); Object.assign(it, patch);
             }
             E.done++;
             if (pending.length >= 20) await flush();
@@ -4855,6 +4946,7 @@ window.startStatsEnrichment = async () => {
         await flush();
     } finally {
         E.running = false;
+        if (showBar) markEnrichBarSeen(uid);
         repaint(true);
     }
 };
@@ -5159,6 +5251,249 @@ window.startStatsEnrichment = async () => {
             })();
         };
 
+        /* --- J.10 LISTES CLIQUABLES : une personne ou un genre ---
+           • Personne (réalisateur, créateur, acteur, auteur, artiste) : touchée dans les stats ou sur une fiche.
+             On montre ses œuvres DE MA BIBLIOTHÈQUE, puis ses œuvres les plus connues (TMDB, Open Library +
+             Google Livres, Deezer) avec une coche sur celles que j'ai déjà. Une seule recherche, gardée en mémoire.
+           • Genre, pays, langue, plateforme : touchés dans les stats → mes œuvres concernées (période choisie).
+           La fenêtre passe AU-DESSUS de la fiche si elle est ouverte depuis une fiche ; en touchant une œuvre de
+           la liste, la fiche s'ouvre par-dessus et, en la fermant, on retrouve la liste. */
+        const personKey = (n) => normTxt(n).replace(/[^a-z0-9]+/g, ' ').trim();
+        const PERSON_ROLES = {
+            director: { kicker: 'Réalisation', m: 'Réalisateur', f: 'Réalisatrice', icon: 'fa-solid fa-clapperboard', types: ['Film', 'Série'], color: 'Film' },
+            creator: { kicker: 'Création', m: 'Créateur', f: 'Créatrice', icon: 'fa-solid fa-lightbulb', types: ['Film', 'Série'], color: 'Série' },
+            actor: { kicker: 'Casting', m: 'Acteur', f: 'Actrice', icon: 'fa-solid fa-masks-theater', types: ['Film', 'Série'], color: 'Film' },
+            author: { kicker: 'Auteur', m: 'Auteur', f: 'Autrice', icon: 'fa-solid fa-pen-nib', types: ['Livre'], color: 'Livre' },
+            artist: { kicker: 'Artiste', m: 'Artiste', f: 'Artiste', icon: 'fa-solid fa-microphone', types: ['Album'], color: 'Album' }
+        };
+        // Rôle d'une personne selon le type de l'œuvre où on la touche
+        const roleForAuthor = (type) => ({ 'Film': 'director', 'Série': 'creator', 'Livre': 'author', 'Album': 'artist' })[type] || null;
+        const allCastOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).map(s => String(s).trim()).filter(Boolean);
+        const authorsOfItem = (i) => String(i.author || '').split(/,|&| et | feat\.? /i).map(s => s.trim()).filter(s => s && s !== 'Inconnu');
+        // Mes œuvres où apparaît cette personne (d'après ce qui est enregistré dans chaque œuvre)
+        const personInLibrary = (role, name) => {
+            const k = personKey(name);
+            const R = PERSON_ROLES[role];
+            return (window.myCollection || []).filter(i => R.types.includes(i.type) && (role === 'actor' ? allCastOf(i) : authorsOfItem(i)).some(n => personKey(n) === k));
+        };
+        // Œuvre de ma bibliothèque correspondant à un résultat (identifiant, identifiant TMDB, ou titre + année)
+        const ownedMatch = (r) => {
+            const t = titleKey(r.title), y = yearOfRelease(r);
+            return (window.myCollection || []).find(i => i.type === r.type && (
+                (r.id && (String(i.id) === String(r.id) || String(i.tmdbId || '') === String(r.id) || i.docId === `${r.type}_${r.id}`)) ||
+                (t && titleKey(i.title) === t && (!y || !yearOfRelease(i) || Math.abs(yearOfRelease(i) - y) <= 1)) ||
+                (r.type === 'Livre' && bookKey(i.title, i.author) === bookKey(r.title, r.author))));
+        };
+
+        // ---- Recherches (une fois par personne, gardées en mémoire) ----
+        const personCache = new Map();
+        const NO_SELF = /\b(self|himself|herself|themselves|lui-même|elle-même|narrat)/i;
+        const fetchScreenPerson = async (role, name) => {
+            const s = await httpJson(`https://api.themoviedb.org/3/search/person?api_key=${TMDB_KEY}&query=${encodeURIComponent(name)}&language=fr-FR&include_adult=false`);
+            const want = personKey(name);
+            const dept = role === 'actor' ? 'Acting' : role === 'director' ? 'Directing' : 'Writing';
+            const cands = ((s && s.results) || []).filter(p => personKey(p.name) === want || personKey(p.original_name) === want);
+            const pool = cands.length ? cands : ((s && s.results) || []).slice(0, 1);
+            const p = pool.sort((a, b) => ((b.known_for_department === dept) - (a.known_for_department === dept)) || (num(b.popularity) - num(a.popularity)))[0];
+            if (!p) return { works: [] };
+            const c = await httpJson(`https://api.themoviedb.org/3/person/${encodeURIComponent(p.id)}/combined_credits?api_key=${TMDB_KEY}&language=fr-FR`);
+            let list;
+            if (role === 'actor') {
+                list = ((c && c.cast) || []).filter(m => !NO_SELF.test(String(m.character || '')) && !(m.genre_ids || []).some(g => g === 10767 || g === 10763 || g === 10764) && !(m.media_type === 'tv' && num(m.episode_count) < 2));
+            } else {
+                // Films réalisés + séries créées (les épisodes réalisés pour la télé sont trop nombreux)
+                list = ((c && c.crew) || []).filter(m => (m.job === 'Director' && m.media_type === 'movie') || m.job === 'Creator');
+            }
+            const seen = new Set();
+            const works = list.filter(m => m.poster_path && (m.media_type === 'movie' || m.media_type === 'tv'))
+                .sort((a, b) => num(b.vote_count) - num(a.vote_count))
+                .filter(m => { const k = m.media_type + m.id; if (seen.has(k)) return false; seen.add(k); return true; })
+                .slice(0, 24).map(m => ({
+                    id: String(m.id), title: m.title || m.name || '', img: `https://image.tmdb.org/t/p/w300${m.poster_path}`,
+                    desc: String(m.overview || '').replace(/[\n\r]/g, ' '), type: m.media_type === 'movie' ? 'Film' : 'Série',
+                    releaseDate: m.release_date || m.first_air_date || '', metricValue: 0, author: '', cast: '', needsDetails: true
+                }));
+            return { works, photo: p.profile_path ? `https://image.tmdb.org/t/p/w185${p.profile_path}` : '', gender: p.gender, name: p.name };
+        };
+        const fetchAuthor = async (name) => {
+            const want = personKey(name);
+            const last = want.split(' ').pop();
+            const fields = 'key,title,author_name,author_key,first_publish_year,number_of_pages_median,cover_i,isbn,language,subject,edition_count';
+            const [o, g] = await Promise.allSettled([
+                httpJson(`https://openlibrary.org/search.json?author=${encodeURIComponent(name)}&sort=editions&lang=fr&limit=40&fields=${fields}`),
+                searchGoogleBooks(`inauthor:"${name}"`)
+            ]);
+            if (o.status === 'rejected' && g.status === 'rejected') throw o.reason;
+            let photo = '';
+            const ol = ((o.status === 'fulfilled' && o.value && o.value.docs) || []).filter(d => (d.author_name || []).some(a => personKey(a).split(' ').pop() === last)).map(d => {
+                const k = (d.author_name || []).findIndex(a => personKey(a) === want);
+                if (!photo && k >= 0 && d.author_key && d.author_key[k]) photo = `https://covers.openlibrary.org/a/olid/${encodeURIComponent(d.author_key[k])}-M.jpg?default=false`;
+                return {
+                    id: 'ol_' + String(d.key || '').replace('/works/', ''), olKey: d.key || '', title: d.title,
+                    img: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : '', desc: '', type: 'Livre',
+                    releaseDate: d.first_publish_year ? String(d.first_publish_year) : '', metricValue: d.number_of_pages_median || 0,
+                    author: (d.author_name || []).slice(0, 3).join(', '), genres: (d.subject || []).slice(0, 5), source: 'openlibrary', needsDetails: !!d.key
+                };
+            });
+            const gb = ((g.status === 'fulfilled' && g.value) || []).filter(b => authorsOfItem(b).some(a => personKey(a).split(' ').pop() === last));
+            // Les plus connus d'abord (nombre d'éditions sur Open Library), complétés par Google Livres, sans doublon
+            const byKey = new Map();
+            [...ol, ...gb].forEach(b => {
+                const k = bookKey(b.title, b.author);
+                const cur = byKey.get(k);
+                if (!cur) byKey.set(k, b);
+                else { if (!cur.img && b.img) cur.img = b.img; if (!cur.desc && b.desc) cur.desc = b.desc; if (!cur.metricValue && b.metricValue) cur.metricValue = b.metricValue; }
+            });
+            return { works: [...byKey.values()].filter(b => b.title && b.img).slice(0, 24), photo };
+        };
+        const fetchArtist = async (name) => {
+            const s = await window.deezerJSONP(`https://api.deezer.com/search/artist?q=${encodeURIComponent(name)}&limit=5`);
+            const want = personKey(name);
+            const list = (s && s.data) || [];
+            const a = list.find(x => personKey(x.name) === want) || list[0];
+            if (!a) return { works: [] };
+            const al = await window.deezerJSONP(`https://api.deezer.com/artist/${encodeURIComponent(a.id)}/albums?limit=100`);
+            const all = ((al && al.data) || []).filter(x => x && x.id && x.title);
+            const albums = all.filter(x => x.record_type === 'album' || x.record_type === 'ep');
+            const seen = new Set();
+            const works = (albums.length ? albums : all)
+                .sort((x, y) => num(y.fans) - num(x.fans) || String(y.release_date || '').localeCompare(String(x.release_date || '')))
+                .filter(x => { const k = titleKey(x.title); if (seen.has(k)) return false; seen.add(k); return true; })
+                .slice(0, 24).map(x => ({
+                    id: String(x.id), title: x.title, img: x.cover_xl || x.cover_big || x.cover_medium || '', desc: '', type: 'Album',
+                    releaseDate: x.release_date || '', metricValue: 0, author: a.name, platform: 'Deezer', needsDetails: true
+                }));
+            return { works, photo: a.picture_big || a.picture_medium || '' };
+        };
+        const loadPerson = (role, name) => {
+            const key = role + '|' + personKey(name);
+            if (personCache.has(key)) return personCache.get(key);
+            const job = (role === 'author' ? fetchAuthor(name) : role === 'artist' ? fetchArtist(name) : fetchScreenPerson(role, name))
+                .catch(e => { console.warn('Fiche personne', e); personCache.delete(key); return { works: [], error: true }; });
+            personCache.set(key, job);
+            if (personCache.size > 60) personCache.delete(personCache.keys().next().value);
+            return job;
+        };
+
+        // ---- Mes œuvres d'un genre / pays / langue / plateforme (période des stats) ----
+        const LIST_KINDS = {
+            genre: { kicker: 'Genre', icon: 'fa-solid fa-masks-theater' },
+            country: { kicker: 'Pays', icon: 'fa-solid fa-earth-europe' },
+            lang: { kicker: 'Langue originale', icon: 'fa-solid fa-language' },
+            platform: { kicker: 'Plateforme', icon: 'fa-solid fa-tv' }
+        };
+        const listPool = (pool) => {
+            const items = statsScope().items;
+            if (pool === 'screen') return items.filter(i => (i.type === 'Film' || i.type === 'Série') && (ST.fs === 'both' || i.type === ST.fs));
+            if (pool === 'Livre' || pool === 'Album') return items.filter(i => i.type === pool);
+            return items;
+        };
+        const listValues = (kind, pool, i) => {
+            if (kind === 'genre') return (pool === 'Livre' || (pool === 'all' && i.type === 'Livre')) ? bookGenreNames(i) : (Array.isArray(i.genres) ? i.genres : []);
+            if (kind === 'country') return countriesOf(i);
+            if (kind === 'lang') return [langName(i.originalLanguage)];
+            if (kind === 'platform') return [i.platform];
+            return [];
+        };
+
+        // ---- Affichage ----
+        const WS = { spec: null, token: 0 };
+        const worksModal = () => document.getElementById('works-modal');
+        const byMyRating = (a, b) => (ratingOf(b) ?? -1) - (ratingOf(a) ?? -1) || (yearOfRelease(b) || 0) - (yearOfRelease(a) || 0) || String(a.title || '').localeCompare(String(b.title || ''));
+        const libRow = (i) => {
+            const r = ratingOf(i);
+            const tag = i.status === 'Wishlist' ? '<span class="wl-tag">Wishlist</span>' : i.status === 'En cours' ? '<span class="wl-tag" style="background:var(--mint-tint)">En cours</span>' : r !== null ? `<span class="wl-rate">${fr1(r)}</span>` : '';
+            const y = yearOfRelease(i);
+            return `<li class="st-common" onclick="window.openWorkFromList(${jsArg(regItem(i))})">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold truncate">${esc(i.type)}${y ? ` · ${y}` : ''}${i.author && i.type !== 'Film' ? ` · ${esc(String(i.author).split(',')[0])}` : ''}</div></div>${tag}</li>`;
+        };
+        const knownTile = (w) => {
+            const owned = ownedMatch(w);
+            const aspect = w.type === 'Album' ? 'aspect-square' : 'aspect-[2/3]';
+            const y = yearOfRelease(w);
+            const badge = owned && ratingOf(owned) !== null ? `<span class="grid-rating">${fr1(ratingOf(owned))}</span>` : owned ? `<span class="pv-sim-own"><i class="fa-solid fa-check"></i></span>` : '';
+            return `<button type="button" class="wl-tile" onclick="window.openWorkFromList(${jsArg(regItem(owned || w))})"><span class="pv-sim-img ${aspect}">${coverImg(w.img, w.title, '', 'loading="lazy"')}${badge}</span><span class="pv-sim-t">${esc(w.title)}</span><span class="pv-sim-a">${y ? y : ''}${w.type === 'Série' ? (y ? ' · ' : '') + 'Série' : ''}</span></button>`;
+        };
+        const wlHead = (o) => `
+            <div class="wl-head" style="background:${o.bg}">
+                <button type="button" class="wl-close" onclick="window.closeWorksSheet()" aria-label="Retour"><i class="fa-solid fa-arrow-left"></i></button>
+                <div class="wl-hero">
+                    <span class="wl-photo">${o.photo ? `<img src="${safeImg(o.photo)}" alt="" onerror="this.remove()">` : ''}<i class="${o.icon}"></i></span>
+                    <div class="min-w-0">
+                        <div class="wl-kicker">${esc(o.kicker)}</div>
+                        <h2 class="wl-name">${esc(o.name)}</h2>
+                        ${o.sub ? `<div class="wl-sub">${o.sub}</div>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        const renderPerson = (spec, data) => {
+            const R = PERSON_ROLES[spec.role];
+            const cat = catOf(R.color);
+            // Mes œuvres : celles où la personne est enregistrée + celles retrouvées dans sa filmographie / bibliographie
+            const mine = new Set(personInLibrary(spec.role, spec.name));
+            ((data && data.works) || []).forEach(w => { const o = ownedMatch(w); if (o) mine.add(o); });
+            const lib = [...mine].sort(byMyRating);
+            const seenN = lib.filter(isDone).length;
+            const kicker = data && data.gender === 1 ? R.f : data && data.gender === 2 ? R.m : R.kicker;
+            const unit = { director: ['film', 'films'], creator: ['œuvre', 'œuvres'], actor: ['œuvre', 'œuvres'], author: ['livre', 'livres'], artist: ['album', 'albums'] }[spec.role];
+            const sub = lib.length ? `<b>${lib.length}</b> ${lib.length > 1 ? unit[1] : unit[0]} dans ta bibliothèque${seenN && seenN !== lib.length ? ` · ${seenN} terminé${seenN > 1 ? 's' : ''}` : ''}` : 'Rien encore dans ta bibliothèque';
+            const known = data ? (data.works || []) : null;
+            const knownTitle = spec.role === 'actor' ? 'Ses rôles les plus connus' : spec.role === 'author' ? 'Ses livres les plus connus' : spec.role === 'artist' ? 'Ses albums les plus connus' : 'Ses œuvres les plus connues';
+            const knownBody = !known ? `<div class="wl-grid">${'<span class="wl-tile"><span class="pv-sim-img aspect-[2/3] pv-skel"></span></span>'.repeat(6)}</div>`
+                : data.error ? sEmpty("Ses autres œuvres n'ont pas pu être chargées. Réessaie dans un instant.")
+                : known.length ? `<div class="wl-grid">${known.map(knownTile).join('')}</div>` : sEmpty('Aucune autre œuvre trouvée.');
+            return `${wlHead({ bg: cat.tint, photo: data && data.photo, icon: R.icon, kicker, name: spec.name, sub })}
+                <div class="wl-body">
+                    ${lib.length ? sCard('Dans ta bibliothèque', `<ul class="st-commons">${lib.map(libRow).join('')}</ul>`) : ''}
+                    ${sCard(knownTitle, `${known && known.length ? '<p class="st-note -mt-1 mb-3">Les plus connues d\'abord · <i class="fa-solid fa-check"></i> = déjà dans ta bibliothèque</p>' : ''}${knownBody}`)}
+                </div>`;
+        };
+        const renderList = (spec) => {
+            const K = LIST_KINDS[spec.kind];
+            const items = listPool(spec.pool).filter(i => listValues(spec.kind, spec.pool, i).some(v => String(v || '').trim() === spec.name)).sort(byMyRating);
+            const avg = avgRating(items);
+            const sc = statsScope();
+            const period = sc.isYear ? `en ${sc.curYear}` : 'depuis toujours';
+            const color = spec.pool === 'Livre' ? catOf('Livre').tint : spec.pool === 'Album' ? catOf('Album').tint : spec.pool === 'screen' ? catOf('Film').tint : 'var(--miel-tint)';
+            const sub = `<b>${items.length}</b> œuvre${items.length > 1 ? 's' : ''} terminée${items.length > 1 ? 's' : ''} ${period}${avg !== null ? ` · <b>${fr1(avg)}</b>★ de moyenne` : ''}`;
+            return `${wlHead({ bg: color, icon: K.icon, kicker: K.kicker, name: spec.name, sub })}
+                <div class="wl-body">${items.length ? sCard('Tes œuvres, de la mieux notée à la moins bien notée', `<ul class="st-commons">${items.map(libRow).join('')}</ul>`) : sEmpty('Aucune œuvre sur cette période.')}</div>`;
+        };
+        const paintWorks = (data) => {
+            const box = document.getElementById('works-content');
+            if (!box || !WS.spec) return;
+            box.innerHTML = WS.spec.role ? renderPerson(WS.spec, data) : renderList(WS.spec);
+        };
+        window.openWorksSheet = (spec) => {
+            if (!spec || typeof spec !== 'object') return;
+            const name = String(spec.name || '').trim().slice(0, 120);
+            if (!name) return;
+            if (spec.role && !PERSON_ROLES[spec.role]) return;
+            if (!spec.role && !LIST_KINDS[spec.kind]) return;
+            WS.spec = { role: spec.role || null, kind: spec.kind || null, pool: spec.pool || 'all', name };
+            const token = ++WS.token;
+            const m = worksModal();
+            m.classList.remove('is-under');
+            m.classList.add('open');
+            m.scrollTop = 0;
+            paintWorks(null);
+            if (WS.spec.role) {
+                loadPerson(WS.spec.role, name).then(data => { if (token === WS.token && m.classList.contains('open')) paintWorks(data); });
+            }
+        };
+        window.openWorksKey = (key) => { const it = itemRegistry.get(key); if (it && it._wl) window.openWorksSheet(it._wl); };
+        window.closeWorksSheet = () => { const m = worksModal(); if (m) m.classList.remove('open', 'is-under'); WS.spec = null; WS.token++; };
+        // Une œuvre touchée dans la liste : la fiche s'ouvre par-dessus ; en la fermant, on retrouve la liste
+        window.openWorkFromList = (key) => {
+            const it = itemRegistry.get(key);
+            if (!it) return;
+            worksModal().classList.add('is-under');
+            window.openPreview(it);
+        };
+        // Clé de clic pour une personne / une liste (utilisée dans les stats et sur les fiches)
+        window.worksTap = (spec) => `window.openWorksKey(${jsArg(regItem({ _wl: spec }))})`;
+        // Noms cliquables sur une fiche
+        window.personLinks = (names, role) => names.map(n => `<button type="button" class="pv-person" onclick="event.stopPropagation(); ${window.worksTap({ role, name: n })}">${esc(n)}</button>`).join('<span class="pv-person-sep">, </span>');
+
         /* --- J.9 NOUVEAUTÉS : fenêtre affichée une fois après la mise à jour + annonce à tous ---
            • Chaque téléphone voit la fenêtre UNE fois par version (mémorisé sur l'appareil). Elle reste
              accessible depuis Profil → Réglages → « Nouveautés de l'appli ».
@@ -5170,7 +5505,7 @@ window.startStatsEnrichment = async () => {
             { icon: 'fa-solid fa-bell', bg: 'var(--mint)', t: 'Les notifications', d: 'Likes, commentaires, réponses et conseils arrivent directement sur ton téléphone.' },
             { icon: 'fa-solid fa-chart-simple', bg: 'var(--miel)', t: 'Des stats repensées', d: 'Tout le détail par catégorie, tes affinités et le match de l’année entre amis.' },
             { icon: 'fa-solid fa-palette', bg: 'var(--lav)', t: 'Un nouveau look', d: 'Une interface plus claire, plus colorée, et une appli à installer sur ton écran d’accueil.' },
-            { icon: 'fa-solid fa-wand-magic-sparkles', bg: 'var(--rose)', t: 'Profil et fiches enrichis', d: 'Ton top 3 par catégorie, bandes-annonces, extraits audio, revisionnages et réponses aux commentaires.' },
+            { icon: 'fa-solid fa-wand-magic-sparkles', bg: 'var(--rose)', t: 'Profil et fiches enrichis', d: 'Ton top 3, bandes-annonces, extraits audio, revisionnages, réponses aux commentaires, et toutes les œuvres d’un acteur ou d’un auteur en un toucher.' },
             { icon: 'fa-solid fa-screwdriver-wrench', bg: 'var(--corail)', t: 'Plus fluide', d: 'Plein de bugs corrigés et une appli plus rapide au quotidien.' }
         ];
         const ANNOUNCE_TITLE = 'Nouvelle version de MaBiblio 🎉';
