@@ -44,6 +44,10 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://image.tmdb.org">
+    <link rel="preconnect" href="https://books.google.com">
+    <link rel="dns-prefetch" href="https://covers.openlibrary.org">
+    <link rel="dns-prefetch" href="https://i.ytimg.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -1384,6 +1388,7 @@
                 window._allActivity = all.slice(0, 60);
                 window._feedState = 'ok';
                 window.applyFeedFilter();
+                if (window.warmFeedCovers) window.warmFeedCovers();
             };
             const unsubs = chunks.map((chunk, i) => onSnapshot(
                 query(collection(db, 'artifacts', appId, 'public', 'data', 'activity'), where('userId', 'in', chunk), orderBy('timestamp', 'desc'), limit(60)),
@@ -1827,8 +1832,10 @@
             return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
         };
         // Adresse d'image à afficher (le visuel généré si l'image manque ou vient de l'ancien service en panne)
+        // Google Livres : https et sans « &edge=curl » (effet de page cornée recalculé par Google à chaque fois : plus lent)
+        window.fixCoverUrl = (u) => String(u || '').replace(/^http:\/\/books\.google\./, 'https://books.google.').replace(/&edge=curl/g, '');
         window.coverSrc = (img, title) => {
-            const s = String(img || '');
+            const s = window.fixCoverUrl(img);
             if (!s || s.includes('via.placeholder.com')) return esc(window.placeholderCover(title));
             return safeImg(s) || esc(window.placeholderCover(title));
         };
@@ -1836,6 +1843,17 @@
         window.imgFallback = (el) => { el.onerror = null; el.src = window.placeholderCover(el.dataset.title || ''); };
         const coverImg = (img, title, cls, extra = '') => `<img src="${window.coverSrc(img, title)}" data-title="${esc(title)}" onerror="window.imgFallback(this)" class="${cls}" ${extra}>`;
         window.coverImg = coverImg;
+        // Préchargement discret des 8 premières couvertures du fil (une seule fois par image, quand le téléphone est libre)
+        const warmed = new Set();
+        window.warmFeedCovers = () => {
+            const run = () => (window._allActivity || []).slice(0, 8).forEach(a => {
+                const u = window.fixCoverUrl(a && a.itemImg);
+                if (!/^https:\/\//.test(u) || warmed.has(u)) return;
+                warmed.add(u);
+                const im = new Image(); im.decoding = 'async'; im.src = u;
+            });
+            if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 3000 }); else setTimeout(run, 500);
+        };
 
         // --- Détails complets d'une œuvre (chargés à l'ouverture de la fiche, plus à chaque recherche) ---
         // On en profite pour garder genres et pays : ils serviront aux statistiques détaillées.
@@ -2960,7 +2978,7 @@
             }
 
             if (sortedFeed.length > 0) {
-                sortedFeed.forEach(act => {
+                sortedFeed.forEach((act, actIdx) => {
                     const likes = Array.isArray(act.likes) ? act.likes : [];
                     const isLiked = likes.includes(window.currentUser.uid);
                     const commentsCount = Array.isArray(act.comments) ? act.comments.length : 0;
@@ -3017,7 +3035,7 @@
 
                         <div class="feed-work" style="background:${cat.tint}" onclick="window.openPreviewKey(${jsArg(previewKey)})">
                             <div class="relative ${thumbClass} shrink-0 rounded-2xl overflow-hidden shadow-md">
-                                ${coverImg(act.itemImg, act.itemTitle, 'w-full h-full object-cover bg-gray-200 ' + (act.type === 'YouTube' ? 'scale-[1.35]' : ''), 'loading="lazy"')}
+                                ${coverImg(act.itemImg, act.itemTitle, 'w-full h-full object-cover bg-gray-200 ' + (act.type === 'YouTube' ? 'scale-[1.35]' : ''), actIdx < 4 ? 'decoding="async"' + (actIdx < 2 ? ' fetchpriority="high"' : '') : 'loading="lazy" decoding="async"')}
                                 <div class="feed-rating">${esc(act.rating || '-')}</div>
                             </div>
                             <div class="flex-1 py-0.5 min-w-0">
