@@ -454,6 +454,7 @@
         .wn-list li { display: flex; gap: 12px; align-items: flex-start; animation: wnIn .4s ease both; }
         .wn-list li > span:last-child { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.35; color: var(--muted); font-weight: 600; }
         .wn-list b { color: var(--ink); font-size: 15px; font-weight: 800; }
+        .wn-foot { margin: 0 18px 10px; padding: 10px 12px; border-radius: 14px; background: var(--ground); font-size: 12.5px; font-weight: 700; color: var(--ink); }
         .wn-ic { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; color: var(--ink); }
         @keyframes wnIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
         @media (prefers-reduced-motion: reduce) { .wn-list li { animation: none; } }
@@ -4481,14 +4482,23 @@ const statsFriends = () => (window.followingData || []).map(p => ({ uid: p.uid |
       gardé 24 h sur ce téléphone : en revenant sur la page, plus aucune lecture. */
 const FRIEND_TTL = 24 * 3600 * 1000;
 const friendCacheKey = (uid) => `mabiblio_fsum_${window.currentUser ? window.currentUser.uid : ''}_${uid}`;
+// Lu une seule fois par session (un résumé fait jusqu'à ~100 Ko : on ne le relit pas à chaque affichage)
+const friendCacheMemo = new Map();
 const readFriendCache = (uid) => {
+    const m = friendCacheMemo.get(uid);
+    if (m && Date.now() - m.at < FRIEND_TTL) return m.s && m.s.y === curYearNum() ? m.s : null;
+    const v = readFriendCacheRaw(uid);
+    friendCacheMemo.set(uid, { at: v && v._at ? v._at : Date.now(), s: v });
+    return v;
+};
+const readFriendCacheRaw = (uid) => {
     try {
         const c = JSON.parse(localStorage.getItem(friendCacheKey(uid)) || 'null');
-        if (c && c.s && c.s.v >= SUM_V && Date.now() - c.at < FRIEND_TTL && c.s.y === curYearNum()) return c.s;
+        if (c && c.s && c.s.v >= SUM_V && Date.now() - c.at < FRIEND_TTL && c.s.y === curYearNum()) { Object.defineProperty(c.s, '_at', { value: c.at, enumerable: false }); return c.s; }
     } catch (e) { /* cache illisible : on relira */ }
     return null;
 };
-const writeFriendCache = (uid, s) => { try { localStorage.setItem(friendCacheKey(uid), JSON.stringify({ at: Date.now(), s })); } catch (e) { /* téléphone plein : tant pis */ } };
+const writeFriendCache = (uid, s) => { friendCacheMemo.set(uid, { at: Date.now(), s }); try { localStorage.setItem(friendCacheKey(uid), JSON.stringify({ at: Date.now(), s })); } catch (e) { /* téléphone plein : tant pis */ } };
 const loadFriendLibrary = async (uid) => {
     try {
         const snap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'items'));
@@ -4568,6 +4578,54 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => resetFriendDetail());
 window.showMoreCommon = () => { ST.commonShown = (ST.commonShown || 10) + 40; window.renderStatsView(); };
 
+// Version légère (œuvres en commun + affinité seulement), gardée en mémoire par ami : utilisée pour l'accueil de
+// l'onglet Amis et les recommandations. Recalculée seulement si sa bibliothèque ou la mienne change.
+// (Mêmes règles que computeAffinity : les deux donnent exactement les mêmes chiffres.)
+const myIdxMemo = { col: null, idx: null };
+const myDoneIndex = () => {
+    if (myIdxMemo.col !== window.myCollection || !myIdxMemo.idx) {
+        const idx = new Map();
+        (window.myCollection || []).filter(isDone).forEach(i => workKeys(i).forEach(k => { if (!idx.has(k)) idx.set(k, i); }));
+        myIdxMemo.col = window.myCollection; myIdxMemo.idx = idx;
+    }
+    return myIdxMemo.idx;
+};
+const parsedMemo = new Map();
+// Œuvres d'un ami : sa bibliothèque complète si on l'a lue, sinon son résumé (lu une seule fois)
+const friendWorks = (f) => {
+    const full = ST.friendItems[f.uid];
+    if (full && full.items && !full.error) return { sig: full.items, list: full.items };
+    const s = friendSummary(f);
+    if (!s) return null;
+    const sig = String(s.works || '');
+    const m = parsedMemo.get(f.uid);
+    if (m && m.sig === sig) return m;
+    const v = { sig, list: parseSummaryWorks(s) };
+    parsedMemo.set(f.uid, v);
+    return v;
+};
+const affLightMemo = new Map();
+window.affinityLight = (f) => {
+    const w = friendWorks(f);
+    if (!w) return null;
+    const m = affLightMemo.get(f.uid);
+    if (m && m.sig === w.sig && m.col === window.myCollection) return m.v;
+    const index = myDoneIndex();
+    const seen = new Set(); let n = 0; const agree = [];
+    w.list.forEach(t => {
+        if (!isDone(t)) return;
+        const mm = workKeys(t).map(k => index.get(k)).find(Boolean);
+        if (!mm || seen.has(mm)) return;
+        seen.add(mm); n++;
+        const a = ratingOf(mm), b = ratingOf(t);
+        if (a !== null && b !== null) agree.push(1 - Math.min(9, Math.abs(a - b)) / 9);
+    });
+    const K = 2;
+    const pct = agree.length ? Math.round(((agree.reduce((x, y) => x + y, 0) + 0.5 * K) / (agree.length + K)) * 100) : null;
+    const v = { n, rated: agree.length, pct };
+    affLightMemo.set(f.uid, { sig: w.sig, col: window.myCollection, v });
+    return v;
+};
 window.computeAffinity = (mine, theirs) => {
     const myDone = mine.filter(isDone), theirDone = theirs.filter(isDone);
     const index = new Map();
@@ -4720,11 +4778,9 @@ const statsFriendsBoard = (friends) => {
     // ---- Œuvres en commun et affinité, calculées avec TOUS les amis ----
     const myItems = window.myCollection || [];
     const shared = friends.map(f => {
-        const full = ST.friendItems[f.uid];
-        const theirs = (full && full.items && !full.error) ? full.items : (() => { const s = friendSummary(f); return s ? parseSummaryWorks(s) : null; })();
-        if (!theirs) return null;
-        const a = window.computeAffinity(myItems, theirs);
-        return { f, n: a.common.length, pct: a.rated.length >= 3 ? a.pct : null };
+        const a = window.affinityLight(f);
+        if (!a) return null;
+        return { f, n: a.n, pct: a.rated >= 3 ? a.pct : null };
     }).filter(Boolean);
     const byShared = [...shared].sort((a, b) => b.n - a.n);
     const byPct = shared.filter(s => s.pct !== null).sort((a, b) => b.pct - a.pct);
@@ -6184,18 +6240,9 @@ window.startStatsEnrichment = async () => {
         };
         const posterCache = new Map();
         // Affinité avec un ami, recalculée seulement si sa bibliothèque ou la mienne a changé
-        const affMemo = new Map();
         const friendAffinity = (f) => {
-            const full = ST.friendItems[f.uid]; const s = friendSummary(f);
-            const src = full && full.items && !full.error ? full.items : s;
-            const sig = src ? (Array.isArray(src) ? src : String(src.works || '')) : null;
-            const m = affMemo.get(f.uid);
-            if (m && m.sig === sig && m.mine === window.myCollection) return m.v;
-            const theirs = !src ? null : Array.isArray(src) ? src : parseSummaryWorks(src);
-            const a = theirs ? window.computeAffinity(window.myCollection || [], theirs) : null;
-            const v = a && a.rated.length >= 3 && a.pct !== null ? a.pct / 100 : 0.5;
-            affMemo.set(f.uid, { sig, mine: window.myCollection, v });
-            return v;
+            const a = window.affinityLight(f);
+            return a && a.rated >= 3 && a.pct !== null ? a.pct / 100 : 0.5;
         };
         const buildFriendsRow = async (type) => {
             const all = friendsLoved();
@@ -6473,9 +6520,13 @@ window.startStatsEnrichment = async () => {
             return idx;
         };
         // Préparé en tâche de fond quelques secondes après l'ouverture : la 1re fiche s'ouvre aussi vite que les autres
+        // (un ami à la fois, dans les moments où le téléphone ne fait rien : jamais de blocage)
         setTimeout(() => {
-            const prep = () => { try { if (window.currentUser) statsFriends().forEach(indexOfFriend); } catch (e) {} };
-            if ('requestIdleCallback' in window) requestIdleCallback(prep, { timeout: 8000 }); else prep();
+            if (!window.currentUser) return;
+            const queue = statsFriends();
+            const idle = (fn) => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 4000 }) : setTimeout(fn, 60);
+            const step = () => { const f = queue.shift(); if (!f) return; try { indexOfFriend(f); } catch (e) {} idle(step); };
+            idle(step);
         }, 6000);
         const friendsWhoSaw = (item) => {
             if (!item || !item.title) return [];
@@ -6559,47 +6610,87 @@ window.startStatsEnrichment = async () => {
            • L'annonce à tous (bouton visible seulement si le profil porte admin = true, à régler une fois
              dans la console Firebase) dépose une notification « annonce » chez chaque membre : elle arrive
              dans la cloche ET sur les téléphones où les notifications sont activées. */
-        const WHATS_NEW_VERSION = '2026-11-v5.4';
+        // Deux fenêtres, chacune vue UNE fois par téléphone, puis la demande de notifications :
+        //   1. « Quoi de neuf ? » (la grande mise à jour : notifications, stats, look, profil…) — déjà vue par ceux
+        //      qui ont ouvert l'appli depuis le 22/10 ;
+        //   2. « Recommandations » (la nouvelle page, « Qui l'a vu », « Conseiller à… », profil via la photo).
+        // Un compte tout neuf (bibliothèque vide) ne voit aucune des deux : il découvre tout directement.
+        const WHATS_NEW_VERSION = '2026-11-v5.4';   // annonce à tous (mémo « déjà envoyée »)
+        const WN1_SEEN = ['2026-11-v5.2', '2026-11-v5.4'];
+        const WN2_KEY = 'mabiblio_whats_new_reco';
         const WHATS_NEW = [
-            { icon: 'fa-regular fa-compass', bg: 'var(--lav)', t: 'Recommandations', d: 'Un nouvel onglet en bas : des idées pour toi, ce que tes amis ont adoré, les classiques qui te manquent…' },
-            { icon: 'fa-solid fa-user-group', bg: 'var(--mint)', t: 'Qui l’a vu parmi tes amis ?', d: 'Sur chaque fiche, leurs notes, et un bouton pour conseiller l’œuvre à qui tu veux.' },
-            { icon: 'fa-solid fa-masks-theater', bg: 'var(--miel)', t: 'Tout sur un acteur ou un auteur', d: 'Touche un nom (réalisateur, acteur, auteur, artiste) ou un genre dans tes stats pour voir ses œuvres.' },
-            { icon: 'fa-solid fa-circle-user', bg: 'var(--rose)', t: 'Ton profil', d: 'Il s’ouvre maintenant en touchant ta photo, en haut de l’accueil.' }
+            { icon: 'fa-solid fa-bell', bg: 'var(--mint)', t: 'Les notifications', d: 'Likes, commentaires, réponses et conseils arrivent directement sur ton téléphone.' },
+            { icon: 'fa-solid fa-chart-simple', bg: 'var(--miel)', t: 'Des stats repensées', d: 'Tout le détail par catégorie, tes affinités et le match de l’année entre amis.' },
+            { icon: 'fa-solid fa-palette', bg: 'var(--lav)', t: 'Un nouveau look', d: 'Une interface plus claire, plus colorée, et une appli à installer sur ton écran d’accueil.' },
+            { icon: 'fa-solid fa-wand-magic-sparkles', bg: 'var(--rose)', t: 'Profil et fiches enrichis', d: 'Ton top 3, bandes-annonces, extraits audio, revisionnages, réponses aux commentaires, et toutes les œuvres d’un acteur ou d’un auteur en un toucher.' },
+            { icon: 'fa-solid fa-screwdriver-wrench', bg: 'var(--corail)', t: 'Plus fluide', d: 'Plein de bugs corrigés et une appli plus rapide au quotidien.' }
+        ];
+        const WHATS_NEW_RECO = [
+            { icon: 'fa-regular fa-compass', bg: 'var(--lav)', t: 'Un onglet rien que pour toi', d: 'La boussole, en bas de l’écran : des films, séries, livres, albums et vidéos choisis d’après tes notes.' },
+            { icon: 'fa-solid fa-heart', bg: 'var(--rose)', t: 'Parce que tu as aimé…', d: 'Tes coups de cœur notés 9 ou 10 t’amènent des idées dans le même esprit.' },
+            { icon: 'fa-solid fa-user-group', bg: 'var(--mint)', t: 'Tes amis ont adoré', d: 'Ce qu’ils ont noté 8 ou plus, en commençant par ceux qui ont les mêmes goûts que toi.' },
+            { icon: 'fa-solid fa-trophy', bg: 'var(--miel)', t: 'Classiques, courts et top MaBiblio', d: 'Les incontournables qui te manquent, des œuvres courtes pour quand tu as peu de temps, et les mieux notées par la communauté.' },
+            { icon: 'fa-solid fa-paper-plane', bg: 'var(--corail)', t: 'Qui l’a vu ? Conseille-le !', d: 'Sur chaque fiche : tes amis qui l’ont vu avec leur note, et un bouton pour la conseiller.' }
         ];
         const ANNOUNCE_TITLE = 'Nouvelle version de MaBiblio 🎉';
         const ANNOUNCE_TEXT = 'Recommandations, « Qui l’a vu parmi mes amis ? », conseils depuis chaque fiche : ouvre l’appli pour tout découvrir !';
-        window.showWhatsNew = (force = false) => {
-            if (document.getElementById('whats-new')) return;
+        const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+        const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+        // Une fenêtre d'info ; la promesse se termine quand on la ferme
+        const infoBox = ({ kicker, title, items, okLabel, head, foot, onOk }) => new Promise(resolve => {
+            const old = document.getElementById('whats-new'); if (old) old.remove();
             const overlay = document.createElement('div');
             overlay.className = 'ui-overlay';
             overlay.id = 'whats-new';
             overlay.innerHTML = `<div class="ui-box wn-box" role="dialog" aria-modal="true" aria-labelledby="wn-title">
-                <div class="wn-head"><span class="wn-blob" style="background:var(--miel);left:-18px;top:-22px"></span><span class="wn-blob" style="background:var(--rose);right:-14px;top:-30px;width:70px;height:70px"></span><span class="wn-blob" style="background:var(--mint);right:46px;bottom:-26px;width:46px;height:46px"></span>
-                    <span class="wn-kicker">Mise à jour</span><p class="font-display wn-title" id="wn-title">Quoi de neuf sur MaBiblio ?</p></div>
-                <ul class="wn-list">${WHATS_NEW.map((w, k) => `<li style="animation-delay:${0.05 + k * 0.06}s"><span class="wn-ic" style="background:${w.bg}"><i class="${w.icon}"></i></span><span><b>${w.t}</b><span>${w.d}</span></span></li>`).join('')}</ul>
-                <button type="button" class="ui-btn ui-ok w-full" id="wn-ok">C'est parti !</button>
+                <div class="wn-head" style="background:${head || 'var(--lav)'}"><span class="wn-blob" style="background:var(--miel);left:-18px;top:-22px"></span><span class="wn-blob" style="background:var(--rose);right:-14px;top:-30px;width:70px;height:70px"></span><span class="wn-blob" style="background:var(--mint);right:46px;bottom:-26px;width:46px;height:46px"></span>
+                    <span class="wn-kicker">${kicker}</span><p class="font-display wn-title" id="wn-title">${title}</p></div>
+                <ul class="wn-list">${items.map((w, k) => `<li style="animation-delay:${0.05 + k * 0.06}s"><span class="wn-ic" style="background:${w.bg}"><i class="${w.icon}"></i></span><span><b>${w.t}</b><span>${w.d}</span></span></li>`).join('')}</ul>
+                ${foot ? `<p class="wn-foot">${foot}</p>` : ''}
+                <button type="button" class="ui-btn ui-ok w-full" id="wn-ok">${okLabel}</button>
             </div>`;
             document.body.appendChild(overlay);
             requestAnimationFrame(() => overlay.classList.add('show'));
-            try { localStorage.setItem('mabiblio_whats_new', WHATS_NEW_VERSION); } catch (e) {}
-            const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); };
-            overlay.querySelector('#wn-ok').onclick = close;
-            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+            let done = false;
+            const close = (ok) => { if (done) return; done = true; overlay.classList.remove('show'); setTimeout(() => { overlay.remove(); if (ok && onOk) onOk(); resolve(); }, 200); };
+            overlay.querySelector('#wn-ok').onclick = () => close(true);
+            overlay.onclick = (e) => { if (e.target === overlay) close(false); };
+        });
+        const showWhatsNew1 = (more) => { lsSet('mabiblio_whats_new', WN1_SEEN[0]); return infoBox({ kicker: 'Mise à jour', title: 'Quoi de neuf sur MaBiblio ?', items: WHATS_NEW, okLabel: more ? 'Suivant' : 'C’est parti !' }); };
+        const showWhatsNew2 = () => {
+            lsSet(WN2_KEY, '1');
+            return infoBox({ kicker: 'Nouveau', title: 'Des recommandations rien que pour toi', items: WHATS_NEW_RECO, head: 'var(--mint)', okLabel: 'Découvrir mes recommandations',
+                foot: '<i class="fa-solid fa-circle-user mr-1"></i>Ton profil s’ouvre maintenant en touchant ta photo, en haut de l’accueil.',
+                onOk: () => { if (window.currentUser) window.switchView('reco'); } });
         };
-        // Première ouverture après la mise à jour : une seule fois, quand aucune autre fenêtre n'est ouverte
+        // Depuis Profil → « Nouveautés de l'appli » ou une annonce : les deux fenêtres à la suite
+        window.showWhatsNew = async () => {
+            if (document.getElementById('whats-new')) return;
+            await showWhatsNew1(true);
+            await new Promise(r => setTimeout(r, 250));
+            await showWhatsNew2();
+        };
+        // À l'ouverture : fenêtre 1 (si pas encore vue) → fenêtre 2 (si pas encore vue) → demande de notifications
         (() => {
             const started = Date.now();
-            const tryShow = () => {
-                let seen = '';
-                try { seen = localStorage.getItem('mabiblio_whats_new') || ''; } catch (e) {}
-                if (seen === WHATS_NEW_VERSION) return;
-                if (!window.currentUser || !window.userProfile || !window.userProfile.name || !Array.isArray(window.myCollection)) { if (Date.now() - started < 60000) setTimeout(tryShow, 1500); return; }
-                // Compte tout neuf (rien dans la bibliothèque) : pas de « nouveautés », il découvre tout
-                if (!window.myCollection.length) { try { localStorage.setItem('mabiblio_whats_new', WHATS_NEW_VERSION); } catch (e) {} return; }
-                if (document.querySelector('.ui-overlay') || document.querySelector('.modal.open') || document.querySelector('.sheet-overlay.open')) { setTimeout(tryShow, 2500); return; }
-                window.showWhatsNew();
+            const pause = (ms) => new Promise(r => setTimeout(r, ms));
+            const run = async () => {
+                if (!window.currentUser || !window.userProfile || !window.userProfile.name || !Array.isArray(window.myCollection)) {
+                    if (Date.now() - started < 60000) { setTimeout(run, 1500); return; }
+                    if (window.maybeAskPush) window.maybeAskPush();
+                    return;
+                }
+                if (document.querySelector('.ui-overlay') || document.querySelector('.modal.open') || document.querySelector('.sheet-overlay.open')) { setTimeout(run, 2500); return; }
+                const fresh = !window.myCollection.length;
+                const need1 = !fresh && !WN1_SEEN.includes(lsGet('mabiblio_whats_new'));
+                const need2 = !fresh && lsGet(WN2_KEY) !== '1';
+                if (fresh) { lsSet('mabiblio_whats_new', WN1_SEEN[0]); lsSet(WN2_KEY, '1'); }
+                if (need1) await showWhatsNew1(need2);
+                if (need2) { if (need1) await pause(300); await showWhatsNew2(); }
+                if (need1 || need2) await pause(500);
+                if (window.maybeAskPush) window.maybeAskPush();
             };
-            setTimeout(tryShow, 4000);
+            setTimeout(run, 2500);
         })();
 
         window.sendAnnouncement = async () => {
@@ -6827,7 +6918,8 @@ window.startStatsEnrichment = async () => {
             // Appel direct (sans attente) pour que le téléphone accepte d'afficher sa demande d'autorisation
             overlay.querySelector('#push-ask-ok').onclick = () => { close(); window.enablePush(); };
         };
-        (() => {
+        // Lancée APRÈS les fenêtres « Quoi de neuf ? » / « Recommandations » (voir J.9)
+        {
             const started = Date.now();
             const tryAsk = () => {
                 if (!VAPID_KEY) return;
@@ -6842,8 +6934,8 @@ window.startStatsEnrichment = async () => {
                 try { localStorage.setItem('mabiblio_push_ask', JSON.stringify({ n: st.n + 1, at: Date.now() })); } catch (e) {}
                 window.showPushAsk();
             };
-            setTimeout(tryAsk, 2500);
-        })();
+            window.maybeAskPush = tryAsk;
+        }
 
         // Service worker : uniquement sur le vrai site (https), jamais en test local (fichier ou banc d'essai)
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || (location.hostname === 'localhost' && /[?&]swtest\b/.test(location.search)))) {
