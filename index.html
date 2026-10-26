@@ -312,6 +312,8 @@
         .st-rank-go { color: #B9B3BF; font-size: 11px; flex-shrink: 0; }
         /* Page Recommandations */
         .rc-chips { margin-top: 14px; }
+        .rc-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .rc-title { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1.05; letter-spacing: -0.02em; min-width: 0; }
         .rc-row { margin-top: 22px; }
         .rc-h { padding: 0 16px; margin-bottom: 10px; }
         .rc-h h3 { font-family: var(--font-display); font-weight: 800; font-size: 20px; line-height: 1.15; }
@@ -1688,8 +1690,13 @@
                 // La petite flèche se cale juste après le nom de la catégorie
                 let m = document.getElementById('hero-measure');
                 if (!m) { m = document.createElement('span'); m.id = 'hero-measure'; m.className = 'header-title-select'; m.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;width:auto;left:-9999px'; document.body.appendChild(m); }
-                m.textContent = cat.label;
-                const w = m.offsetWidth;
+                const wc = window._heroW || (window._heroW = {});
+                let w = wc[cat.label];
+                if (!w) {
+                    m.textContent = cat.label;
+                    w = m.offsetWidth;
+                    if (document.fonts && document.fonts.status === 'loaded') wc[cat.label] = w; // polices pas encore là : on remesurera
+                }
                 sel.style.width = w ? (w + 6) + 'px' : ''; // la mesure inclut déjà la place de la flèche
             }
             const sub = document.getElementById('home-hero-sub');
@@ -1843,10 +1850,10 @@
                         const d = await r.json();
                         const credits = d.credits || {};
                         item.cast = (credits.cast || []).slice(0, 4).map(c => c.name).join(', ');
-                        item.castList = (credits.cast || []).slice(0, 8).map(c => c.name);
+                        item.castList = (credits.cast || []).slice(0, 15).map(c => c.name);
                         if (item.type === 'Film') {
-                            const director = (credits.crew || []).find(x => x.job === 'Director');
-                            item.author = director ? director.name : (item.author || '');
+                            const directors = (credits.crew || []).filter(x => x.job === 'Director').map(x => x.name);
+                            item.author = directors.length ? [...new Set(directors)].join(', ') : (item.author || '');
                             item.metricValue = d.runtime || item.metricValue || 0;
                         } else {
                             item.author = (d.created_by || []).map(c => c.name).join(', ') || item.author || '';
@@ -4087,7 +4094,8 @@ const isDone = (i) => i && i.status !== 'Wishlist' && i.status !== 'En cours';
 const ratingOf = (i) => { const r = num(i && i.rating, NaN); return Number.isFinite(r) && r > 0 ? r : null; };
 const yearOfRelease = (i) => { const m = String((i && i.releaseDate) || '').match(/^(1[89]\d\d|20\d\d)/); return m ? +m[1] : null; };
 const monthKeyOf = (i) => { const d = window.itemDateKey(i); return /^(19|20)\d\d-\d\d/.test(d) ? d.slice(0, 7) : null; };
-const fr1 = (n) => Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+const NF1 = (() => { try { return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }); } catch (e) { return null; } })();
+const fr1 = (n) => NF1 ? NF1.format(Number(n)) : Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 1 }); // format préparé une fois (bien plus rapide)
 const frInt = (n) => Math.round(Number(n) || 0).toLocaleString('fr-FR');
 const MONTHS_S = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const MONTHS_L = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -4144,7 +4152,10 @@ const seriesMinutes = (i) => (num(i.episodesPerSeason) && num(i.episodeRunTime))
 const NOT_A_NAME = /^(inconnu|unknown|n\/a|-|\?)$/i;
 const directorsOf = (i) => String(i.author || '').split(',').map(s => s.trim()).filter(s => s && !NOT_A_NAME.test(s));
 // Tout le casting enregistré (jusqu'à 10 noms) : un acteur 6ᵉ au générique compte aussi
-const actorsOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).slice(0, 10).map(s => String(s).trim()).filter(s => s && !NOT_A_NAME.test(s));
+const actorsOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).slice(0, 30).map(s => String(s).trim()).filter(s => s && !NOT_A_NAME.test(s));
+// Les personnes d'une œuvre selon leur rôle : MÊME règle pour les classements des stats et pour la fiche d'une personne
+const artistsOf = (i) => [String(i.author || '').trim()].filter(n => n && !NOT_A_NAME.test(n));
+const peopleOf = (i, role) => role === 'actor' ? actorsOf(i) : role === 'artist' ? artistsOf(i) : directorsOf(i);
 // Classement de personnes : « Joël Dicker » et « Joel Dicker » (ou « pierre niney ») sont la même personne
 const tallyPeople = (items, namesOf) => {
     const spell = new Map();
@@ -4312,9 +4323,9 @@ const statsScreen = (sc) => {
             ${miniTile(mint, 'fa-solid fa-tv', pool.length - films.length, `série${pool.length - films.length > 1 ? 's' : ''}`)}
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(pool) !== null ? fr1(avgRating(pool)) : '–', 'note moyenne')}
         </div>
-        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tallyPeople(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film', tap: r => ({ role: 'director', name: r.name }) })) : ''}
-        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tallyPeople(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série', tap: r => ({ role: 'creator', name: r.name }) })) : ''}
-        ${sCard('Top acteurs', rankList(tallyPeople(pool, actorsOf), color, { max: 8, unit: plural, tap: r => ({ role: 'actor', name: r.name }) }))}
+        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tallyPeople(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film', tap: r => ({ role: 'director', name: r.name, y: sc.isYear ? sc.curYear : null }) })) : ''}
+        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tallyPeople(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série', tap: r => ({ role: 'creator', name: r.name, y: sc.isYear ? sc.curYear : null }) })) : ''}
+        ${sCard('Top acteurs', rankList(tallyPeople(pool, actorsOf), color, { max: 8, unit: plural, tap: r => ({ role: 'actor', name: r.name, y: sc.isYear ? sc.curYear : null, t: ST.fs }) }))}
         ${sCard('Genres préférés', rankList(tally(pool, i => i.genres), color, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'screen', name: r.name }) }))}
         ${sCard('Pays les plus vus', rankList(tally(pool, countriesOf), color, { max: 6, tap: r => ({ kind: 'country', pool: 'screen', name: r.name }) }))}
         ${sCard('Langues originales', rankList(tally(pool, i => [langName(i.originalLanguage)]), color, { max: 6, tap: r => ({ kind: 'lang', pool: 'screen', name: r.name }) }))}
@@ -4337,7 +4348,7 @@ const statsBooks = (sc) => {
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(books) !== null ? fr1(avgRating(books)) : '–', 'note moyenne')}
         </div>
         ${sCard(sc.isYear ? 'Pages par mois' : 'Pages par année', barChart(timelineCols(books, sc.isYear, sc.curYear, i => num(i.metricValue), () => miel), { fmt: (v) => v >= 1000 ? fr1(v / 1000) + 'k' : v }))}
-        ${sCard('Top auteurs', rankList(tallyPeople(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre', tap: r => ({ role: 'author', name: r.name }) }))}
+        ${sCard('Top auteurs', rankList(tallyPeople(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre', tap: r => ({ role: 'author', name: r.name, y: sc.isYear ? sc.curYear : null }) }))}
         ${sCard('Genres', rankList(tally(books, bookGenreNames), miel, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'Livre', name: r.name }) }))}
         ${sCard('Le livre le plus long', longestHtml)}`;
 };
@@ -4355,7 +4366,7 @@ const statsMusic = (sc) => {
             ${miniTile('#FFE4F0', 'fa-solid fa-headphones', `${frInt(mins / 60)} h`, "d'écoute")}
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(albums) !== null ? fr1(avgRating(albums)) : '–', 'note moyenne')}
         </div>
-        ${sCard('Top artistes', rankList(tallyPeople(albums, i => [String(i.author || '').trim()].filter(n => n && !NOT_A_NAME.test(n))), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album', tap: r => ({ role: 'artist', name: r.name }) }))}
+        ${sCard('Top artistes', rankList(tallyPeople(albums, artistsOf), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album', tap: r => ({ role: 'artist', name: r.name, y: sc.isYear ? sc.curYear : null }) }))}
         ${sCard('Genres', rankList(tally(albums, i => i.genres), rose, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'Album', name: r.name }) }))}
         ${sCard('Albums par décennie', decades.length ? barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color: rose }] }))) : sEmpty('Pas encore de dates de sortie.'))}`;
 };
@@ -4396,7 +4407,7 @@ const statsHabits = (sc) => {
 // ---------- Onglet « Amis » : affinité, classements entre amis, conseils ----------
 // Titre comparable : sans accents ni ponctuation, 60 caractères au plus (la même règle pour le résumé
 // publié dans le profil ET pour la bibliothèque complète : les deux donnent exactement les mêmes chiffres)
-const workTitle = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60).trim();
+const workTitle = (t) => titleKey(t).slice(0, 60).trim();
 const workKeys = (i) => {
     const keys = [];
     const id = String(i.id || '');
@@ -4842,7 +4853,7 @@ window.updateGoal = async (key, val) => {
 const META_V = 1;
 // Films et séries : 2ᵉ passage (casting complet jusqu'à 10 noms, séries : acteurs de toutes les saisons,
 // réalisateur « Inconnu » remplacé, recherche par titre plus souple). Livres et albums : inchangé.
-const META_SCREEN_V = 2;
+const META_SCREEN_V = 3;
 const metaTarget = (i) => (i.type === 'Film' || i.type === 'Série') ? META_SCREEN_V : META_V;
 const needsMeta = (i) => num(i.metaV) < metaTarget(i);
 const ENRICH_TYPES = ['Film', 'Série', 'Livre', 'Album'];
@@ -4868,7 +4879,17 @@ const enrichWaiting = (it, tries) => {
 };
 const isEmptyVal = (v) => v === undefined || v === null || v === '' || v === 0 || v === 'Inconnu' || (Array.isArray(v) && v.length === 0);
 const fill = (patch, item, key, val) => { if (isEmptyVal(item[key]) && !isEmptyVal(val)) patch[key] = val; };
-const titleKey = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim();
+const titleKeyMemo = new Map();
+const titleKey = (t) => {
+    const k = String(t ?? '');
+    let v = titleKeyMemo.get(k);
+    if (v === undefined) {
+        v = normTxt(k).replace(/[^a-z0-9]+/g, ' ').trim();
+        if (titleKeyMemo.size > 30000) titleKeyMemo.clear();
+        titleKeyMemo.set(k, v);
+    }
+    return v;
+};
 const httpJson = async (url) => {
     const r = await fetch(url);
     if (r.status === 404) return null;               // introuvable : on n'insistera pas
@@ -4900,13 +4921,16 @@ const enrichScreen = async (it) => {
     // Séries : les acteurs de toutes les saisons, par nombre d'épisodes ; films : ordre du générique
     const agg = ep === 'tv' && d.aggregate_credits && Array.isArray(d.aggregate_credits.cast) && d.aggregate_credits.cast.length
         ? [...d.aggregate_credits.cast].sort((a, b) => num(b.total_episode_count) - num(a.total_episode_count)) : null;
-    const castList = (agg || [...(credits.cast || [])].sort((a, b) => num(a.order) - num(b.order))).slice(0, 10).map(c => c.name).filter(Boolean);
+    const castList = (agg || [...(credits.cast || [])].sort((a, b) => num(a.order) - num(b.order))).slice(0, 15).map(c => c.name).filter(Boolean);
     // Le casting est une donnée de TMDB (jamais saisie à la main pour une œuvre retrouvée) : on le remet à jour
     if (castList.length && JSON.stringify(castList) !== JSON.stringify(it.castList || [])) patch.castList = castList;
     fill(patch, it, 'cast', castList.slice(0, 4).join(', '));
     if (it.type === 'Film') {
-        const dir = (credits.crew || []).filter(x => x.job === 'Director').map(x => x.name);
+        const dir = [...new Set((credits.crew || []).filter(x => x.job === 'Director').map(x => x.name))];
         fill(patch, it, 'author', dir.join(', '));
+        // Films à plusieurs réalisateurs : seul le premier était enregistré → on complète (sans rien retirer)
+        const have = String(it.author || '').split(',').map(x => x.trim()).filter(Boolean);
+        if (dir.length > 1 && have.length && have.every(h => dir.some(d => titleKey(d) === titleKey(h))) && have.length < dir.length) patch.author = dir.join(', ');
         fill(patch, it, 'metricValue', d.runtime || 0);
         fill(patch, it, 'durationMin', d.runtime || 0);
     } else {
@@ -5362,8 +5386,8 @@ window.startStatsEnrichment = async () => {
            la liste, la fiche s'ouvre par-dessus et, en la fermant, on retrouve la liste. */
         const personKey = (n) => normTxt(n).replace(/[^a-z0-9]+/g, ' ').trim();
         const PERSON_ROLES = {
-            director: { kicker: 'Réalisation', m: 'Réalisateur', f: 'Réalisatrice', icon: 'fa-solid fa-clapperboard', types: ['Film', 'Série'], color: 'Film' },
-            creator: { kicker: 'Création', m: 'Créateur', f: 'Créatrice', icon: 'fa-solid fa-lightbulb', types: ['Film', 'Série'], color: 'Série' },
+            director: { kicker: 'Réalisation', m: 'Réalisateur', f: 'Réalisatrice', icon: 'fa-solid fa-clapperboard', types: ['Film'], color: 'Film' },
+            creator: { kicker: 'Création', m: 'Créateur', f: 'Créatrice', icon: 'fa-solid fa-lightbulb', types: ['Série'], color: 'Série' },
             actor: { kicker: 'Casting', m: 'Acteur', f: 'Actrice', icon: 'fa-solid fa-masks-theater', types: ['Film', 'Série'], color: 'Film' },
             author: { kicker: 'Auteur', m: 'Auteur', f: 'Autrice', icon: 'fa-solid fa-pen-nib', types: ['Livre'], color: 'Livre' },
             artist: { kicker: 'Artiste', m: 'Artiste', f: 'Artiste', icon: 'fa-solid fa-microphone', types: ['Album'], color: 'Album' }
@@ -5376,7 +5400,33 @@ window.startStatsEnrichment = async () => {
         const personInLibrary = (role, name) => {
             const k = personKey(name);
             const R = PERSON_ROLES[role];
-            return (window.myCollection || []).filter(i => R.types.includes(i.type) && (role === 'actor' ? allCastOf(i) : authorsOfItem(i)).some(n => personKey(n) === k));
+            return (window.myCollection || []).filter(i => R.types.includes(i.type) && peopleOf(i, role).some(n => personKey(n) === k));
+        };
+        // Filmographie (TMDB) : mes films retrouvés SÛREMENT (même numéro TMDB, ou même titre ET même année)
+        // où la personne n'était pas enregistrée (petit rôle, ancien casting incomplet…) → on l'ajoute à l'œuvre,
+        // pour que les stats comptent exactement les mêmes œuvres que cette page.
+        const sureMatch = (w) => {
+            const t = titleKey(w.title), y = yearOfRelease(w);
+            return (window.myCollection || []).find(i => i.type === w.type && i.docId && (
+                (w.id && (String(i.id) === String(w.id) || String(i.tmdbId || '') === String(w.id))) ||
+                (t && y && titleKey(i.title) === t && yearOfRelease(i) === y)));
+        };
+        const linkPerson = (role, name, items) => {
+            if (!window.currentUser || !items.length) return;
+            const k = personKey(name);
+            items.slice(0, 30).forEach(i => {
+                let patch = null;
+                if (role === 'actor') {
+                    const list = Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',').map(x => x.trim()).filter(Boolean);
+                    if (!list.some(n => personKey(n) === k)) patch = { castList: [...list, name].slice(0, 30) };
+                } else if (role === 'director' || role === 'creator') {
+                    const list = directorsOf(i);
+                    if (!list.some(n => personKey(n) === k)) patch = { author: [...list, name].join(', ') };
+                }
+                if (!patch) return;
+                Object.assign(i, patch);
+                updateDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'items', i.docId), patch).catch(e => console.warn('Lien personne', e));
+            });
         };
         // Œuvre de ma bibliothèque correspondant à un résultat (identifiant, identifiant TMDB, ou titre + année)
         const ownedMatch = (r) => {
@@ -5531,14 +5581,26 @@ window.startStatsEnrichment = async () => {
         const renderPerson = (spec, data) => {
             const R = PERSON_ROLES[spec.role];
             const cat = catOf(R.color);
-            // Mes œuvres : celles où la personne est enregistrée + celles retrouvées dans sa filmographie / bibliographie
-            const mine = new Set(personInLibrary(spec.role, spec.name));
-            ((data && data.works) || []).forEach(w => { const o = ownedMatch(w); if (o) mine.add(o); });
-            const lib = [...mine].sort(byMyRating);
-            const seenN = lib.filter(isDone).length;
+            // Mes œuvres : celles où la personne est enregistrée + mes films sûrement retrouvés dans sa filmographie
+            // (ceux-là sont complétés au passage, pour que les stats comptent pareil)
+            if (data && data.works && !data.error && ['actor', 'director', 'creator'].includes(spec.role) && !spec.linked) {
+                const k = personKey(spec.name);
+                const toLink = [...new Set(data.works.filter(w => R.types.includes(w.type)).map(sureMatch).filter(Boolean))].filter(i => !peopleOf(i, spec.role).some(n => personKey(n) === k));
+                spec.linked = true;
+                linkPerson(spec.role, spec.name, toLink);
+            }
+            const lib = personInLibrary(spec.role, spec.name).sort(byMyRating);
+            // Même règle que la ligne des stats : œuvres terminées, et la période / les types choisis dans les stats
+            const inScope = (i) => isDone(i) && (!spec.y || window.itemYear(i) === spec.y) && (!spec.t || spec.t === 'both' || i.type === spec.t);
+            const seenN = lib.filter(inScope).length;
             const kicker = data && data.gender === 1 ? R.f : data && data.gender === 2 ? R.m : R.kicker;
             const unit = { director: ['film', 'films'], creator: ['œuvre', 'œuvres'], actor: ['œuvre', 'œuvres'], author: ['livre', 'livres'], artist: ['album', 'albums'] }[spec.role];
-            const sub = lib.length ? `<b>${lib.length}</b> ${lib.length > 1 ? unit[1] : unit[0]} dans ta bibliothèque${seenN && seenN !== lib.length ? ` · ${seenN} terminé${seenN > 1 ? 's' : ''}` : ''}` : 'Rien encore dans ta bibliothèque';
+            const did = { author: 'lu', artist: 'écouté' }[spec.role] || 'vu';
+            const fem = unit[0] === 'œuvre';
+            const didN = (n) => `${did}${fem ? 'e' : ''}${n > 1 ? 's' : ''}`;
+            const sub = !lib.length ? 'Rien encore dans ta bibliothèque'
+                : seenN === lib.length && !spec.y ? `<b>${lib.length}</b> ${lib.length > 1 ? unit[1] : unit[0]} ${didN(lib.length)}`
+                : `<b>${seenN}</b> ${seenN > 1 ? unit[1] : unit[0]} ${didN(seenN)}${spec.y ? ` en ${esc(spec.y)}` : ''} · ${lib.length} dans ta bibliothèque`;
             const known = data ? (data.works || []) : null;
             const knownTitle = spec.role === 'actor' ? 'Ses rôles les plus connus' : spec.role === 'author' ? 'Ses livres les plus connus' : spec.role === 'artist' ? 'Ses albums les plus connus' : 'Ses œuvres les plus connues';
             const knownBody = !known ? `<div class="wl-grid">${'<span class="wl-tile"><span class="pv-sim-img aspect-[2/3] pv-skel"></span></span>'.repeat(6)}</div>`
@@ -5572,7 +5634,7 @@ window.startStatsEnrichment = async () => {
             if (!name) return;
             if (spec.role && !PERSON_ROLES[spec.role]) return;
             if (!spec.role && !LIST_KINDS[spec.kind]) return;
-            WS.spec = { role: spec.role || null, kind: spec.kind || null, pool: spec.pool || 'all', name };
+            WS.spec = { role: spec.role || null, kind: spec.kind || null, pool: spec.pool || 'all', name, y: /^\d{4}$/.test(String(spec.y || '')) ? String(spec.y) : null, t: ['both', 'Film', 'Série'].includes(spec.t) ? spec.t : null };
             const token = ++WS.token;
             const m = worksModal();
             m.classList.remove('is-under');
@@ -5669,17 +5731,6 @@ window.startStatsEnrichment = async () => {
             const countries = tally(rated, i => Array.isArray(i.countryCodes) ? i.countryCodes : []).filter(c => (c.avg ?? 0) >= avg).map(c => c.name);
             return { rated, avg, lift, topGenres, seeds, loved, people, countries };
         };
-        // Sujets « bruts » d'un livre (anglais, comme les attendent Google Livres et Open Library)
-        const rawBookSubjects = (i) => {
-            const out = [];
-            (Array.isArray(i.genres) ? i.genres : []).forEach(g => {
-                const parts = String(g || '').split('/').map(p => p.trim()).filter(p => p && p.length < 32 && !p.includes(':') && !SKIP_GENRE.has(p.toLowerCase()));
-                const best = parts[parts.length - 1];
-                if (best && !out.includes(best)) out.push(best);
-            });
-            return out.slice(0, 3);
-        };
-
         // ---- Sources ----
         const tmdb = (path, params = '') => httpJson(`https://api.themoviedb.org/3/${path}?api_key=${TMDB_KEY}&language=fr-FR${params}`);
         const tmdbGenreCache = {};
@@ -5690,32 +5741,219 @@ window.startStatsEnrichment = async () => {
         const epOf = (type) => type === 'Film' ? 'movie' : 'tv';
         const genreIds = async (type, names, max) => { const m = await tmdbGenres(epOf(type)); return names.map(n => m.get(n)).filter(Boolean).slice(0, max); };
 
-        const olBook = (d) => ({ id: 'ol_' + String(d.key || '').replace('/works/', ''), olKey: d.key || '', title: d.title, img: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : '', desc: '', type: 'Livre', releaseDate: d.first_publish_year ? String(d.first_publish_year) : '', metricValue: d.number_of_pages_median || 0, author: (d.author_name || []).slice(0, 3).join(', '), genres: (d.subject || []).slice(0, 5), source: 'openlibrary', needsDetails: !!d.key });
-        const olSearch = async (params) => {
-            const fields = 'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,subject,edition_count';
-            const d = await httpJson(`https://openlibrary.org/search.json?${params}&limit=40&fields=${fields}`);
-            return ((d && d.docs) || []).filter(x => x.title && x.cover_i).map(olBook);
+        // ---- Livres : « la sélection MaBiblio » (livres connus et appréciés), classée selon MES goûts ----
+        // [titre, auteur, année, genres, repères : c = classique, s = court (moins de 200 pages)]
+        const BOOK_SEL = [
+            ["La Vérité sur l'affaire Harry Quebert", 'Joël Dicker', 2012, 'Thriller|Policier|Fiction', ''],
+            ["L'Énigme de la chambre 622", 'Joël Dicker', 2020, 'Thriller|Policier|Fiction', ''],
+            ["L'Affaire Alaska Sanders", 'Joël Dicker', 2022, 'Thriller|Policier|Fiction', ''],
+            ['Le Livre des Baltimore', 'Joël Dicker', 2015, 'Fiction|Littérature', ''],
+            ['Nymphéas noirs', 'Michel Bussi', 2011, 'Thriller|Policier|Fiction', ''],
+            ['Un avion sans elle', 'Michel Bussi', 2012, 'Thriller|Policier|Fiction', ''],
+            ['Le Syndrome E', 'Franck Thilliez', 2010, 'Thriller|Policier|Fiction', ''],
+            ['Il était deux fois', 'Franck Thilliez', 2020, 'Thriller|Policier|Fiction', ''],
+            ['Le Manuscrit inachevé', 'Franck Thilliez', 2018, 'Thriller|Policier|Fiction', ''],
+            ['Les Rivières pourpres', 'Jean-Christophe Grangé', 1998, 'Thriller|Policier|Fiction', ''],
+            ['Le Chuchoteur', 'Donato Carrisi', 2009, 'Thriller|Policier|Fiction', ''],
+            ["Millénium 1 : Les hommes qui n'aimaient pas les femmes", 'Stieg Larsson', 2005, 'Thriller|Policier|Fiction', ''],
+            ['La Fille du train', 'Paula Hawkins', 2015, 'Thriller|Fiction', ''],
+            ['Les Apparences', 'Gillian Flynn', 2012, 'Thriller|Fiction', ''],
+            ['Shutter Island', 'Dennis Lehane', 2003, 'Thriller|Policier|Fiction', ''],
+            ['Le Silence des agneaux', 'Thomas Harris', 1988, 'Thriller|Horreur|Fiction', 'c'],
+            ['Pars vite et reviens tard', 'Fred Vargas', 2001, 'Policier|Fiction', ''],
+            ['Da Vinci Code', 'Dan Brown', 2003, 'Thriller|Aventure|Fiction', ''],
+            ['Le Bonhomme de neige', 'Jo Nesbø', 2007, 'Thriller|Policier|Fiction', ''],
+            ['La Patiente silencieuse', 'Alex Michaelides', 2019, 'Thriller|Fiction', ''],
+            ['Ne le dis à personne', 'Harlan Coben', 2001, 'Thriller|Fiction', ''],
+            ['Ils étaient dix', 'Agatha Christie', 1939, 'Policier|Classiques|Fiction', 'c'],
+            ["Le Crime de l'Orient-Express", 'Agatha Christie', 1934, 'Policier|Classiques|Fiction', 'c'],
+            ['Le Parfum', 'Patrick Süskind', 1985, 'Thriller|Historique|Fiction|Classiques', 'c'],
+            ['Le Nom de la rose', 'Umberto Eco', 1980, 'Historique|Policier|Classiques|Fiction', 'c'],
+            ['De sang-froid', 'Truman Capote', 1966, 'Faits divers|Policier|Classiques', 'c'],
+            ["L'Adversaire", 'Emmanuel Carrère', 2000, 'Faits divers|Littérature', 's'],
+            ["Changer l'eau des fleurs", 'Valérie Perrin', 2018, 'Fiction|Littérature|Romance', ''],
+            ['Trois', 'Valérie Perrin', 2021, 'Fiction|Littérature', ''],
+            ['Les Oubliés du dimanche', 'Valérie Perrin', 2015, 'Fiction|Littérature', ''],
+            ['La Tresse', 'Laetitia Colombani', 2017, 'Fiction|Littérature', ''],
+            ['Petit Pays', 'Gaël Faye', 2016, 'Fiction|Littérature|Historique', ''],
+            ["L'Anomalie", 'Hervé Le Tellier', 2020, 'Fiction|Littérature|Science-fiction', ''],
+            ['Veiller sur elle', 'Jean-Baptiste Andrea', 2023, 'Fiction|Littérature|Historique', ''],
+            ['Chanson douce', 'Leïla Slimani', 2016, 'Fiction|Littérature|Thriller', ''],
+            ['Au revoir là-haut', 'Pierre Lemaitre', 2013, 'Historique|Fiction|Littérature', ''],
+            ['Le Grand Monde', 'Pierre Lemaitre', 2022, 'Historique|Fiction', ''],
+            ['La Vie devant soi', 'Romain Gary', 1975, 'Fiction|Littérature|Classiques', 'c'],
+            ["La Promesse de l'aube", 'Romain Gary', 1960, 'Mémoires|Biographie|Littérature|Classiques', 'c'],
+            ["L'Élégance du hérisson", 'Muriel Barbery', 2006, 'Fiction|Littérature', ''],
+            ["Ensemble, c'est tout", 'Anna Gavalda', 2004, 'Fiction|Littérature|Romance', ''],
+            ['La Délicatesse', 'David Foenkinos', 2009, 'Fiction|Romance', ''],
+            ['Charlotte', 'David Foenkinos', 2014, 'Fiction|Littérature|Biographie', ''],
+            ['Les Choses humaines', 'Karine Tuil', 2019, 'Fiction|Littérature|Société', ''],
+            ['Le Mage du Kremlin', 'Giuliano da Empoli', 2022, 'Fiction|Politique|Littérature', ''],
+            ['Yoga', 'Emmanuel Carrère', 2020, 'Littérature|Mémoires', ''],
+            ['Le Royaume', 'Emmanuel Carrère', 2014, 'Littérature|Religion|Histoire', ''],
+            ['Limonov', 'Emmanuel Carrère', 2011, 'Littérature|Biographie', ''],
+            ['La Carte et le Territoire', 'Michel Houellebecq', 2010, 'Fiction|Littérature', ''],
+            ['Sérotonine', 'Michel Houellebecq', 2019, 'Fiction|Littérature', ''],
+            ['Les Années', 'Annie Ernaux', 2008, 'Littérature|Mémoires|Société', ''],
+            ['La Place', 'Annie Ernaux', 1983, 'Littérature|Mémoires', 's'],
+            ['Réparer les vivants', 'Maylis de Kerangal', 2014, 'Fiction|Littérature', ''],
+            ['Vernon Subutex 1', 'Virginie Despentes', 2015, 'Fiction|Littérature|Société', ''],
+            ['Les Gratitudes', 'Delphine de Vigan', 2019, 'Fiction|Littérature', 's'],
+            ["Rien ne s'oppose à la nuit", 'Delphine de Vigan', 2011, 'Littérature|Mémoires', ''],
+            ['La Plus Secrète Mémoire des hommes', 'Mohamed Mbougar Sarr', 2021, 'Fiction|Littérature', ''],
+            ['Il est grand temps de rallumer les étoiles', 'Virginie Grimaldi', 2018, 'Fiction|Romance', ''],
+            ['Le Parfum du bonheur est plus fort sous la pluie', 'Virginie Grimaldi', 2017, 'Fiction|Romance', ''],
+            ["L'Amie prodigieuse", 'Elena Ferrante', 2011, 'Fiction|Littérature', ''],
+            ['Cent ans de solitude', 'Gabriel García Márquez', 1967, 'Fiction|Littérature|Classiques', 'c'],
+            ['Kafka sur le rivage', 'Haruki Murakami', 2002, 'Fiction|Littérature|Fantasy', ''],
+            ['Les Piliers de la terre', 'Ken Follett', 1989, 'Historique|Fiction', ''],
+            ['Les Bienveillantes', 'Jonathan Littell', 2006, 'Historique|Guerre|Littérature', ''],
+            ['Suite française', 'Irène Némirovsky', 2004, 'Historique|Guerre|Littérature', ''],
+            ["L'Alchimiste", 'Paulo Coelho', 1988, 'Fiction|Développement personnel', 's'],
+            ['Le Vieux qui lisait des romans d\'amour', 'Luis Sepúlveda', 1992, 'Fiction|Aventure', 's'],
+            ['Avant toi', 'Jojo Moyes', 2012, 'Romance|Fiction', ''],
+            ['Un jour', 'David Nicholls', 2009, 'Romance|Fiction', ''],
+            ['Normal People', 'Sally Rooney', 2018, 'Romance|Fiction|Littérature', ''],
+            ["Les Sept Maris d'Evelyn Hugo", 'Taylor Jenkins Reid', 2017, 'Romance|Fiction|Historique', ''],
+            ['Nos étoiles contraires', 'John Green', 2012, 'Young adult|Romance|Fiction', ''],
+            ['Orgueil et Préjugés', 'Jane Austen', 1813, 'Romance|Classiques|Fiction', 'c'],
+            ['Les Hauts de Hurlevent', 'Emily Brontë', 1847, 'Romance|Classiques|Fiction', 'c'],
+            ['Jane Eyre', 'Charlotte Brontë', 1847, 'Romance|Classiques|Fiction', 'c'],
+            ['Le Comte de Monte-Cristo', 'Alexandre Dumas', 1844, 'Aventure|Historique|Classiques|Fiction', 'c'],
+            ['Les Misérables', 'Victor Hugo', 1862, 'Classiques|Historique|Fiction', 'c'],
+            ['Germinal', 'Émile Zola', 1885, 'Classiques|Fiction|Société', 'c'],
+            ['Madame Bovary', 'Gustave Flaubert', 1857, 'Classiques|Fiction', 'c'],
+            ['Le Rouge et le Noir', 'Stendhal', 1830, 'Classiques|Fiction', 'c'],
+            ['Bel-Ami', 'Guy de Maupassant', 1885, 'Classiques|Fiction', 'c'],
+            ['Le Horla', 'Guy de Maupassant', 1887, 'Classiques|Horreur|Nouvelles', 'cs'],
+            ["L'Étranger", 'Albert Camus', 1942, 'Classiques|Littérature|Philosophie', 'cs'],
+            ['La Peste', 'Albert Camus', 1947, 'Classiques|Littérature', 'c'],
+            ['Le Mythe de Sisyphe', 'Albert Camus', 1942, 'Philosophie|Essai|Classiques', 'cs'],
+            ['Le Petit Prince', 'Antoine de Saint-Exupéry', 1943, 'Classiques|Jeunesse|Fiction', 'cs'],
+            ['Des souris et des hommes', 'John Steinbeck', 1937, 'Classiques|Fiction', 'cs'],
+            ['Le Vieil Homme et la Mer', 'Ernest Hemingway', 1952, 'Classiques|Fiction|Aventure', 'cs'],
+            ["Le Joueur d'échecs", 'Stefan Zweig', 1943, 'Classiques|Nouvelles|Fiction', 'cs'],
+            ['La Métamorphose', 'Franz Kafka', 1915, 'Classiques|Fiction|Nouvelles', 'cs'],
+            ['Inconnu à cette adresse', 'Kressmann Taylor', 1938, 'Classiques|Historique|Fiction', 'cs'],
+            ['Bonjour tristesse', 'Françoise Sagan', 1954, 'Classiques|Romance|Fiction', 'cs'],
+            ['Candide', 'Voltaire', 1759, 'Classiques|Philosophie|Humour', 'cs'],
+            ['Gatsby le Magnifique', 'F. Scott Fitzgerald', 1925, 'Classiques|Fiction|Romance', 'cs'],
+            ["L'Attrape-cœurs", 'J. D. Salinger', 1951, 'Classiques|Fiction', 'c'],
+            ["Ne tirez pas sur l'oiseau moqueur", 'Harper Lee', 1960, 'Classiques|Fiction|Société', 'c'],
+            ['Siddhartha', 'Hermann Hesse', 1922, 'Classiques|Philosophie|Fiction', 'cs'],
+            ['Les Fleurs du mal', 'Charles Baudelaire', 1857, 'Poésie|Classiques', 'c'],
+            ['Dracula', 'Bram Stoker', 1897, 'Horreur|Classiques|Fiction', 'c'],
+            ['Frankenstein', 'Mary Shelley', 1818, 'Horreur|Science-fiction|Classiques', 'c'],
+            ['Shining', 'Stephen King', 1977, 'Horreur|Thriller|Fiction', 'c'],
+            ['Ça', 'Stephen King', 1986, 'Horreur|Fiction', ''],
+            ['1984', 'George Orwell', 1949, 'Dystopie|Science-fiction|Classiques|Politique', 'c'],
+            ['La Ferme des animaux', 'George Orwell', 1945, 'Classiques|Politique|Fiction', 'cs'],
+            ['Le Meilleur des mondes', 'Aldous Huxley', 1932, 'Dystopie|Science-fiction|Classiques', 'c'],
+            ['Fahrenheit 451', 'Ray Bradbury', 1953, 'Dystopie|Science-fiction|Classiques', 'cs'],
+            ['La Servante écarlate', 'Margaret Atwood', 1985, 'Dystopie|Science-fiction|Fiction', ''],
+            ['La Route', 'Cormac McCarthy', 2006, 'Dystopie|Fiction|Littérature', ''],
+            ['Ravage', 'René Barjavel', 1943, 'Science-fiction|Classiques|Dystopie', 'c'],
+            ['La Nuit des temps', 'René Barjavel', 1968, 'Science-fiction|Romance|Classiques', 'c'],
+            ['Dune', 'Frank Herbert', 1965, 'Science-fiction|Classiques|Aventure', 'c'],
+            ['Fondation', 'Isaac Asimov', 1951, 'Science-fiction|Classiques', 'c'],
+            ['Le Problème à trois corps', 'Liu Cixin', 2008, 'Science-fiction', ''],
+            ['Projet Dernière Chance', 'Andy Weir', 2021, 'Science-fiction|Aventure', ''],
+            ['Seul sur Mars', 'Andy Weir', 2011, 'Science-fiction|Aventure', ''],
+            ['Hypérion', 'Dan Simmons', 1989, 'Science-fiction', 'c'],
+            ['Le Guide du voyageur galactique', 'Douglas Adams', 1979, 'Science-fiction|Humour|Classiques', 'c'],
+            ['La Horde du Contrevent', 'Alain Damasio', 2004, 'Science-fiction|Fantasy', ''],
+            ['La Communauté de l\'anneau', 'J. R. R. Tolkien', 1954, 'Fantasy|Classiques|Aventure', 'c'],
+            ['Le Hobbit', 'J. R. R. Tolkien', 1937, 'Fantasy|Classiques|Jeunesse', 'c'],
+            ["Harry Potter à l'école des sorciers", 'J. K. Rowling', 1997, 'Fantasy|Jeunesse', ''],
+            ['Le Nom du vent', 'Patrick Rothfuss', 2007, 'Fantasy', ''],
+            ['Le Trône de fer', 'George R. R. Martin', 1996, 'Fantasy', ''],
+            ['Le Sorceleur : Le Dernier Vœu', 'Andrzej Sapkowski', 1993, 'Fantasy|Nouvelles', ''],
+            ["Fils-des-Brumes : L'Empire ultime", 'Brandon Sanderson', 2006, 'Fantasy', ''],
+            ["La Passe-miroir : Les Fiancés de l'hiver", 'Christelle Dabos', 2013, 'Fantasy|Young adult', ''],
+            ['Les Royaumes du Nord', 'Philip Pullman', 1995, 'Fantasy|Jeunesse', ''],
+            ['Hunger Games', 'Suzanne Collins', 2008, 'Young adult|Dystopie|Science-fiction', ''],
+            ['Divergente', 'Veronica Roth', 2011, 'Young adult|Dystopie', ''],
+            ['Wonder', 'R. J. Palacio', 2012, 'Jeunesse|Fiction', ''],
+            ['Le Monde de Sophie', 'Jostein Gaarder', 1991, 'Philosophie|Jeunesse|Fiction', ''],
+            ['Le Petit Nicolas', 'René Goscinny', 1959, 'Jeunesse|Humour|Classiques', 'cs'],
+            ["Si c'est un homme", 'Primo Levi', 1947, 'Mémoires|Histoire|Classiques', 'c'],
+            ['La Nuit', 'Elie Wiesel', 1958, 'Mémoires|Histoire|Classiques', 'cs'],
+            ["Le Journal d'Anne Frank", 'Anne Frank', 1947, 'Mémoires|Histoire|Classiques', 'c'],
+            ['Les Mots', 'Jean-Paul Sartre', 1964, 'Mémoires|Classiques|Philosophie', 'cs'],
+            ["Mémoires d'une jeune fille rangée", 'Simone de Beauvoir', 1958, 'Mémoires|Classiques', 'c'],
+            ['Devenir', 'Michelle Obama', 2018, 'Biographie|Mémoires|Politique', ''],
+            ['Steve Jobs', 'Walter Isaacson', 2011, 'Biographie|Économie', ''],
+            ['Le Lambeau', 'Philippe Lançon', 2018, 'Mémoires|Littérature', ''],
+            ["Sapiens : Une brève histoire de l'humanité", 'Yuval Noah Harari', 2011, 'Histoire|Essai|Sciences', ''],
+            ['Une brève histoire du temps', 'Stephen Hawking', 1988, 'Sciences|Essai', 'c'],
+            ["L'homme qui prenait sa femme pour un chapeau", 'Oliver Sacks', 1985, 'Psychologie|Sciences|Essai', ''],
+            ['Système 1 / Système 2', 'Daniel Kahneman', 2011, 'Psychologie|Économie|Essai', ''],
+            ['Factfulness', 'Hans Rosling', 2018, 'Société|Essai|Sciences', ''],
+            ['Le Deuxième Sexe', 'Simone de Beauvoir', 1949, 'Philosophie|Essai|Société|Classiques', 'c'],
+            ['Ainsi parlait Zarathoustra', 'Friedrich Nietzsche', 1883, 'Philosophie|Classiques', 'c'],
+            ['Le Capital au XXIe siècle', 'Thomas Piketty', 2013, 'Économie|Essai|Politique', ''],
+            ['Les Quatre Accords toltèques', 'Don Miguel Ruiz', 1997, 'Développement personnel', 's'],
+            ['Le Pouvoir du moment présent', 'Eckhart Tolle', 1997, 'Développement personnel|Philosophie', ''],
+            ['Un rien peut tout changer', 'James Clear', 2018, 'Développement personnel|Psychologie', ''],
+            ["Ta deuxième vie commence quand tu comprends que tu n'en as qu'une", 'Raphaëlle Giordano', 2015, 'Développement personnel|Fiction', ''],
+            ['Ikigai', 'Héctor García', 2016, 'Développement personnel', 's'],
+            ["L'Arabe du futur", 'Riad Sattouf', 2014, 'BD & romans graphiques|Mémoires|Humour', 's'],
+            ['Persepolis', 'Marjane Satrapi', 2000, 'BD & romans graphiques|Mémoires|Histoire', ''],
+            ['Maus', 'Art Spiegelman', 1986, 'BD & romans graphiques|Histoire|Classiques', 'c'],
+            ['Blacksad', 'Juan Díaz Canales', 2000, 'BD & romans graphiques|Policier', 's'],
+            ['Le Monde sans fin', 'Christophe Blain', 2021, 'BD & romans graphiques|Sciences|Société', ''],
+            ['Watchmen', 'Alan Moore', 1986, 'BD & romans graphiques|Science-fiction|Classiques', 'c'],
+            ['Les Vieux Fourneaux', 'Wilfrid Lupano', 2014, 'BD & romans graphiques|Humour', 's'],
+            ['Astérix le Gaulois', 'René Goscinny', 1961, 'BD & romans graphiques|Humour|Jeunesse|Classiques', 'cs'],
+            ['One Piece, tome 1', 'Eiichirō Oda', 1997, 'Manga|Aventure', 's'],
+            ["L'Attaque des Titans, tome 1", 'Hajime Isayama', 2009, 'Manga|Fantasy', 's'],
+            ['Death Note, tome 1', 'Tsugumi Ohba', 2003, 'Manga|Thriller', 's'],
+            ['Naruto, tome 1', 'Masashi Kishimoto', 1999, 'Manga|Aventure', 's'],
+            ['Akira, tome 1', 'Katsuhiro Ōtomo', 1982, 'Manga|Science-fiction|Classiques', 'c']
+        ].map(([title, author, y, g, f]) => ({ title, author, y, genres: g.split('|'), classic: f.includes('c'), short: f.includes('s') }));
+        // Couvertures : retrouvées une fois sur Open Library, puis gardées 60 jours sur le téléphone
+        const COV_KEY = 'mabiblio_bookcov';
+        let covMem = null;
+        const covStore = () => { if (!covMem) { try { covMem = JSON.parse(localStorage.getItem(COV_KEY) || '{}') || {}; } catch (e) { covMem = {}; } } return covMem; };
+        const covSave = () => { try { localStorage.setItem(COV_KEY, JSON.stringify(covStore())); } catch (e) {} };
+        const selKey = (b) => bookKey(b.title, b.author);
+        const selItem = (b) => {
+            const c = covStore()[selKey(b)];
+            const ol = c && c.k ? String(c.k) : '';
+            return { id: ol ? 'ol_' + ol.replace('/works/', '') : 'sel_' + titleKey(b.title).replace(/ /g, '_').slice(0, 40), olKey: ol, title: b.title, author: b.author, img: c && c.i ? `https://covers.openlibrary.org/b/id/${c.i}-M.jpg` : '',
+                desc: '', type: 'Livre', releaseDate: String(b.y), genres: b.genres, metricValue: c && c.p ? c.p : 0, source: 'openlibrary', needsDetails: !!ol };
         };
-        // Livres : les plus lus sur Open Library (nombre de lecteurs), en français, dans mes genres préférés
-        const OL_SUBJECT = { 'Thriller': 'thriller', 'Policier': 'detective and mystery stories', 'Faits divers': 'true crime', 'Science-fiction': 'science fiction', 'Fantasy': 'fantasy', 'Horreur': 'horror',
-            'Romance': 'love stories', 'Historique': 'historical fiction', 'Jeunesse': 'juvenile fiction', 'Young adult': 'young adult fiction', 'BD & romans graphiques': 'comic books, strips, etc.', 'Manga': 'manga',
-            'Biographie': 'biography', 'Mémoires': 'biography', 'Histoire': 'history', 'Philosophie': 'philosophy', 'Psychologie': 'psychology', 'Développement personnel': 'self-help', 'Économie': 'economics',
-            'Politique': 'politics', 'Sciences': 'science', 'Nature': 'nature', 'Voyage': 'travel', 'Cuisine': 'cooking', 'Sport': 'sports', 'Humour': 'humor', 'Poésie': 'poetry', 'Art': 'art', 'Musique': 'music',
-            'Religion': 'religion', 'Société': 'social science', 'Essai': 'essays', 'Théâtre': 'drama', 'Dystopie': 'dystopias', 'Aventure': 'adventure stories', 'Guerre': 'war', 'Nouvelles': 'short stories',
-            'Vie de famille': 'family life', 'Littérature': 'fiction', 'Fiction': 'fiction', 'Classiques': 'classics' };
-        const olSubjects = (frGenres) => [...new Set((frGenres || []).map(g => OL_SUBJECT[g]).filter(Boolean))];
-        const olPopular = async (subject, { extra = '', sort = 'readinglog', minEd = 3 } = {}) => {
-            const fields = 'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,subject,edition_count,editions,editions.title,editions.cover_i';
-            const q = `subject:"${subject}" language:fre${extra ? ' ' + extra : ''}`;
-            const d = await httpJson(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&sort=${sort}&lang=fr&limit=60&fields=${fields}`);
-            return ((d && d.docs) || []).filter(x => x && x.title && num(x.edition_count) >= minEd).map(x => {
-                const b = olBook(x);
-                // Titre et couverture de l'édition française quand Open Library la connaît
-                const ed = x.editions && Array.isArray(x.editions.docs) ? x.editions.docs[0] : null;
-                if (ed && ed.title) b.title = ed.title;
-                if (ed && ed.cover_i) b.img = `https://covers.openlibrary.org/b/id/${ed.cover_i}-M.jpg`;
-                return b;
-            }).filter(b => b.img);
+        const resolveCovers = async (books) => {
+            const store = covStore();
+            const todo = books.filter(b => { const c = store[selKey(b)]; return !c || (!c.i && Date.now() - num(c.at) > 7 * 86400000); });
+            let k = 0;
+            const worker = async () => {
+                while (k < todo.length) {
+                    const b = todo[k++];
+                    try {
+                        const d = await httpJson(`https://openlibrary.org/search.json?title=${encodeURIComponent(b.title)}&author=${encodeURIComponent(b.author)}&lang=fr&limit=1&fields=key,cover_i,number_of_pages_median`);
+                        const x = d && d.docs && d.docs[0];
+                        store[selKey(b)] = { i: x && x.cover_i ? x.cover_i : 0, k: x && x.key ? x.key : '', p: x && x.number_of_pages_median ? x.number_of_pages_median : 0, at: Date.now() };
+                    } catch (e) { /* réessayé une autre fois */ }
+                }
+            };
+            await Promise.all([worker(), worker(), worker(), worker()]);
+            covSave();
+        };
+        // Note d'un livre de la sélection pour moi : mes genres préférés, mes auteurs préférés, et un peu de nouveauté
+        const selScore = (b, T, extraGenres) => {
+            let s = 0;
+            b.genres.forEach(g => { const l = T.lift.get(g); if (l) s += Math.max(-1, l.score); if (extraGenres && extraGenres.includes(g)) s += 2; });
+            if (T.people.some(p => personKey(p.name) === personKey(b.author))) s += 3;
+            return s + (b.y >= 2010 ? 0.3 : 0);
+        };
+        const selRow = async (T, { filter = () => true, extraGenres = null, max = 24, author = null } = {}) => {
+            let list = BOOK_SEL.filter(filter).map(b => ({ b, s: selScore(b, T, extraGenres) + (author && personKey(b.author) === personKey(author) ? 4 : 0) }))
+                .sort((x, y) => y.s - x.s).map(x => x.b);
+            list = list.filter(b => !isOwned({ type: 'Livre', title: b.title, author: b.author }));
+            const pick = list.slice(0, max);
+            await resolveCovers(pick);
+            return pick.map(selItem);
         };
 
         const dzArtistId = async (name) => {
@@ -5799,13 +6037,14 @@ window.startStatsEnrichment = async () => {
                 return fresh(scored.map(e => e.it)).map(it => wrap(it));
             }
             if (type === 'Livre') {
-                const authors = T.people.slice(0, 3);
-                const subjects = olSubjects(T.topGenres).slice(0, 2);
-                const lists = (await Promise.allSettled([
-                    ...authors.map(a => loadPerson('author', a.name).then(d => ({ items: (d.works || []).slice(0, 6), weight: 1.6 }))),
-                    ...(subjects.length ? subjects : ['fiction']).map(s => olPopular(s).then(items => ({ items, weight: 1 })))
-                ])).filter(r => r.status === 'fulfilled').map(r => r.value);
-                return fresh(merge(lists, b => bookKey(b.title, b.author)).sort((a, b) => (b.hits + b.rank) - (a.hits + a.rank)).map(e => e.it)).map(it => wrap(it));
+                // La sélection classée selon mes goûts, avec de temps en temps un autre livre d'un auteur que j'adore
+                const sel = await selRow(T, { max: 20 });
+                const fav = (await Promise.allSettled(T.people.slice(0, 2).map(a => loadPerson('author', a.name))))
+                    .flatMap(r => r.status === 'fulfilled' ? (r.value.works || []).slice(0, 3) : []).filter(b => b.img && !isOwned(b));
+                const seen = new Set(sel.map(b => bookKey(b.title, b.author)));
+                const out = [];
+                sel.forEach((b, k) => { out.push(b); if (k % 4 === 3 && fav.length) { const f = fav.shift(); if (!seen.has(bookKey(f.title, f.author))) { seen.add(bookKey(f.title, f.author)); out.push(f); } } });
+                return out.slice(0, 24).map(it => wrap(it));
             }
             if (type === 'Album') {
                 const artists = T.people.slice(0, 3);
@@ -5840,13 +6079,12 @@ window.startStatsEnrichment = async () => {
             }
             if (type === 'Livre') {
                 const author = String(seed.author || '').split(',')[0].trim();
-                const subj = olSubjects(bookGenreNames(seed))[0] || olSubjects(recoTaste('Livre').topGenres)[0] || 'fiction';
-                const [byAuthor, bySubject] = await Promise.all([
-                    author && author !== 'Inconnu' ? loadPerson('author', author).then(d => d.works || []) : [],
-                    olPopular(subj).catch(() => [])
-                ]);
                 const me = bookKey(seed.title, seed.author);
-                return fresh(merge([{ items: byAuthor.slice(0, 8), weight: 1.5 }, { items: bySubject }], b => bookKey(b.title, b.author)).filter(e => bookKey(e.it.title, e.it.author) !== me).map(e => e.it), 20).map(it => wrap(it));
+                const T = recoTaste('Livre');
+                const sel = await selRow(T, { extraGenres: bookGenreNames(seed), author, filter: b => bookKey(b.title, b.author) !== me, max: 16 });
+                const same = author && author !== 'Inconnu' ? ((await loadPerson('author', author)).works || []).filter(b => b.img && bookKey(b.title, b.author) !== me && !isOwned(b)).slice(0, 4) : [];
+                const seen = new Set();
+                return [...same, ...sel].filter(b => { const k = bookKey(b.title, b.author); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 20).map(it => wrap(it));
             }
             if (type === 'Album') {
                 const a = await loadAlbumExtras(seed);
@@ -5879,11 +6117,7 @@ window.startStatsEnrichment = async () => {
                 return fresh(merge([{ items: out }]).map(e => e.it)).map(it => wrap(it));
             }
             if (type === 'Livre') {
-                const subj = olSubjects(T.topGenres)[0] || 'fiction';
-                // Les incontournables : publiés avant 1990 et réédités le plus souvent
-                let items = await olPopular(subj, { extra: 'first_publish_year:[* TO 1990]', sort: 'editions', minEd: 10 });
-                if (items.length < 8) items = items.concat(await olPopular('classics', { sort: 'editions', minEd: 10 }).catch(() => []));
-                return fresh(merge([{ items }], b => bookKey(b.title, b.author)).map(e => e.it)).map(it => wrap(it));
+                return (await selRow(T, { filter: b => b.classic })).map(it => wrap(it));
             }
             if (type === 'Album') {
                 const list = await window.deezerJSONP('https://api.deezer.com/genre?');
@@ -5911,10 +6145,7 @@ window.startStatsEnrichment = async () => {
                 return fresh(items).map(it => wrap(it, { short: 'Mini-série' }));
             }
             if (type === 'Livre') {
-                const subjects = olSubjects(T.topGenres).slice(0, 3);
-                const lists = await Promise.all((subjects.length ? subjects : ['fiction']).map(s => olPopular(s).catch(() => [])));
-                const all = [...lists.flat(), ...(await olPopular('short stories').catch(() => []))].filter(b => num(b.metricValue) >= 40 && num(b.metricValue) < 200);
-                return fresh(merge([{ items: all }], b => bookKey(b.title, b.author)).map(e => e.it)).map(it => wrap(it, { short: `${num(it.metricValue)} p.` }));
+                return (await selRow(T, { filter: b => b.short })).map(it => wrap(it, { short: num(it.metricValue) && num(it.metricValue) < 200 ? `${num(it.metricValue)} p.` : 'Court' }));
             }
             if (type === 'YouTube') {
                 const pool = await rowItems(`fy:YouTube`, () => buildForYou('YouTube'));
@@ -5952,27 +6183,39 @@ window.startStatsEnrichment = async () => {
             return out;
         };
         const posterCache = new Map();
+        // Affinité avec un ami, recalculée seulement si sa bibliothèque ou la mienne a changé
+        const affMemo = new Map();
+        const friendAffinity = (f) => {
+            const full = ST.friendItems[f.uid]; const s = friendSummary(f);
+            const src = full && full.items && !full.error ? full.items : s;
+            const sig = src ? (Array.isArray(src) ? src : String(src.works || '')) : null;
+            const m = affMemo.get(f.uid);
+            if (m && m.sig === sig && m.mine === window.myCollection) return m.v;
+            const theirs = !src ? null : Array.isArray(src) ? src : parseSummaryWorks(src);
+            const a = theirs ? window.computeAffinity(window.myCollection || [], theirs) : null;
+            const v = a && a.rated.length >= 3 && a.pct !== null ? a.pct / 100 : 0.5;
+            affMemo.set(f.uid, { sig, mine: window.myCollection, v });
+            return v;
+        };
         const buildFriendsRow = async (type) => {
             const all = friendsLoved();
-            // Affinité avec chaque ami (même calcul que l'onglet Amis)
+            // Affinité avec chaque ami (même calcul que l'onglet Amis), gardée en mémoire
             const aff = new Map();
-            statsFriends().forEach(f => {
-                const full = ST.friendItems[f.uid]; const s = friendSummary(f);
-                const theirs = full && full.items && !full.error ? full.items : s ? parseSummaryWorks(s) : null;
-                const a = theirs ? window.computeAffinity(window.myCollection || [], theirs) : null;
-                aff.set(f.uid, a && a.rated.length >= 3 && a.pct !== null ? a.pct / 100 : 0.5);
-            });
-            const groups = new Map();
-            (all || []).filter(e => e.w.type === type).forEach(e => {
-                const k = `${e.w.id || ''}|${titleKey(e.w.title)}`;
-                const key = [...groups.keys()].find(g => (e.w.id && g.startsWith(e.w.id + '|')) || g.endsWith('|' + titleKey(e.w.title))) || k;
-                const g = groups.get(key) || { w: e.w, by: [] };
+            statsFriends().forEach(f => aff.set(f.uid, friendAffinity(f)));
+            // Regroupement en un seul passage : même identifiant OU même titre = même œuvre
+            const byId = new Map(), byTitle = new Map(), groups = [];
+            (all || []).forEach(e => {
+                if (e.w.type !== type) return;
+                const tk = titleKey(e.w.title);
+                let g = (e.w.id && byId.get(e.w.id)) || byTitle.get(tk);
+                if (!g) { g = { w: e.w, by: [] }; groups.push(g); }
+                if (e.w.id && !byId.has(e.w.id)) byId.set(e.w.id, g);
+                if (tk && !byTitle.has(tk)) byTitle.set(tk, g);
                 if (!g.w.img && e.w.img) g.w = { ...g.w, img: e.w.img };
                 if (g.w._titleOnly && !e.w._titleOnly) g.w = e.w;
                 if (!g.by.some(b => b.uid === e.x.uid)) g.by.push(e.x);
-                groups.set(key, g);
             });
-            const ranked = [...groups.values()].filter(g => !isOwned(g.w)).map(g => ({ ...g, s: g.by.reduce((a, b) => a + (b.r - 6) * (0.4 + (aff.get(b.uid) ?? 0.5)), 0) }))
+            const ranked = groups.filter(g => !isOwned(g.w)).map(g => ({ ...g, s: g.by.reduce((a, b) => a + (b.r - 6) * (0.4 + (aff.get(b.uid) ?? 0.5)), 0) }))
                 .sort((a, b) => b.s - a.s).slice(0, 24);
             // Films / séries connus seulement par leur numéro : on va chercher l'affiche (20 au plus)
             await Promise.all(ranked.filter(g => !g.w.img && (type === 'Film' || type === 'Série') && /^\d+$/.test(String(g.w.id))).slice(0, 20).map(async g => {
@@ -6086,7 +6329,7 @@ window.startStatsEnrichment = async () => {
         const tileHtml = (e, row, k) => {
             const w = e.w;
             const shape = w.type === 'Album' ? 'is-square' : w.type === 'YouTube' ? 'is-wide' : '';
-            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(regItem(e))})"><span class="rc-img">${coverImg(w.img, w.title, '', k < 4 ? '' : 'loading="lazy"')}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
+            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(tileKey(e))})"><span class="rc-img">${coverImg(w.img, w.title, '', k < 4 ? '' : 'loading="lazy"')}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
         };
         const skeleton = (type) => `<div class="rc-strip">${`<span class="rc-tile ${type === 'Album' ? 'is-square' : type === 'YouTube' ? 'is-wide' : ''}"><span class="rc-img pv-skel"></span><span class="pv-skel-t" style="width:80%;margin-top:8px;height:12px"></span></span>`.repeat(5)}</div>`;
         window.setRecoType = (t) => { if (!RC_TYPES.includes(t)) return; RC.type = t; window.renderRecoView(); window.scrollMainTop(); };
@@ -6096,41 +6339,68 @@ window.startStatsEnrichment = async () => {
             derived.clear(); saveRecoCache(); window.renderRecoView();
             window.ui.toast('Nouvelles idées en préparation…');
         };
+        // Clé de clic stable pour une idée (le même HTML d'une fois sur l'autre → rien n'est redessiné inutilement)
+        const tileKeys = new WeakMap();
+        const tileKey = (e) => { let k = tileKeys.get(e); if (!k || !itemRegistry.has(k)) { k = regItem(e); tileKeys.set(e, k); } return k; };
+        const recoRowHtml = (row, type) => {
+            let items = rowState(row);
+            if (items === null) return '';
+            // Ce que je viens d'ajouter (vu, wishlist…) disparaît tout de suite des idées
+            if (Array.isArray(items)) items = items.filter(e => e && e.w && !isOwned(e.w));
+            if (Array.isArray(items) && !items.length && !(row.friends && statsFriends().length)) return '';
+            if (Array.isArray(items) && !items.length) return `<section class="rc-row" data-row="${esc(row.key)}"><div class="rc-h"><h3>${row.title}</h3></div><p class="rc-empty">Tes amis n'ont encore rien noté 8 ou plus que tu n'aies pas déjà. Ça se remplira à mesure qu'ils notent.</p></section>`;
+            return `<section class="rc-row" data-row="${esc(row.key)}">
+                <div class="rc-h"><h3>${row.title}</h3>${row.sub ? `<p>${esc(row.sub)}</p>` : ''}</div>
+                ${items === undefined ? skeleton(type) : `<div class="rc-strip" data-k="${esc(row.key)}">${items.map((e, k) => tileHtml(e, row, k)).join('')}</div>`}
+            </section>`;
+        };
         window.renderRecoView = () => {
             const c = document.getElementById('main-content');
             if (!c || window.currentView !== 'reco' || !window.currentUser) return;
-            c.querySelectorAll('.rc-strip[data-k]').forEach(s => { RC.scroll[s.dataset.k] = s.scrollLeft; });
             const type = RC.type;
-            const chips = `<div class="type-chips st-tabs rc-chips" role="tablist" aria-label="Catégories">${RC_TYPES.map(t => `<button type="button" role="tab" aria-selected="${t === type}" class="type-chip ${t === type ? 'active' : ''}" onclick="window.setRecoType('${t}')"><span class="dot" style="background:${catOf(t).c}"></span>${catOf(t).label}</button>`).join('')}</div>`;
             const rows = recoRows(type);
-            const noTaste = !recoTaste(type).rated.length;
-            let shown = 0;
-            const body = rows.map(row => {
-                let items = rowState(row);
-                if (items === null) return '';
-                // Ce que je viens d'ajouter (vu, wishlist…) disparaît tout de suite des idées
-                if (Array.isArray(items)) items = items.filter(e => e && e.w && !isOwned(e.w));
-                if (Array.isArray(items) && !items.length && !(row.friends && statsFriends().length)) return '';
-                shown++;
-                if (Array.isArray(items) && !items.length) return `<section class="rc-row"><div class="rc-h"><h3>${row.title}</h3></div><p class="rc-empty">Tes amis n'ont encore rien noté 8 ou plus que tu n'aies pas déjà. Ça se remplira à mesure qu'ils notent.</p></section>`;
-                return `<section class="rc-row">
-                    <div class="rc-h"><h3>${row.title}</h3>${row.sub ? `<p>${esc(row.sub)}</p>` : ''}</div>
-                    ${items === undefined ? skeleton(type) : `<div class="rc-strip" data-k="${esc(row.key)}">${items.map((e, k) => tileHtml(e, row, k)).join('')}</div>`}
-                </section>`;
-            }).join('');
+            const parts = rows.map(row => ({ key: row.key, html: recoRowHtml(row, type) })).filter(p => p.html);
             const loading = rows.some(r => rowState(r) === undefined);
+            const noTaste = !recoTaste(type).rated.length;
+            const page = c.querySelector('#rc-page');
+            const box = page && page.dataset.type === type && page.dataset.nt === String(noTaste) ? page.querySelector('#rc-rows') : null;
+            const emptyHtml = !parts.length && !loading ? `<div class="px-4">${sEmpty('Pas encore d\'idée ici. Reviens après avoir noté quelques œuvres !')}</div>` : '';
+            if (box) {
+                // Page déjà affichée : on ne remplace que les rangées qui ont changé (les autres images ne bougent pas)
+                const prev = RC.lastParts || [];
+                const sameOrder = prev.length === parts.length && prev.every((p, k) => p.key === parts[k].key);
+                if (sameOrder && !emptyHtml) {
+                    parts.forEach((p, k) => {
+                        if (prev[k].html === p.html) return;
+                        const el = box.querySelector(`section[data-row="${CSS.escape(p.key)}"]`);
+                        if (!el) return;
+                        const sl = (el.querySelector('.rc-strip') || {}).scrollLeft || 0;
+                        el.outerHTML = p.html;
+                        const nw = box.querySelector(`section[data-row="${CSS.escape(p.key)}"] .rc-strip`);
+                        if (nw && sl) nw.scrollLeft = sl;
+                    });
+                } else {
+                    box.querySelectorAll('.rc-strip[data-k]').forEach(st => { RC.scroll[st.dataset.k] = st.scrollLeft; });
+                    box.innerHTML = parts.map(p => p.html).join('') + emptyHtml;
+                    box.querySelectorAll('.rc-strip[data-k]').forEach(st => { const v = RC.scroll[st.dataset.k]; if (v) st.scrollLeft = v; });
+                }
+                RC.lastParts = parts;
+                return;
+            }
+            const chips = `<div class="type-chips st-tabs rc-chips" role="tablist" aria-label="Catégories">${RC_TYPES.map(t => `<button type="button" role="tab" aria-selected="${t === type}" class="type-chip ${t === type ? 'active' : ''}" onclick="window.setRecoType('${t}')"><span class="dot" style="background:${catOf(t).c}"></span>${catOf(t).label}</button>`).join('')}</div>`;
             c.innerHTML = `
-                <div class="pt-16 pb-32">
-                    <div class="px-4 flex items-end justify-between gap-3">
-                        <div><h1 class="page-title">Recommandations</h1><p class="text-gray-500 font-semibold text-sm mt-1.5">Des idées choisies d'après tes goûts</p></div>
+                <div class="pt-16 pb-32" id="rc-page" data-type="${esc(type)}" data-nt="${noTaste}">
+                    <div class="px-4 rc-top">
+                        <h1 class="rc-title">Recommandations</h1>
                         <button type="button" class="round-btn shrink-0" onclick="window.refreshReco()" aria-label="Nouvelles idées" title="Nouvelles idées"><i class="fa-solid fa-rotate-right"></i></button>
                     </div>
+                    <p class="px-4 text-gray-500 font-semibold text-sm mt-1">Des idées choisies d'après tes goûts</p>
                     <div class="px-4">${chips}</div>
                     ${noTaste ? `<div class="px-4"><div class="st-banner"><i class="fa-solid fa-star mr-1.5"></i>Note quelques ${({ 'Film': 'films', 'Série': 'séries', 'Livre': 'livres', 'Album': 'albums', 'YouTube': 'vidéos' })[type]} pour des idées vraiment faites pour toi.</div></div>` : ''}
-                    ${body}
-                    ${!shown && !loading ? `<div class="px-4">${sEmpty('Pas encore d\'idée ici. Reviens après avoir noté quelques œuvres !')}</div>` : ''}
+                    <div id="rc-rows">${parts.map(p => p.html).join('')}${emptyHtml}</div>
                 </div>`;
-            c.querySelectorAll('.rc-strip[data-k]').forEach(s => { const v = RC.scroll[s.dataset.k]; if (v) s.scrollLeft = v; });
+            RC.lastParts = parts;
+            c.querySelectorAll('.rc-strip[data-k]').forEach(st => { const v = RC.scroll[st.dataset.k]; if (v) st.scrollLeft = v; });
         };
         // Ouvrir une idée : sa fiche (avec « Ajouter », « Wishlist », « Conseiller à… », « Qui l'a vu »)
         window.openRecoTile = async (key) => {
@@ -6188,20 +6458,25 @@ window.startStatsEnrichment = async () => {
 
         /* --- J.12 SUR CHAQUE FICHE : « Qui l'a vu parmi mes amis ? » et « Conseiller à… » ---
            Les œuvres de mes amis viennent de leurs résumés (déjà chargés avec leur profil) : aucune lecture en plus. */
-        const friendIdx = new WeakMap();
+        const friendIdx = new Map();
         const indexOfFriend = (f) => {
             const full = ST.friendItems[f.uid];
             const src = full && full.items && !full.error ? full.items : (friendSummary(f) || f.summary);
             if (!src) return null;
-            let idx = friendIdx.get(src);
-            if (!idx) {
-                idx = new Map();
-                const list = Array.isArray(src) ? src.filter(isDone) : parseSummaryWorks(src);
-                list.forEach(w => workKeys(w).forEach(k => { if (!idx.has(k)) idx.set(k, ratingOf(w)); }));
-                friendIdx.set(src, idx);
-            }
+            const sig = Array.isArray(src) ? src : String(src.works || '');
+            const m = friendIdx.get(f.uid);
+            if (m && m.sig === sig) return m.idx;
+            const idx = new Map();
+            const list = Array.isArray(src) ? src.filter(isDone) : parseSummaryWorks(src);
+            list.forEach(w => workKeys(w).forEach(k => { if (!idx.has(k)) idx.set(k, ratingOf(w)); }));
+            friendIdx.set(f.uid, { sig, idx });
             return idx;
         };
+        // Préparé en tâche de fond quelques secondes après l'ouverture : la 1re fiche s'ouvre aussi vite que les autres
+        setTimeout(() => {
+            const prep = () => { try { if (window.currentUser) statsFriends().forEach(indexOfFriend); } catch (e) {} };
+            if ('requestIdleCallback' in window) requestIdleCallback(prep, { timeout: 8000 }); else prep();
+        }, 6000);
         const friendsWhoSaw = (item) => {
             if (!item || !item.title) return [];
             const keys = workKeys(item);
