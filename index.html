@@ -331,6 +331,7 @@
         .rc-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .rc-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; font-weight: 800; line-height: 1.25; margin-top: 7px; }
         .rc-m { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rc-empty { margin: 0 16px; padding: 14px 16px; background: #fff; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--muted); }
         .rc-by { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); }
         .rc-av { width: 16px; height: 16px; border-radius: 50%; background: var(--lav); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; overflow: hidden; }
         .rc-av img { width: 100%; height: 100%; object-fit: cover; }
@@ -2763,7 +2764,7 @@
                     const snapshot = await getDocs(query(collectionGroup(db, 'profile'), limit(500)));
                     // L'identifiant est lu dans le chemin du document (users/{uid}/profile/info) :
                     // les profils récents ne l'enregistrent pas dans leurs données.
-                    const all = snapshot.docs.map(d => ({ ...d.data(), uid: d.ref.parent.parent.id }));
+                    const all = snapshot.docs.filter(d => d.id === 'info').map(d => ({ ...d.data(), uid: d.ref.parent.parent.id }));
                     all.forEach(u => window.rememberProfile(u.uid, u));
                     window._allProfiles = all;
                     window._allProfilesAt = Date.now();
@@ -3699,18 +3700,28 @@
             const container = document.getElementById('main-content');
             const following = window.followingData || [];
             
-            // 1. Récupération des abonnés (une seule fois tant qu'on reste sur la page)
+            // 1. Abonnés relus à chaque arrivée sur la page, EN ARRIÈRE-PLAN : la page s'affiche tout de suite
+            //    (avec les abonnés de la dernière visite), puis se met à jour quand la liste arrive.
+            //    Avant, la bibliothèque restait affichée ~1 s le temps de cette lecture.
             if (window._followersCache === null) {
-                window._followersCache = [];
-                try {
-                    const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
-                    const snap = await getDocs(q);
-                    window._followersCache = snap.docs.map(d => ({ ...d.data(), id: d.ref.parent.parent.id }));
-                } catch (e) { console.error('Abonnés', e); }
+                window._followersCache = window._followersLast || [];
+                window._followersLoading = !window._followersLast;
+                (async () => {
+                    try {
+                        const q = query(collectionGroup(db, 'profile'), where('following', 'array-contains', window.currentUser.uid));
+                        const snap = await getDocs(q);
+                        window._followersCache = window._followersLast = snap.docs.filter(d => d.id === 'info').map(d => ({ ...d.data(), id: d.ref.parent.parent.id }));
+                    } catch (e) { console.error('Abonnés', e); }
+                    window._followersLoading = false;
+                    if (window.currentView === 'profile') window.renderProfile();
+                })();
             }
-            // Noms des comptes bloqués (liste des membres gardée en mémoire)
+            // Noms des comptes bloqués (liste des membres gardée en mémoire) : chargés en arrière-plan aussi
             const blockedUids = window.myBlocked();
-            if (blockedUids.some(u => !window.profileCache[u])) { try { await window.loadAllProfiles(); } catch (e) { console.error(e); } }
+            if (blockedUids.some(u => !window.profileCache[u]) && !window._blockedNamesLoading) {
+                window._blockedNamesLoading = true;
+                window.loadAllProfiles().catch(e => console.error(e)).finally(() => { window._blockedNamesLoading = false; if (window.currentView === 'profile' && blockedUids.some(u => window.profileCache[u])) window.renderProfile(); });
+            }
             // Si l'utilisateur a changé de page pendant le chargement, on n'écrase pas la nouvelle page
             if (window.currentView !== 'profile') return;
             const followers = window._followersCache.filter(f => !window.myBlocked().includes(f.id));
@@ -3742,7 +3753,7 @@
                         <div class="pf-stats">
                             <div class="pf-stat"><b>${doneCount}</b><span>œuvre${doneCount > 1 ? 's' : ''}</span></div>
                             <button type="button" class="pf-stat" onclick="window.togglePeopleList('following-list')"><b>${following.length}</b><span>abonnement${following.length > 1 ? 's' : ''}</span></button>
-                            <button type="button" class="pf-stat" onclick="window.togglePeopleList('followers-list')"><b>${followers.length}</b><span>abonné${followers.length > 1 ? 's' : ''}</span></button>
+                            <button type="button" class="pf-stat" onclick="window.togglePeopleList('followers-list')"><b>${window._followersLoading ? '…' : followers.length}</b><span>abonné${followers.length > 1 ? 's' : ''}</span></button>
                         </div>
                     </section>
 
@@ -3844,6 +3855,7 @@
                 const targetRef = doc(db, 'artifacts', appId, 'users', targetUid, 'profile', 'info');
                 await updateDoc(targetRef, { following: arrayRemove(window.currentUser.uid) });
                 window._followersCache = null;
+                window._followersLast = (window._followersLast || []).filter(f => f.id !== targetUid);
                 window.ui.toast('Abonné retiré ✓');
                 window.renderProfile();
             } catch (e) { console.error(e); window.ui.alert("Impossible de retirer cet abonné pour le moment."); }
@@ -3868,6 +3880,7 @@
                 await updateDoc(myRef, { blocked: arrayUnion(targetUid), following: arrayRemove(targetUid) });
                 
                 window._followersCache = null;
+                window._followersLast = (window._followersLast || []).filter(f => f.id !== targetUid);
                 window.ui.toast('Compte bloqué');
                 if (document.getElementById('public-profile-modal').classList.contains('open')) window.closePublicProfile();
                 if (window.currentView === 'profile') window.renderProfile();
@@ -4128,8 +4141,19 @@ const avgRating = (items) => { const rs = items.map(ratingOf).filter(r => r !== 
 const filmMinutes = (i) => num(i.metricValue) || num(i.durationMin);
 // Séries : saisons vues × épisodes par saison × durée d'un épisode (estimation, connue après complétion)
 const seriesMinutes = (i) => (num(i.episodesPerSeason) && num(i.episodeRunTime)) ? Math.max(1, num(i.metricValue) || 1) * num(i.episodesPerSeason) * num(i.episodeRunTime) : 0;
-const directorsOf = (i) => String(i.author || '').split(',').map(s => s.trim()).filter(s => s && s !== 'Inconnu');
-const actorsOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).slice(0, 5).map(s => String(s).trim());
+const NOT_A_NAME = /^(inconnu|unknown|n\/a|-|\?)$/i;
+const directorsOf = (i) => String(i.author || '').split(',').map(s => s.trim()).filter(s => s && !NOT_A_NAME.test(s));
+// Tout le casting enregistré (jusqu'à 10 noms) : un acteur 6ᵉ au générique compte aussi
+const actorsOf = (i) => (Array.isArray(i.castList) && i.castList.length ? i.castList : String(i.cast || '').split(',')).slice(0, 10).map(s => String(s).trim()).filter(s => s && !NOT_A_NAME.test(s));
+// Classement de personnes : « Joël Dicker » et « Joel Dicker » (ou « pierre niney ») sont la même personne
+const tallyPeople = (items, namesOf) => {
+    const spell = new Map();
+    const keyOf = (n) => { const k = normTxt(n).replace(/[^a-z0-9]+/g, ' ').trim(); if (!k) return null; const m = spell.get(k) || new Map(); m.set(n, (m.get(n) || 0) + 1); spell.set(k, m); return k; };
+    return tally(items, i => (namesOf(i) || []).map(keyOf).filter(Boolean)).map(r => {
+        const m = spell.get(r.name);
+        return { ...r, name: m ? [...m.entries()].sort((a, b) => b[1] - a[1])[0][0] : r.name };
+    });
+};
 const countriesOf = (i) => (Array.isArray(i.countryCodes) && i.countryCodes.length ? i.countryCodes.map(regionName) : (Array.isArray(i.countries) ? i.countries : [])).filter(Boolean);
 
 // ---------- Petits blocs d'affichage ----------
@@ -4288,9 +4312,9 @@ const statsScreen = (sc) => {
             ${miniTile(mint, 'fa-solid fa-tv', pool.length - films.length, `série${pool.length - films.length > 1 ? 's' : ''}`)}
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(pool) !== null ? fr1(avgRating(pool)) : '–', 'note moyenne')}
         </div>
-        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tally(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film', tap: r => ({ role: 'director', name: r.name }) })) : ''}
-        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tally(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série', tap: r => ({ role: 'creator', name: r.name }) })) : ''}
-        ${sCard('Top acteurs', rankList(tally(pool, actorsOf), color, { max: 8, unit: plural, tap: r => ({ role: 'actor', name: r.name }) }))}
+        ${ST.fs !== 'Série' ? sCard('Top réalisateurs', rankList(tallyPeople(films, directorsOf), lav, { showAvg: true, unit: (n) => n > 1 ? 'films' : 'film', tap: r => ({ role: 'director', name: r.name }) })) : ''}
+        ${ST.fs === 'Série' ? sCard('Top créateurs', rankList(tallyPeople(pool, directorsOf), mint, { showAvg: true, unit: (n) => n > 1 ? 'séries' : 'série', tap: r => ({ role: 'creator', name: r.name }) })) : ''}
+        ${sCard('Top acteurs', rankList(tallyPeople(pool, actorsOf), color, { max: 8, unit: plural, tap: r => ({ role: 'actor', name: r.name }) }))}
         ${sCard('Genres préférés', rankList(tally(pool, i => i.genres), color, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'screen', name: r.name }) }))}
         ${sCard('Pays les plus vus', rankList(tally(pool, countriesOf), color, { max: 6, tap: r => ({ kind: 'country', pool: 'screen', name: r.name }) }))}
         ${sCard('Langues originales', rankList(tally(pool, i => [langName(i.originalLanguage)]), color, { max: 6, tap: r => ({ kind: 'lang', pool: 'screen', name: r.name }) }))}
@@ -4313,7 +4337,7 @@ const statsBooks = (sc) => {
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(books) !== null ? fr1(avgRating(books)) : '–', 'note moyenne')}
         </div>
         ${sCard(sc.isYear ? 'Pages par mois' : 'Pages par année', barChart(timelineCols(books, sc.isYear, sc.curYear, i => num(i.metricValue), () => miel), { fmt: (v) => v >= 1000 ? fr1(v / 1000) + 'k' : v }))}
-        ${sCard('Top auteurs', rankList(tally(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre', tap: r => ({ role: 'author', name: r.name }) }))}
+        ${sCard('Top auteurs', rankList(tallyPeople(books, directorsOf), miel, { showAvg: true, unit: (n) => n > 1 ? 'livres' : 'livre', tap: r => ({ role: 'author', name: r.name }) }))}
         ${sCard('Genres', rankList(tally(books, bookGenreNames), miel, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'Livre', name: r.name }) }))}
         ${sCard('Le livre le plus long', longestHtml)}`;
 };
@@ -4331,7 +4355,7 @@ const statsMusic = (sc) => {
             ${miniTile('#FFE4F0', 'fa-solid fa-headphones', `${frInt(mins / 60)} h`, "d'écoute")}
             ${miniTile('#fff', 'fa-solid fa-star', avgRating(albums) !== null ? fr1(avgRating(albums)) : '–', 'note moyenne')}
         </div>
-        ${sCard('Top artistes', rankList(tally(albums, i => [String(i.author || '').trim()]), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album', tap: r => ({ role: 'artist', name: r.name }) }))}
+        ${sCard('Top artistes', rankList(tallyPeople(albums, i => [String(i.author || '').trim()].filter(n => n && !NOT_A_NAME.test(n))), rose, { showAvg: true, unit: (n) => n > 1 ? 'albums' : 'album', tap: r => ({ role: 'artist', name: r.name }) }))}
         ${sCard('Genres', rankList(tally(albums, i => i.genres), rose, { max: 6, showAvg: true, tap: r => ({ kind: 'genre', pool: 'Album', name: r.name }) }))}
         ${sCard('Albums par décennie', decades.length ? barChart(decades.map(d => ({ label: String(d.name), title: `Années ${d.name}`, parts: [{ v: d.count, color: rose }] }))) : sEmpty('Pas encore de dates de sortie.'))}`;
 };
@@ -4816,6 +4840,11 @@ window.updateGoal = async (key, val) => {
                espacé (12 h, 24 h, 48 h), et après 3 échecs l'œuvre est laissée telle quelle (« metaMissing »).
              - la barre « Je complète tes œuvres » ne s'affiche qu'UNE fois : pour la toute première complétion. */
 const META_V = 1;
+// Films et séries : 2ᵉ passage (casting complet jusqu'à 10 noms, séries : acteurs de toutes les saisons,
+// réalisateur « Inconnu » remplacé, recherche par titre plus souple). Livres et albums : inchangé.
+const META_SCREEN_V = 2;
+const metaTarget = (i) => (i.type === 'Film' || i.type === 'Série') ? META_SCREEN_V : META_V;
+const needsMeta = (i) => num(i.metaV) < metaTarget(i);
 const ENRICH_TYPES = ['Film', 'Série', 'Livre', 'Album'];
 window._enrich = { running: false, done: 0, total: 0, showBar: false };
 const ENRICH_RETRY_MS = 12 * 3600 * 1000;
@@ -4826,15 +4855,18 @@ const writeEnrichTries = (uid, o) => { try { localStorage.setItem(enrichLsKey(ui
 const enrichBarSeen = (uid) => { try { return localStorage.getItem(`mabiblio_enrich_bar_${uid}`) === '1'; } catch (e) { return false; } };
 const markEnrichBarSeen = (uid) => { try { localStorage.setItem(`mabiblio_enrich_bar_${uid}`, '1'); } catch (e) {} };
 // Nombre d'essais déjà faits pour cette œuvre et date du dernier (dans l'œuvre ET sur ce téléphone)
+// (les essais d'un passage précédent ne comptent pas pour le nouveau)
 const enrichTries = (it, tries) => {
-    const t = tries[it.docId] || {};
-    return { n: Math.max(num(it.metaTry), num(t.n)), at: Math.max(num(it.metaTryAt), num(t.at)) };
+    const v = metaTarget(it);
+    const t = tries[it.docId] && num(tries[it.docId].v || 1) === v ? tries[it.docId] : {};
+    const mine = num(it.metaTryV || 1) === v;
+    return { n: Math.max(mine ? num(it.metaTry) : 0, num(t.n)), at: Math.max(mine ? num(it.metaTryAt) : 0, num(t.at)) };
 };
 const enrichWaiting = (it, tries) => {
     const { n, at } = enrichTries(it, tries);
     return !!at && Date.now() - at < ENRICH_RETRY_MS * Math.pow(2, Math.max(0, n - 1));
 };
-const isEmptyVal = (v) => v === undefined || v === null || v === '' || v === 0 || (Array.isArray(v) && v.length === 0);
+const isEmptyVal = (v) => v === undefined || v === null || v === '' || v === 0 || v === 'Inconnu' || (Array.isArray(v) && v.length === 0);
 const fill = (patch, item, key, val) => { if (isEmptyVal(item[key]) && !isEmptyVal(val)) patch[key] = val; };
 const titleKey = (t) => normTxt(t).replace(/[^a-z0-9]+/g, ' ').trim();
 const httpJson = async (url) => {
@@ -4846,23 +4878,31 @@ const httpJson = async (url) => {
 
 const enrichScreen = async (it) => {
     const ep = it.type === 'Film' ? 'movie' : 'tv';
+    const V = META_SCREEN_V;
     let tid = /^\d+$/.test(String(it.tmdbId || '')) ? String(it.tmdbId) : (/^\d+$/.test(String(it.id || '')) ? String(it.id) : null);
     const patch = {};
     if (!tid) {
-        // Œuvre ajoutée à la main ou depuis le fil : on la retrouve par son titre
+        // Œuvre ajoutée à la main ou depuis le fil : on la retrouve par son titre (français ou original),
+        // année à un an près ; sans année, seulement si un seul titre correspond exactement
         const y = yearOfRelease(it);
         const s = await httpJson(`https://api.themoviedb.org/3/search/${ep}?api_key=${TMDB_KEY}&query=${encodeURIComponent(it.title || '')}&language=fr-FR`);
         const want = titleKey(it.title);
-        const hit = ((s && s.results) || []).find(r => [r.title, r.name, r.original_title, r.original_name].some(t => titleKey(t) === want) && (!y || String(r.release_date || r.first_air_date || '').startsWith(String(y))));
-        if (!hit) return { metaV: META_V, metaMissing: true };
+        const same = ((s && s.results) || []).filter(r => [r.title, r.name, r.original_title, r.original_name].some(t => titleKey(t) === want));
+        const ry = (r) => +String(r.release_date || r.first_air_date || '').slice(0, 4) || 0;
+        const hit = y ? (same.find(r => ry(r) === y) || same.find(r => ry(r) && Math.abs(ry(r) - y) <= 1)) : (same.length === 1 ? same[0] : same.sort((a, b) => num(b.vote_count) - num(a.vote_count))[0]);
+        if (!hit) return { metaV: V, metaMissing: true };
         tid = String(hit.id);
         patch.tmdbId = tid;
     }
-    const d = await httpJson(`https://api.themoviedb.org/3/${ep}/${tid}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits`);
-    if (!d) return { ...patch, metaV: META_V, metaMissing: true };
+    const d = await httpJson(`https://api.themoviedb.org/3/${ep}/${tid}?api_key=${TMDB_KEY}&language=fr-FR&append_to_response=credits${ep === 'tv' ? ',aggregate_credits' : ''}`);
+    if (!d) return { ...patch, metaV: V, metaMissing: true };
     const credits = d.credits || {};
-    const castList = (credits.cast || []).slice(0, 8).map(c => c.name).filter(Boolean);
-    fill(patch, it, 'castList', castList);
+    // Séries : les acteurs de toutes les saisons, par nombre d'épisodes ; films : ordre du générique
+    const agg = ep === 'tv' && d.aggregate_credits && Array.isArray(d.aggregate_credits.cast) && d.aggregate_credits.cast.length
+        ? [...d.aggregate_credits.cast].sort((a, b) => num(b.total_episode_count) - num(a.total_episode_count)) : null;
+    const castList = (agg || [...(credits.cast || [])].sort((a, b) => num(a.order) - num(b.order))).slice(0, 10).map(c => c.name).filter(Boolean);
+    // Le casting est une donnée de TMDB (jamais saisie à la main pour une œuvre retrouvée) : on le remet à jour
+    if (castList.length && JSON.stringify(castList) !== JSON.stringify(it.castList || [])) patch.castList = castList;
     fill(patch, it, 'cast', castList.slice(0, 4).join(', '));
     if (it.type === 'Film') {
         const dir = (credits.crew || []).filter(x => x.job === 'Director').map(x => x.name);
@@ -4882,7 +4922,8 @@ const enrichScreen = async (it) => {
     fill(patch, it, 'countryCodes', (d.production_countries || []).map(c => c.iso_3166_1).concat(d.origin_country || []).filter((v, k, a) => v && a.indexOf(v) === k));
     fill(patch, it, 'originalLanguage', d.original_language || '');
     fill(patch, it, 'releaseDate', d.release_date || d.first_air_date || '');
-    return { ...patch, metaV: META_V };
+    if (it.metaMissing) patch.metaMissing = false;
+    return { ...patch, metaV: V };
 };
 
 const enrichBook = async (it) => {
@@ -4945,9 +4986,9 @@ window.startStatsEnrichment = async () => {
     const tries = readEnrichTries(uid);
     const enrichable = (window.myCollection || []).filter(i => i.docId && ENRICH_TYPES.includes(i.type));
     // Ménage : on oublie les essais des œuvres désormais complétées ou supprimées
-    const alive = new Set(enrichable.filter(i => !i.metaV).map(i => i.docId));
+    const alive = new Set(enrichable.filter(needsMeta).map(i => i.docId));
     Object.keys(tries).forEach(k => { if (!alive.has(k)) delete tries[k]; });
-    const todo = enrichable.filter(i => !i.metaV && !(E.skip && E.skip.has(i.docId)) && !enrichWaiting(i, tries));
+    const todo = enrichable.filter(i => needsMeta(i) && !(E.skip && E.skip.has(i.docId)) && !enrichWaiting(i, tries));
     writeEnrichTries(uid, tries);
     if (!todo.length) return;
     E.skip = E.skip || new Set();
@@ -4983,7 +5024,7 @@ window.startStatsEnrichment = async () => {
             const it = queue.shift();
             // Essai noté AVANT de commencer : même si l'appli est fermée en plein milieu, on ne recommence pas tout de suite
             const prev = enrichTries(it, tries);
-            tries[it.docId] = { n: prev.n + 1, at: Date.now() };
+            tries[it.docId] = { n: prev.n + 1, at: Date.now(), v: metaTarget(it) };
             writeEnrichTries(uid, tries);
             try {
                 const job = it.type === 'Livre' ? enrichBook(it) : it.type === 'Album' ? enrichAlbum(it) : enrichScreen(it);
@@ -4994,7 +5035,7 @@ window.startStatsEnrichment = async () => {
                 // Panne réseau ou service saturé : on réessaiera plus tard ; au bout de 3 fois, on laisse l'œuvre telle quelle
                 E.skip.add(it.docId);
                 const n = tries[it.docId].n;
-                const patch = n >= ENRICH_MAX_TRIES ? { metaV: META_V, metaMissing: true, metaTry: n } : { metaTry: n, metaTryAt: Date.now() };
+                const patch = n >= ENRICH_MAX_TRIES ? { metaV: metaTarget(it), metaMissing: true, metaTry: n, metaTryV: metaTarget(it) } : { metaTry: n, metaTryAt: Date.now(), metaTryV: metaTarget(it) };
                 pending.push([it.docId, patch]); Object.assign(it, patch);
             }
             E.done++;
@@ -5619,7 +5660,7 @@ window.startStatsEnrichment = async () => {
             const rated = (window.myCollection || []).filter(i => i.type === type && isDone(i) && ratingOf(i) !== null);
             const avg = avgRating(rated) ?? 7;
             const lift = new Map();
-            tally(rated, i => type === 'Livre' ? rawBookSubjects(i) : i.genres).forEach(g => lift.set(g.name, { n: g.n, avg: g.avg, score: g.n * 0.5 + ((g.avg ?? avg) - avg) * 1.5 }));
+            tally(rated, i => type === 'Livre' ? bookGenreNames(i) : i.genres).forEach(g => lift.set(g.name, { n: g.n, avg: g.avg, score: g.n * 0.5 + ((g.avg ?? avg) - avg) * 1.5 }));
             const topGenres = [...lift.entries()].filter(([, g]) => (g.avg ?? 0) >= avg - 0.5).sort((a, b) => b[1].score - a[1].score).map(([name]) => name);
             const byDate = (a, b) => String(window.itemDateKey(b) || '').localeCompare(String(window.itemDateKey(a) || ''));
             const seeds = rated.filter(i => ratingOf(i) >= 8).sort((a, b) => ratingOf(b) - ratingOf(a) || byDate(a, b));
@@ -5655,7 +5696,27 @@ window.startStatsEnrichment = async () => {
             const d = await httpJson(`https://openlibrary.org/search.json?${params}&limit=40&fields=${fields}`);
             return ((d && d.docs) || []).filter(x => x.title && x.cover_i).map(olBook);
         };
-        const gbSubject = (s) => searchGoogleBooks(`subject:"${s}"`).catch(() => []);
+        // Livres : les plus lus sur Open Library (nombre de lecteurs), en français, dans mes genres préférés
+        const OL_SUBJECT = { 'Thriller': 'thriller', 'Policier': 'detective and mystery stories', 'Faits divers': 'true crime', 'Science-fiction': 'science fiction', 'Fantasy': 'fantasy', 'Horreur': 'horror',
+            'Romance': 'love stories', 'Historique': 'historical fiction', 'Jeunesse': 'juvenile fiction', 'Young adult': 'young adult fiction', 'BD & romans graphiques': 'comic books, strips, etc.', 'Manga': 'manga',
+            'Biographie': 'biography', 'Mémoires': 'biography', 'Histoire': 'history', 'Philosophie': 'philosophy', 'Psychologie': 'psychology', 'Développement personnel': 'self-help', 'Économie': 'economics',
+            'Politique': 'politics', 'Sciences': 'science', 'Nature': 'nature', 'Voyage': 'travel', 'Cuisine': 'cooking', 'Sport': 'sports', 'Humour': 'humor', 'Poésie': 'poetry', 'Art': 'art', 'Musique': 'music',
+            'Religion': 'religion', 'Société': 'social science', 'Essai': 'essays', 'Théâtre': 'drama', 'Dystopie': 'dystopias', 'Aventure': 'adventure stories', 'Guerre': 'war', 'Nouvelles': 'short stories',
+            'Vie de famille': 'family life', 'Littérature': 'fiction', 'Fiction': 'fiction', 'Classiques': 'classics' };
+        const olSubjects = (frGenres) => [...new Set((frGenres || []).map(g => OL_SUBJECT[g]).filter(Boolean))];
+        const olPopular = async (subject, { extra = '', sort = 'readinglog', minEd = 3 } = {}) => {
+            const fields = 'key,title,author_name,first_publish_year,number_of_pages_median,cover_i,subject,edition_count,editions,editions.title,editions.cover_i';
+            const q = `subject:"${subject}" language:fre${extra ? ' ' + extra : ''}`;
+            const d = await httpJson(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&sort=${sort}&lang=fr&limit=60&fields=${fields}`);
+            return ((d && d.docs) || []).filter(x => x && x.title && num(x.edition_count) >= minEd).map(x => {
+                const b = olBook(x);
+                // Titre et couverture de l'édition française quand Open Library la connaît
+                const ed = x.editions && Array.isArray(x.editions.docs) ? x.editions.docs[0] : null;
+                if (ed && ed.title) b.title = ed.title;
+                if (ed && ed.cover_i) b.img = `https://covers.openlibrary.org/b/id/${ed.cover_i}-M.jpg`;
+                return b;
+            }).filter(b => b.img);
+        };
 
         const dzArtistId = async (name) => {
             const s = await window.deezerJSONP(`https://api.deezer.com/search/artist?q=${encodeURIComponent(name)}&limit=5`);
@@ -5739,12 +5800,11 @@ window.startStatsEnrichment = async () => {
             }
             if (type === 'Livre') {
                 const authors = T.people.slice(0, 3);
-                const subjects = T.topGenres.slice(0, 2);
+                const subjects = olSubjects(T.topGenres).slice(0, 2);
                 const lists = (await Promise.allSettled([
-                    ...authors.map(a => loadPerson('author', a.name).then(d => ({ items: (d.works || []).slice(0, 8), weight: 1.6 }))),
-                    ...subjects.map(s => gbSubject(s).then(items => ({ items, weight: 1 })))
+                    ...authors.map(a => loadPerson('author', a.name).then(d => ({ items: (d.works || []).slice(0, 6), weight: 1.6 }))),
+                    ...(subjects.length ? subjects : ['fiction']).map(s => olPopular(s).then(items => ({ items, weight: 1 })))
                 ])).filter(r => r.status === 'fulfilled').map(r => r.value);
-                if (!lists.length) lists.push({ items: await olSearch('q=subject:fiction&sort=rating&language=fre') });
                 return fresh(merge(lists, b => bookKey(b.title, b.author)).sort((a, b) => (b.hits + b.rank) - (a.hits + a.rank)).map(e => e.it)).map(it => wrap(it));
             }
             if (type === 'Album') {
@@ -5780,9 +5840,10 @@ window.startStatsEnrichment = async () => {
             }
             if (type === 'Livre') {
                 const author = String(seed.author || '').split(',')[0].trim();
+                const subj = olSubjects(bookGenreNames(seed))[0] || olSubjects(recoTaste('Livre').topGenres)[0] || 'fiction';
                 const [byAuthor, bySubject] = await Promise.all([
                     author && author !== 'Inconnu' ? loadPerson('author', author).then(d => d.works || []) : [],
-                    rawBookSubjects(seed)[0] ? gbSubject(rawBookSubjects(seed)[0]) : []
+                    olPopular(subj).catch(() => [])
                 ]);
                 const me = bookKey(seed.title, seed.author);
                 return fresh(merge([{ items: byAuthor.slice(0, 8), weight: 1.5 }, { items: bySubject }], b => bookKey(b.title, b.author)).filter(e => bookKey(e.it.title, e.it.author) !== me).map(e => e.it), 20).map(it => wrap(it));
@@ -5818,9 +5879,10 @@ window.startStatsEnrichment = async () => {
                 return fresh(merge([{ items: out }]).map(e => e.it)).map(it => wrap(it));
             }
             if (type === 'Livre') {
-                const subj = String(T.topGenres[0] || 'fiction').toLowerCase();
-                let items = await olSearch(`subject=${encodeURIComponent(subj)}&sort=editions&language=fre`);
-                if (items.length < 8) items = items.concat(await olSearch('subject=classics&sort=editions&language=fre'));
+                const subj = olSubjects(T.topGenres)[0] || 'fiction';
+                // Les incontournables : publiés avant 1990 et réédités le plus souvent
+                let items = await olPopular(subj, { extra: 'first_publish_year:[* TO 1990]', sort: 'editions', minEd: 10 });
+                if (items.length < 8) items = items.concat(await olPopular('classics', { sort: 'editions', minEd: 10 }).catch(() => []));
                 return fresh(merge([{ items }], b => bookKey(b.title, b.author)).map(e => e.it)).map(it => wrap(it));
             }
             if (type === 'Album') {
@@ -5849,10 +5911,9 @@ window.startStatsEnrichment = async () => {
                 return fresh(items).map(it => wrap(it, { short: 'Mini-série' }));
             }
             if (type === 'Livre') {
-                const subjects = T.topGenres.slice(0, 3);
-                const lists = await Promise.all((subjects.length ? subjects : ['Fiction']).map(s => gbSubject(s)));
-                const ol = await olSearch(`subject=${encodeURIComponent(String(subjects[0] || 'fiction').toLowerCase())}&sort=rating&language=fre`).catch(() => []);
-                const all = [...lists.flat(), ...ol].filter(b => num(b.metricValue) >= 40 && num(b.metricValue) < 200);
+                const subjects = olSubjects(T.topGenres).slice(0, 3);
+                const lists = await Promise.all((subjects.length ? subjects : ['fiction']).map(s => olPopular(s).catch(() => [])));
+                const all = [...lists.flat(), ...(await olPopular('short stories').catch(() => []))].filter(b => num(b.metricValue) >= 40 && num(b.metricValue) < 200);
                 return fresh(merge([{ items: all }], b => bookKey(b.title, b.author)).map(e => e.it)).map(it => wrap(it, { short: `${num(it.metricValue)} p.` }));
             }
             if (type === 'YouTube') {
@@ -5871,27 +5932,28 @@ window.startStatsEnrichment = async () => {
             if (type === 'Livre' && /^[A-Za-z0-9_-]{10,14}$/.test(id) && !/^ol_|^OL/.test(id)) return `https://books.google.com/books/content?id=${encodeURIComponent(id)}&printsec=frontcover&img=1&zoom=1`;
             return '';
         };
-        const buildFriendsLoved = async () => {
-            const friends = statsFriends();
+        // Œuvres notées 8+ par mes amis, sans aucune lecture en plus : la vitrine est rangée dans leur profil
+        // (déjà chargé) ; sinon leur bibliothèque si elle a déjà été lue (onglet Amis), sinon leur résumé de stats.
+        const rawProfile = (uid) => (window.followingData || []).find(p => (p.uid || p.id) === uid) || {};
+        const friendsLoved = () => {
             const out = [];
-            await Promise.all(friends.map(async (f) => {
-                let list = null;
-                try {
-                    const s = await getDoc(doc(db, 'artifacts', appId, 'users', f.uid, 'profile', 'reco'));
-                    const d = s.exists() ? s.data() : null;
-                    if (d && Array.isArray(d.items)) list = d.items.map(x => ({ type: TYPE_FROM[x.k], id: String(x.i || ''), title: String(x.t || ''), img: String(x.m || ''), author: String(x.a || ''), releaseDate: x.y ? String(x.y) : '', genres: Array.isArray(x.g) ? x.g : [], r: num(x.r) }));
-                } catch (e) { /* vitrine illisible : on se rabat sur le résumé */ }
-                if (!list) {
+            statsFriends().forEach(f => {
+                const sc = rawProfile(f.uid).recoShowcase;
+                const full = ST.friendItems[f.uid];
+                let list;
+                if (sc && Array.isArray(sc.items)) list = sc.items.map(x => ({ type: TYPE_FROM[x.k], id: String(x.i || ''), title: String(x.t || ''), img: String(x.m || ''), author: String(x.a || ''), releaseDate: x.y ? String(x.y) : '', r: num(x.r) }));
+                else if (full && full.items && !full.error) list = full.items.filter(i => isDone(i) && (ratingOf(i) || 0) >= 8).map(i => ({ type: i.type, id: /^manual_|_public$/.test(String(i.id || '')) ? '' : String(i.id || ''), title: String(i.title || ''), img: String(i.img || ''), author: String(i.author || ''), releaseDate: String(i.releaseDate || ''), r: ratingOf(i) }));
+                else {
                     const s = friendSummary(f) || f.summary;
                     list = s ? parseSummaryWorks(s).filter(w => (w.rating || 0) >= 8).map(w => ({ type: w.type, id: w.id, title: w.title, img: guessImg(w.type, w.id), author: '', releaseDate: '', r: w.rating, _titleOnly: true })) : [];
                 }
-                list.filter(x => x.type && x.title && x.r >= 8).forEach(x => out.push({ ...x, uid: f.uid }));
-            }));
+                list.filter(x => x.type && x.title && x.r >= 8).forEach(x => out.push({ w: { ...slim(x), _titleOnly: x._titleOnly ? 1 : undefined }, x: { uid: f.uid, r: x.r } }));
+            });
             return out;
         };
         const posterCache = new Map();
         const buildFriendsRow = async (type) => {
-            const all = await rowItems('fr:all', async () => (await buildFriendsLoved()).map(x => ({ w: { ...slim(x), _titleOnly: x._titleOnly ? 1 : undefined }, x: { uid: x.uid, r: x.r } })));
+            const all = friendsLoved();
             // Affinité avec chaque ami (même calcul que l'onglet Amis)
             const aff = new Map();
             statsFriends().forEach(f => {
@@ -5989,7 +6051,11 @@ window.startStatsEnrichment = async () => {
         };
         // Rangées dérivées (amis, top) : recalculées quand mes œuvres ou mes amis changent, à partir des données gardées
         const derived = new Map();
-        const derivedStamp = (row) => { const b = recoMem().get(row.friends ? 'fr:all' : 'top:all'); return `${b ? b.at : 0}|${(window.myCollection || []).length}|${(window.followingData || []).length}`; };
+        const derivedStamp = (row) => {
+            const mine = (window.myCollection || []).length;
+            if (row.friends) return `f|${mine}|${(window.followingData || []).map(p => `${p.uid || p.id}:${(p.recoShowcase && p.recoShowcase.at) || 0}:${p.statsSummary ? 1 : 0}`).join(',')}|${Object.keys(ST.friendItems || {}).length}`;
+            const b = recoMem().get('top:all'); return `t|${b ? b.at : 0}|${mine}`;
+        };
         const rowState = (row) => {
             if (!row.friends && !row.top) return rowNow(row.key, row.build);
             const stamp = derivedStamp(row);
@@ -6044,8 +6110,9 @@ window.startStatsEnrichment = async () => {
                 if (items === null) return '';
                 // Ce que je viens d'ajouter (vu, wishlist…) disparaît tout de suite des idées
                 if (Array.isArray(items)) items = items.filter(e => e && e.w && !isOwned(e.w));
-                if (Array.isArray(items) && !items.length) return '';
+                if (Array.isArray(items) && !items.length && !(row.friends && statsFriends().length)) return '';
                 shown++;
+                if (Array.isArray(items) && !items.length) return `<section class="rc-row"><div class="rc-h"><h3>${row.title}</h3></div><p class="rc-empty">Tes amis n'ont encore rien noté 8 ou plus que tu n'aies pas déjà. Ça se remplira à mesure qu'ils notent.</p></section>`;
                 return `<section class="rc-row">
                     <div class="rc-h"><h3>${row.title}</h3>${row.sub ? `<p>${esc(row.sub)}</p>` : ''}</div>
                     ${items === undefined ? skeleton(type) : `<div class="rc-strip" data-k="${esc(row.key)}">${items.map((e, k) => tileHtml(e, row, k)).join('')}</div>`}
@@ -6086,32 +6153,37 @@ window.startStatsEnrichment = async () => {
             window.openPreview(it);
         };
 
-        // ---- Ma vitrine (œuvres notées 8+), lue par mes amis pour « Tes amis ont adoré » ----
+        // ---- Ma vitrine (mes 60 dernières œuvres notées 8+), rangée dans mon profil pour « Tes amis ont adoré » ----
+        // Mes amis la reçoivent avec mon profil (déjà chargé) : aucune lecture en plus pour eux.
         let showcaseTimer = null;
         window.scheduleRecoShowcase = () => { clearTimeout(showcaseTimer); showcaseTimer = setTimeout(() => window.publishRecoShowcase(), 9000); };
         window.publishRecoShowcase = async () => {
-            if (!window.currentUser || !Array.isArray(window.myCollection)) return;
+            if (!window.currentUser || !Array.isArray(window.myCollection) || !window.userProfile) return;
+            const uid = window.currentUser.uid;
             const CODE = { 'Film': 'F', 'Série': 'S', 'Livre': 'L', 'Album': 'A', 'YouTube': 'Y' };
             const items = window.myCollection.filter(i => CODE[i.type] && isDone(i) && (ratingOf(i) || 0) >= 8)
-                .sort((a, b) => String(window.itemDateKey(b) || '').localeCompare(String(window.itemDateKey(a) || ''))).slice(0, 200)
+                .sort((a, b) => String(window.itemDateKey(b) || '').localeCompare(String(window.itemDateKey(a) || ''))).slice(0, 60)
                 .map(i => {
                     const id = String(i.id || '');
-                    const o = { k: CODE[i.type], i: /^manual_|_public$/.test(id) ? '' : id.slice(0, 60), t: String(i.title || '').slice(0, 120), r: ratingOf(i) };
-                    const img = String(i.img || ''); if (/^https:\/\//.test(img) && img.length < 400) o.m = img;
-                    if (i.author) o.a = String(i.author).slice(0, 80);
+                    const o = { k: CODE[i.type], i: /^manual_|_public$/.test(id) ? '' : id.slice(0, 60), t: String(i.title || '').slice(0, 100), r: ratingOf(i) };
+                    const img = String(i.img || ''); if (/^https:\/\//.test(img) && img.length < 300) o.m = img;
+                    if (i.author && i.type !== 'Film' && i.type !== 'Série') o.a = String(i.author).split(',')[0].trim().slice(0, 40);
                     const y = yearOfRelease(i); if (y) o.y = y;
-                    if (Array.isArray(i.genres) && i.genres.length) o.g = i.genres.slice(0, 3).map(g => String(g).slice(0, 40));
                     return o;
                 });
-            const key = JSON.stringify(items);
-            const lsKey = `mabiblio_showcase_${window.currentUser.uid}`;
-            let last = ''; try { last = localStorage.getItem(lsKey) || ''; } catch (e) {}
-            const hash = String(key.length) + ':' + key.slice(0, 200) + key.slice(-200);
-            if (last === hash) return;
+            const cur = window.userProfile.recoShowcase;
+            if (cur && JSON.stringify(cur.items || []) === JSON.stringify(items)) return;
             try {
-                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'profile', 'reco'), { v: 1, at: Date.now(), items });
-                try { localStorage.setItem(lsKey, hash); } catch (e) {}
+                await updateDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'), { recoShowcase: { v: 1, at: Date.now(), items } });
+                window.userProfile.recoShowcase = { v: 1, at: Date.now(), items };
             } catch (e) { console.warn('Vitrine', e); }
+            // Ménage (version de test du 23/10) : l'ancienne vitrine séparée n'est plus utilisée
+            try {
+                if (localStorage.getItem(`mabiblio_showcase_clean_${uid}`) !== '1') {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'reco'));
+                    localStorage.setItem(`mabiblio_showcase_clean_${uid}`, '1');
+                }
+            } catch (e) { /* rien à nettoyer */ }
         };
 
         /* --- J.12 SUR CHAQUE FICHE : « Qui l'a vu parmi mes amis ? » et « Conseiller à… » ---
