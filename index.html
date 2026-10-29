@@ -5744,13 +5744,84 @@ window.startStatsEnrichment = async () => {
            consomme que des requêtes « bon marché » ; une seule lecture par ami (sa vitrine « profile/reco »). */
         const RC = window._reco = window._reco || { type: 'Film', mem: null, pending: new Map(), scroll: {}, loaded: false };
         const RC_TTL = 12 * 3600 * 1000;
+        // Les idées sont recalculées chaque jour (et au plus tard toutes les 12 h)
+        const dayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+        const dayNum = () => { const d = new Date(); d.setHours(12, 0, 0, 0); return Math.round(d.getTime() / 86400000); };
+        const freshHit = (v) => !!v && v.day === dayKey() && Date.now() - num(v.at) < RC_TTL;
+        // Hasard « du jour » : différent chaque jour, mais stable dans la journée (la page ne change pas à chaque visite)
+        const hashStr = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+        // (le bouton ↻ « nouvelles idées » change aussi le tirage)
+        const bumpKey = () => `mabiblio_reco_bump_${window.currentUser ? window.currentUser.uid : ''}`;
+        const recoBump = () => { try { const o = JSON.parse(localStorage.getItem(bumpKey()) || 'null'); return o && o.day === dayKey() ? num(o.n) : 0; } catch (e) { return 0; } };
+        const rngFor = (salt) => {
+            let a = hashStr(`${window.currentUser ? window.currentUser.uid : ''}|${dayKey()}|${recoBump()}|${salt}`);
+            return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        };
+        // Ce qui m'a déjà été proposé (les 8 premières idées de chaque rangée, jour par jour) : passe derrière les jours suivants
+        const seenKeyLs = () => `mabiblio_reco_seen_${window.currentUser ? window.currentUser.uid : ''}`;
+        let seenMem = null, seenTimer = null;
+        const seenMap = () => {
+            const uid = window.currentUser ? window.currentUser.uid : '';
+            if (!seenMem || seenMem.uid !== uid) { let m = {}; try { m = JSON.parse(localStorage.getItem(seenKeyLs()) || '{}') || {}; } catch (e) {} seenMem = { uid, m }; }
+            return seenMem.m;
+        };
+        const recoItemKey = (w) => `${w.type}|${w.id || titleKey(w.title)}`;
+        const seenDays = (w) => { const v = seenMap()[recoItemKey(w)]; return v ? num(v[2]) : 0; };
+        const markSeen = (list) => {
+            const m = seenMap(), d = dayNum();
+            let changed = false;
+            list.slice(0, 8).forEach(e => { const k = recoItemKey(e.w); const v = m[k]; if (!v) { m[k] = [d, d, 1]; changed = true; } else if (v[1] !== d) { v[1] = d; v[2] = num(v[2]) + 1; changed = true; } });
+            if (!changed) return;
+            clearTimeout(seenTimer);
+            seenTimer = setTimeout(() => {
+                Object.keys(m).forEach(k => { if (d - num(m[k][1]) > 30) delete m[k]; }); // oubliées après un mois
+                try { localStorage.setItem(seenKeyLs(), JSON.stringify(m)); } catch (e) {}
+            }, 1000);
+        };
+        // Choix final d'une rangée : note de l'idée × petit hasard du jour × « déjà proposée ces derniers jours »,
+        // et pas plus d'un tiers de la rangée dans le même genre (ou chez le même artiste / la même chaîne)
+        const pickRow = (cands, { max = 24, rng = Math.random, groupOf = () => null, capOf = () => Math.ceil(max * 0.34) } = {}) => {
+            const pool = cands.filter(c => c && c.it && c.it.title && !isOwned(c.it));
+            if (!pool.length) return [];
+            const lo = Math.min(...pool.map(c => c.s)), hi = Math.max(...pool.map(c => c.s));
+            const scored = pool.map(c => {
+                const n = seenDays(c.it);
+                const pen = n >= 4 ? 0.3 : n === 3 ? 0.45 : n === 2 ? 0.65 : n === 1 ? 0.9 : 1;
+                return { ...c, f: (0.15 + (c.s - lo) / (hi - lo || 1)) * pen * (0.8 + 0.4 * rng()) };
+            }).sort((a, b) => b.f - a.f);
+            // La part de chaque genre est respectée tout au long de la rangée (pas seulement à la fin) :
+            // ex. un genre limité au tiers → au plus 1 idée sur 3 dès le début, même si la rangée est courte
+            const out = [], count = new Map(), keep = [];
+            for (const c of scored) {
+                if (out.length >= max) break;
+                const g = groupOf(c.it);
+                if (g) {
+                    const n = count.get(g) || 0;
+                    const ratio = Math.min(1, capOf(g) / max);
+                    if (n >= capOf(g) || n + 1 > Math.max(1, Math.ceil(ratio * (out.length + 1)))) { keep.push(c); continue; }
+                    count.set(g, n + 1);
+                }
+                out.push(c);
+            }
+            // Pas assez de variété : on complète seulement jusqu'à 10 idées (mieux vaut une rangée plus courte que remplie d'un seul genre)
+            // (en alternant : on prend chaque fois dans le genre le moins présent)
+            while (out.length < Math.min(max, 10) && keep.length) {
+                let best = 0;
+                keep.forEach((c, k) => { const ga = count.get(groupOf(c.it)) || 0, gb = count.get(groupOf(keep[best].it)) || 0; if (ga < gb) best = k; });
+                const c = keep.splice(best, 1)[0]; const g = groupOf(c.it);
+                if (g) count.set(g, (count.get(g) || 0) + 1);
+                out.push(c);
+            }
+            return out.map(c => c.it);
+        };
         const RC_TYPES = ['Film', 'Série', 'Livre', 'Album', 'YouTube'];
         const YT_KEY = 'AIzaSyDMgAfvbLUNqekx1D6V4kPsc1qnrSVvLco';
         const recoLsKey = () => `mabiblio_reco_${window.currentUser ? window.currentUser.uid : ''}`;
         const recoMem = () => {
             if (!RC.mem || RC.memUid !== (window.currentUser && window.currentUser.uid)) {
                 RC.mem = new Map(); RC.memUid = window.currentUser && window.currentUser.uid;
-                try { const o = JSON.parse(localStorage.getItem(recoLsKey()) || '{}'); Object.entries(o || {}).forEach(([k, v]) => { if (v && Array.isArray(v.items) && Date.now() - num(v.at) < RC_TTL) RC.mem.set(k, v); }); } catch (e) { /* cache illisible */ }
+                // (les idées d'hier sont gardées pour s'afficher tout de suite pendant que celles du jour se préparent)
+                try { const o = JSON.parse(localStorage.getItem(recoLsKey()) || '{}'); Object.entries(o || {}).forEach(([k, v]) => { if (v && Array.isArray(v.items) && Date.now() - num(v.at) < 3 * 86400000) RC.mem.set(k, v); }); } catch (e) { /* cache illisible */ }
             }
             return RC.mem;
         };
@@ -5764,7 +5835,7 @@ window.startStatsEnrichment = async () => {
             }, 800);
         };
         // Œuvre « allégée » (ce qui sert à l'affichage et à l'ajout) + infos d'affichage à part (jamais enregistrées)
-        const RC_FIELDS = ['id', 'type', 'title', 'img', 'author', 'releaseDate', 'desc', 'genres', 'metricValue', 'olKey', 'source', 'platform', 'needsDetails', 'durationMin'];
+        const RC_FIELDS = ['id', 'type', 'title', 'img', 'author', 'releaseDate', 'desc', 'genres', 'metricValue', 'olKey', 'source', 'platform', 'needsDetails', 'durationMin', '_bk'];
         const slim = (it) => { const o = {}; RC_FIELDS.forEach(k => { if (it[k] !== undefined && it[k] !== null && it[k] !== '') o[k] = k === 'desc' ? String(it[k]).slice(0, 500) : k === 'genres' ? (Array.isArray(it[k]) ? it[k].slice(0, 5) : []) : it[k]; }); return o; };
         const wrap = (it, x) => ({ w: slim(it), x: x || null });
 
@@ -5991,43 +6062,76 @@ window.startStatsEnrichment = async () => {
         const covStore = () => { if (!covMem) { try { covMem = JSON.parse(localStorage.getItem(COV_KEY) || '{}') || {}; } catch (e) { covMem = {}; } } return covMem; };
         const covSave = () => { try { localStorage.setItem(COV_KEY, JSON.stringify(covStore())); } catch (e) {} };
         const selKey = (b) => bookKey(b.title, b.author);
-        const selItem = (b) => {
-            const c = covStore()[selKey(b)];
-            const ol = c && c.k ? String(c.k) : '';
-            return { id: ol ? 'ol_' + ol.replace('/works/', '') : 'sel_' + titleKey(b.title).replace(/ /g, '_').slice(0, 40), olKey: ol, title: b.title, author: b.author, img: c && c.i ? `https://covers.openlibrary.org/b/id/${c.i}-M.jpg` : '',
-                desc: '', type: 'Livre', releaseDate: String(b.y), genres: b.genres, metricValue: c && c.p ? c.p : 0, source: 'openlibrary', needsDetails: !!ol };
+        const withTimeout = (p, ms, fallback) => Promise.race([p, new Promise(r => setTimeout(() => r(fallback), ms))]).catch(() => fallback);
+        // Couverture « maison » en attendant (ou si Open Library n'en a pas) : titre et auteur sur un fond coloré
+        const bookPlaceholder = (title, author) => {
+            const t = String(title || '');
+            let h = 0; for (const ch of t) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+            const pal = [['#2E4057', '#F2A541'], ['#5B2A86', '#F7B2BD'], ['#1D4E3F', '#E9C46A'], ['#7A1E2C', '#F4D35E'], ['#264653', '#E76F51'], ['#3D348B', '#F18701']][h % 6];
+            const xml = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+            const lines = []; let cur = '';
+            t.split(/\s+/).forEach(w => { if ((cur + ' ' + w).trim().length > 13 && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); });
+            if (cur) lines.push(cur);
+            const shown = lines.slice(0, 5); if (lines.length > 5) shown[4] = shown[4].slice(0, 11) + '…';
+            const tx = shown.map((l, k) => `<text x="20" y="${70 + k * 30}" font-size="24" font-weight="800" fill="#fff">${xml(l)}</text>`).join('');
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="${pal[0]}"/><rect x="0" y="0" width="10" height="300" fill="${pal[1]}"/><g font-family="-apple-system,Segoe UI,sans-serif">${tx}<text x="20" y="270" font-size="15" font-weight="700" fill="${pal[1]}">${xml(String(author || '').slice(0, 22))}</text></g></svg>`;
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
         };
-        const resolveCovers = async (books) => {
-            const store = covStore();
-            const todo = books.filter(b => { const c = store[selKey(b)]; return !c || (!c.i && Date.now() - num(c.at) > 7 * 86400000); });
-            let k = 0;
-            const worker = async () => {
-                while (k < todo.length) {
-                    const b = todo[k++];
-                    try {
-                        const d = await httpJson(`https://openlibrary.org/search.json?title=${encodeURIComponent(b.title)}&author=${encodeURIComponent(b.author)}&lang=fr&limit=1&fields=key,cover_i,number_of_pages_median`);
+        const bookCover = (k) => { const c = covStore()[k]; return c && c.i ? `https://covers.openlibrary.org/b/id/${c.i}-M.jpg` : ''; };
+        const selItem = (b) => {
+            const k = selKey(b);
+            const c = covStore()[k];
+            const ol = c && c.k ? String(c.k) : '';
+            return { id: ol ? 'ol_' + ol.replace('/works/', '') : 'sel_' + titleKey(b.title).replace(/ /g, '_').slice(0, 40), olKey: ol, title: b.title, author: b.author, img: bookCover(k),
+                desc: '', type: 'Livre', releaseDate: String(b.y), genres: b.genres, metricValue: c && c.p ? c.p : 0, source: 'openlibrary', needsDetails: !!ol, _bk: k };
+        };
+        // Recherche des couvertures EN ARRIÈRE-PLAN (3 à la fois, 7 s maximum chacune) : la page n'attend jamais.
+        // Chaque couverture trouvée apparaît aussitôt à sa place, puis reste gardée 60 jours sur le téléphone.
+        const covQueue = [], covBusy = new Set();
+        let covRunning = 0;
+        const covPump = () => {
+            while (covRunning < 3 && covQueue.length) {
+                const b = covQueue.shift(); const k = selKey(b);
+                if (covBusy.has(k)) continue;
+                covBusy.add(k); covRunning++;
+                const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                const timer = setTimeout(() => ctl && ctl.abort(), 7000);
+                fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(b.title)}&author=${encodeURIComponent(b.author)}&lang=fr&limit=1&fields=key,cover_i,number_of_pages_median`, ctl ? { signal: ctl.signal } : undefined)
+                    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+                    .then(d => {
                         const x = d && d.docs && d.docs[0];
-                        store[selKey(b)] = { i: x && x.cover_i ? x.cover_i : 0, k: x && x.key ? x.key : '', p: x && x.number_of_pages_median ? x.number_of_pages_median : 0, at: Date.now() };
-                    } catch (e) { /* réessayé une autre fois */ }
-                }
-            };
-            await Promise.all([worker(), worker(), worker(), worker()]);
-            covSave();
+                        covStore()[k] = { i: x && x.cover_i ? x.cover_i : 0, k: x && x.key ? x.key : '', p: x && x.number_of_pages_median ? x.number_of_pages_median : 0, at: Date.now() };
+                        const url = bookCover(k);
+                        if (url) document.querySelectorAll('img[data-bk]').forEach(im => { if (im.dataset.bk === k) im.src = url; });
+                        clearTimeout(covSaveTimer); covSaveTimer = setTimeout(covSave, 1500);
+                    })
+                    .catch(() => { /* réessayé à la prochaine visite */ })
+                    .finally(() => { clearTimeout(timer); covBusy.delete(k); covRunning--; covPump(); });
+            }
+        };
+        let covSaveTimer = null;
+        const requestCovers = (books) => {
+            const store = covStore();
+            books.forEach(b => { const c = store[selKey(b)]; if (!c || (!c.i && Date.now() - num(c.at) > 7 * 86400000)) covQueue.push(b); });
+            covPump();
         };
         // Note d'un livre de la sélection pour moi : mes genres préférés, mes auteurs préférés, et un peu de nouveauté
         const selScore = (b, T, extraGenres) => {
-            let s = 0;
-            b.genres.forEach(g => { const l = T.lift.get(g); if (l) s += Math.max(-1, l.score); if (extraGenres && extraGenres.includes(g)) s += 2; });
-            if (T.people.some(p => personKey(p.name) === personKey(b.author))) s += 3;
-            return s + (b.y >= 2010 ? 0.3 : 0);
+            let sc = 0;
+            b.genres.forEach(g => { const l = T.lift.get(g); if (l) sc += Math.max(-1, l.score); if (extraGenres && extraGenres.includes(g)) sc += 2; });
+            if (T.people.some(p => personKey(p.name) === personKey(b.author))) sc += 3;
+            return sc + (b.y >= 2010 ? 0.3 : 0);
         };
-        const selRow = async (T, { filter = () => true, extraGenres = null, max = 24, author = null } = {}) => {
-            let list = BOOK_SEL.filter(filter).map(b => ({ b, s: selScore(b, T, extraGenres) + (author && personKey(b.author) === personKey(author) ? 4 : 0) }))
-                .sort((x, y) => y.s - x.s).map(x => x.b);
-            list = list.filter(b => !isOwned({ type: 'Livre', title: b.title, author: b.author }));
-            const pick = list.slice(0, max);
-            await resolveCovers(pick);
-            return pick.map(selItem);
+        const selRow = async (T, { filter = () => true, extraGenres = null, max = 24, author = null, salt = '' } = {}) => {
+            const cands = BOOK_SEL.filter(filter).map(b => ({ it: { type: 'Livre', title: b.title, author: b.author, _b: b }, s: selScore(b, T, extraGenres) + (author && personKey(b.author) === personKey(author) ? 4 : 0) }));
+            // Variété : tirage du jour, déjà-proposés repoussés, pas plus de 3 livres du même auteur ni plus d'un tiers du même genre
+            const authorCount = new Map();
+            const picked = pickRow(cands, { max: max + 10, rng: rngFor('book' + salt), groupOf: it => (it._b.genres[0] || null) }).filter(it => {
+                const k = personKey(it.author); const n = authorCount.get(k) || 0;
+                if (n >= 3) return false; authorCount.set(k, n + 1); return true;
+            }).slice(0, max).map(it => it._b);
+            requestCovers(picked);
+            return picked.map(selItem);
         };
 
         const dzArtistId = async (name) => {
@@ -6086,34 +6190,53 @@ window.startStatsEnrichment = async () => {
         };
         const fresh = (list, max = 24) => list.filter(e => (e.it || e).img && !isOwned(e.it || e)).slice(0, max);
 
+        // Genre principal d'un film / d'une série, et combien on en accepte dans une rangée : un genre que je regarde
+        // peu (ex. animation) ne peut pas prendre plus de place que ce qu'il pèse dans mes goûts (+ un peu)
+        const screenGroup = (T, byId) => (it) => { const id = (it._g || [])[0]; return id ? (byId.get(id) || String(id)) : null; };
+        const screenCap = (T, max) => (g) => { const l = T.lift.get(g); const share = l && T.rated.length ? l.n / T.rated.length : 0; return Math.max(2, Math.ceil(max * Math.min(0.4, share + 0.15))); };
         // Pour toi
         const buildForYou = async (type) => {
             const T = recoTaste(type);
             if (type === 'Film' || type === 'Série') {
                 const ep = epOf(type);
-                const seeds = T.seeds.slice(0, 6);
-                const ids = (await Promise.all(seeds.map(s => seedTmdbId(s).catch(() => null)))).filter(Boolean);
-                const gids = await genreIds(type, T.topGenres, 2);
+                const rng = rngFor('fy' + type);
+                const gm = await tmdbGenres(ep); const byId = new Map([...gm.entries()].map(([n, id]) => [id, n]));
+                // Points de départ : 8 coups de cœur (8+) tirés dans TOUT mon historique (pas seulement les derniers vus),
+                // les mieux notés ayant plus de chances, et au plus 2 du même genre → deux dessins animés récents
+                // ne transforment plus toute la rangée en dessins animés
+                const seedPool = T.seeds.map(sd => ({ sd, w: (ratingOf(sd) - 7) * (0.5 + rng()) })).sort((a, b) => b.w - a.w);
+                const perG = new Map(), seeds = [];
+                for (const { sd } of seedPool) {
+                    if (seeds.length >= 8) break;
+                    const g = (Array.isArray(sd.genres) && sd.genres[0]) || '?';
+                    if ((perG.get(g) || 0) >= 2) continue;
+                    perG.set(g, (perG.get(g) || 0) + 1); seeds.push(sd);
+                }
+                const ids = (await Promise.all(seeds.map(sd => seedTmdbId(sd).catch(() => null)))).filter(Boolean);
+                // Genres : 2 tirés chaque jour parmi mes 4 préférés
+                const top4 = T.topGenres.slice(0, 4).sort(() => rng() - 0.5).slice(0, 2);
+                const gids = await genreIds(type, top4, 2);
+                const page = 1 + (dayNum() % 3);
                 const jobs = [
-                    ...ids.map(id => tmdbList(`${ep}/${id}/recommendations`, '', type).then(items => ({ items, weight: 1.2 }))),
-                    ...gids.map(g => tmdbList(`discover/${ep}`, `&with_genres=${g}&sort_by=popularity.desc&vote_count.gte=${ep === 'movie' ? 300 : 100}&vote_average.gte=6.8`, type).then(items => ({ items, weight: 0.8 }))),
-                    ...T.people.slice(0, 2).map(p => loadPerson(type === 'Film' ? 'director' : 'creator', p.name).then(d => ({ items: (d.works || []).filter(w => w.type === type), weight: 1.5 })))
+                    ...ids.map(id => tmdbList(`${ep}/${id}/recommendations`, '', type).then(items => ({ items, weight: 1.1 }))),
+                    ...gids.map(g => tmdbList(`discover/${ep}`, `&with_genres=${g}&sort_by=popularity.desc&vote_count.gte=${ep === 'movie' ? 300 : 100}&vote_average.gte=6.8&page=${page}`, type).then(items => ({ items, weight: 0.9 }))),
+                    ...T.people.slice(0, 4).sort(() => rng() - 0.5).slice(0, 2).map(p => loadPerson(type === 'Film' ? 'director' : 'creator', p.name).then(d => ({ items: (d.works || []).filter(w => w.type === type), weight: 1.3 })))
                 ];
                 if (!jobs.length) jobs.push(tmdbList(`trending/${ep}/week`, '', type).then(items => ({ items })));
                 const lists = (await Promise.allSettled(jobs)).filter(r => r.status === 'fulfilled').map(r => r.value);
-                const gm = await tmdbGenres(ep); const byId = new Map([...gm.entries()].map(([n, id]) => [id, n]));
-                const scored = merge(lists).map(e => {
+                const cands = merge(lists).filter(e => e.it.img).map(e => {
                     const gs = (e.it._g || []).map(id => T.lift.get(byId.get(id))).filter(Boolean);
                     const gFit = gs.length ? gs.reduce((a, g) => a + g.score, 0) / gs.length : 0;
                     const cFit = (e.it._oc || []).some(c => T.countries.includes(c)) ? 0.6 : 0;
-                    return { ...e, s: e.hits * 1.4 + e.rank + (e.it._va || 6.5) * 0.35 + gFit * 0.5 + cFit };
-                }).sort((a, b) => b.s - a.s);
-                return fresh(scored.map(e => e.it)).map(it => wrap(it));
+                    // un film recommandé par plusieurs de mes coups de cœur compte plus, mais sans écraser le reste
+                    return { it: e.it, s: Math.min(e.hits, 3) * 1.2 + e.rank * 0.6 + (e.it._va || 6.5) * 0.35 + gFit * 0.5 + cFit };
+                });
+                return pickRow(cands, { rng, groupOf: screenGroup(T, byId), capOf: screenCap(T, 24) }).map(it => wrap(it));
             }
             if (type === 'Livre') {
                 // La sélection classée selon mes goûts, avec de temps en temps un autre livre d'un auteur que j'adore
-                const sel = await selRow(T, { max: 20 });
-                const fav = (await Promise.allSettled(T.people.slice(0, 2).map(a => loadPerson('author', a.name))))
+                const sel = await selRow(T, { max: 20, salt: 'fy' });
+                const fav = (await Promise.allSettled(T.people.slice(0, 2).map(a => withTimeout(loadPerson('author', a.name), 4000, { works: [] }))))
                     .flatMap(r => r.status === 'fulfilled' ? (r.value.works || []).slice(0, 3) : []).filter(b => b.img && !isOwned(b));
                 const seen = new Set(sel.map(b => bookKey(b.title, b.author)));
                 const out = [];
@@ -6121,11 +6244,13 @@ window.startStatsEnrichment = async () => {
                 return out.slice(0, 24).map(it => wrap(it));
             }
             if (type === 'Album') {
-                const artists = T.people.slice(0, 3);
+                const rng = rngFor('fyAlbum');
+                const artists = T.people.slice(0, 6).sort(() => rng() - 0.5).slice(0, 3);
                 const ids = (await Promise.all(artists.map(a => dzArtistId(a.name).catch(() => null)))).filter(Boolean);
                 const lists = (await Promise.allSettled(ids.map(id => loadRelatedAlbums(id, {}).then(items => ({ items }))))).filter(r => r.status === 'fulfilled').map(r => r.value);
                 if (!lists.length) { const c = await window.deezerJSONP('https://api.deezer.com/chart/0/albums?limit=30'); lists.push({ items: ((c && c.data) || []).map(x => ({ id: String(x.id), title: x.title, img: x.cover_xl || x.cover_big || '', type: 'Album', author: x.artist ? x.artist.name : '', platform: 'Deezer', needsDetails: true })) }); }
-                return fresh(merge(lists).sort((a, b) => (b.hits + b.rank) - (a.hits + a.rank)).map(e => e.it)).map(it => wrap(it));
+                const cands = merge(lists).filter(e => e.it.img).map(e => ({ it: e.it, s: e.hits + e.rank }));
+                return pickRow(cands, { rng, groupOf: it => personKey(it.author || '') || null, capOf: () => 2 }).map(it => wrap(it));
             }
             if (type === 'YouTube') {
                 const chans = await ytChannels();
@@ -6133,8 +6258,10 @@ window.startStatsEnrichment = async () => {
                 T.rated.forEach(v => { const c = chans.get(v.id); if (c && c.ch) score.set(c.ch, (score.get(c.ch) || 0) + (ratingOf(v) - 5)); });
                 const top = [...score.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([ch]) => ch);
                 const lists = (await Promise.allSettled(top.map(ch => ytUploads(ch)))).filter(r => r.status === 'fulfilled').map(r => r.value);
-                const all = lists.flat().sort((a, b) => String(b.releaseDate).localeCompare(String(a.releaseDate)));
-                const list = fresh(all, 30);
+                const all = lists.flat().filter(v => v.img);
+                const newest = Math.max(...all.map(v => Date.parse(v.releaseDate) || 0), 1);
+                const cands = all.map(v => ({ it: v, s: -((newest - (Date.parse(v.releaseDate) || 0)) / 86400000) }));
+                const list = pickRow(cands, { max: 30, rng: rngFor('fyYT'), groupOf: it => it.author || null, capOf: () => 6 });
                 await ytDurations(list).catch(() => list);
                 return list.map(it => wrap(it));
             }
@@ -6155,8 +6282,8 @@ window.startStatsEnrichment = async () => {
                 const author = String(seed.author || '').split(',')[0].trim();
                 const me = bookKey(seed.title, seed.author);
                 const T = recoTaste('Livre');
-                const sel = await selRow(T, { extraGenres: bookGenreNames(seed), author, filter: b => bookKey(b.title, b.author) !== me, max: 16 });
-                const same = author && author !== 'Inconnu' ? ((await loadPerson('author', author)).works || []).filter(b => b.img && bookKey(b.title, b.author) !== me && !isOwned(b)).slice(0, 4) : [];
+                const sel = await selRow(T, { extraGenres: bookGenreNames(seed), author, filter: b => bookKey(b.title, b.author) !== me, max: 16, salt: 'by' + me });
+                const same = author && author !== 'Inconnu' ? ((await withTimeout(loadPerson('author', author), 4000, { works: [] })).works || []).filter(b => b.img && bookKey(b.title, b.author) !== me && !isOwned(b)).slice(0, 4) : [];
                 const seen = new Set();
                 return [...same, ...sel].filter(b => { const k = bookKey(b.title, b.author); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 20).map(it => wrap(it));
             }
@@ -6183,15 +6310,17 @@ window.startStatsEnrichment = async () => {
             const T = recoTaste(type);
             if (type === 'Film' || type === 'Série') {
                 const ep = epOf(type);
-                const gids = await genreIds(type, T.topGenres, 2);
+                const rng = rngFor('cl' + type);
+                const gm = await tmdbGenres(ep); const byId = new Map([...gm.entries()].map(([n, id]) => [id, n]));
+                const gids = await genreIds(type, T.topGenres.slice(0, 4).sort(() => rng() - 0.5), 2);
                 const base = `&sort_by=vote_count.desc&vote_average.gte=${ep === 'movie' ? 7.5 : 7.8}`;
-                const lists = gids.length ? await Promise.all(gids.map(g => tmdbList(`discover/${ep}`, `${base}&with_genres=${g}`, type))) : [await tmdbList(`discover/${ep}`, base, type)];
-                // On alterne les genres pour garder du mélange
-                const out = []; for (let k = 0; k < 20; k++) lists.forEach(l => { if (l[k]) out.push(l[k]); });
-                return fresh(merge([{ items: out }]).map(e => e.it)).map(it => wrap(it));
+                const queries = gids.length ? gids.flatMap(g => [1, 2].map(pg => `${base}&with_genres=${g}&page=${pg}`)) : [1, 2].map(pg => `${base}&page=${pg}`);
+                const lists = (await Promise.allSettled(queries.map(q => tmdbList(`discover/${ep}`, q, type)))).filter(r => r.status === 'fulfilled').map(r => ({ items: r.value }));
+                const cands = merge(lists).filter(e => e.it.img).map(e => ({ it: e.it, s: e.rank + (e.it._va || 7) * 0.5 }));
+                return pickRow(cands, { rng, groupOf: screenGroup(T, byId), capOf: screenCap(T, 24) }).map(it => wrap(it));
             }
             if (type === 'Livre') {
-                return (await selRow(T, { filter: b => b.classic })).map(it => wrap(it));
+                return (await selRow(T, { filter: b => b.classic, salt: 'cl' })).map(it => wrap(it));
             }
             if (type === 'Album') {
                 const list = await window.deezerJSONP('https://api.deezer.com/genre?');
@@ -6210,16 +6339,20 @@ window.startStatsEnrichment = async () => {
             const T = recoTaste(type);
             if (type === 'Film') {
                 const gids = await genreIds(type, T.topGenres, 3);
-                const items = await tmdbList('discover/movie', `&with_runtime.lte=90&with_runtime.gte=40&sort_by=vote_average.desc&vote_count.gte=400${gids.length ? '&with_genres=' + gids.join('%7C') : ''}`, type);
-                return fresh(items).map(it => wrap(it, { short: '≤ 1 h 30' }));
+                const q = `&with_runtime.lte=90&with_runtime.gte=40&sort_by=vote_average.desc&vote_count.gte=400${gids.length ? '&with_genres=' + gids.join('%7C') : ''}`;
+                const lists = (await Promise.allSettled([1, 2].map(pg => tmdbList('discover/movie', q + `&page=${pg}`, type)))).filter(r => r.status === 'fulfilled').map(r => ({ items: r.value }));
+                const cands = merge(lists).filter(e => e.it.img).map(e => ({ it: e.it, s: e.rank + (e.it._va || 7) * 0.5 }));
+                return pickRow(cands, { rng: rngFor('shFilm') }).map(it => wrap(it, { short: '≤ 1 h 30' }));
             }
             if (type === 'Série') {
                 const gids = await genreIds(type, T.topGenres, 3);
-                const items = await tmdbList('discover/tv', `&with_type=2&sort_by=vote_average.desc&vote_count.gte=80${gids.length ? '&with_genres=' + gids.join('%7C') : ''}`, type);
-                return fresh(items).map(it => wrap(it, { short: 'Mini-série' }));
+                const q = `&with_type=2&sort_by=vote_average.desc&vote_count.gte=80${gids.length ? '&with_genres=' + gids.join('%7C') : ''}`;
+                const lists = (await Promise.allSettled([1, 2].map(pg => tmdbList('discover/tv', q + `&page=${pg}`, type)))).filter(r => r.status === 'fulfilled').map(r => ({ items: r.value }));
+                const cands = merge(lists).filter(e => e.it.img).map(e => ({ it: e.it, s: e.rank + (e.it._va || 7) * 0.5 }));
+                return pickRow(cands, { rng: rngFor('shSerie') }).map(it => wrap(it, { short: 'Mini-série' }));
             }
             if (type === 'Livre') {
-                return (await selRow(T, { filter: b => b.short })).map(it => wrap(it, { short: num(it.metricValue) && num(it.metricValue) < 200 ? `${num(it.metricValue)} p.` : 'Court' }));
+                return (await selRow(T, { filter: b => b.short, salt: 'sh' })).map(it => wrap(it, { short: 'Court' }));
             }
             if (type === 'YouTube') {
                 const pool = await rowItems(`fy:YouTube`, () => buildForYou('YouTube'));
@@ -6321,16 +6454,16 @@ window.startStatsEnrichment = async () => {
         const rowItems = (key, builder) => {
             const mem = recoMem();
             const hit = mem.get(key);
-            if (hit && Date.now() - num(hit.at) < RC_TTL) return Promise.resolve(hit.items);
+            if (freshHit(hit)) return Promise.resolve(hit.items);
             if (RC.pending.has(key)) return RC.pending.get(key);
             const p = builder().then(items => {
-                if (items === null) { mem.set(key, { at: Date.now(), items: null }); return null; }
+                if (items === null) { mem.set(key, { at: Date.now(), day: dayKey(), items: null }); return null; }
                 const clean = (items || []).filter(e => e && e.w && e.w.title);
-                mem.set(key, { at: Date.now(), items: clean }); saveRecoCache();
+                mem.set(key, { at: Date.now(), day: dayKey(), items: clean }); saveRecoCache();
                 return clean;
             }).catch(e => {
                 console.warn('Recommandations', key, e);
-                mem.set(key, { at: Date.now() - RC_TTL + 10 * 60 * 1000, items: hit ? hit.items : [], error: true }); // on réessaiera dans 10 min
+                mem.set(key, { at: Date.now() - RC_TTL + 10 * 60 * 1000, day: dayKey(), items: hit ? hit.items : [], error: true }); // on réessaiera dans 10 min
                 return hit ? hit.items : [];
             }).finally(() => { RC.pending.delete(key); scheduleRecoPaint(); });
             RC.pending.set(key, p);
@@ -6338,9 +6471,9 @@ window.startStatsEnrichment = async () => {
         };
         const rowNow = (key, builder) => {
             const hit = recoMem().get(key);
-            if (hit && Date.now() - num(hit.at) < RC_TTL) return hit.items;
+            if (freshHit(hit)) return hit.items;
             rowItems(key, builder);
-            return hit && hit.items ? hit.items : undefined; // undefined = en cours de chargement
+            return hit && hit.items ? hit.items : undefined; // idées d'hier en attendant celles du jour ; undefined = en cours
         };
         let recoPaintTimer = null;
         const scheduleRecoPaint = () => { clearTimeout(recoPaintTimer); recoPaintTimer = setTimeout(() => { if (window.currentView === 'reco') window.renderRecoView(); }, 120); };
@@ -6394,11 +6527,14 @@ window.startStatsEnrichment = async () => {
         const tileHtml = (e, row, k) => {
             const w = e.w;
             const shape = w.type === 'Album' ? 'is-square' : w.type === 'YouTube' ? 'is-wide' : '';
-            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(tileKey(e))})"><span class="rc-img">${coverImg(w.img, w.title, '', k < 4 ? '' : 'loading="lazy"')}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
+            const bk = w._bk ? String(w._bk) : '';
+            const img = bk ? (bookCover(bk) || bookPlaceholder(w.title, w.author)) : w.img;
+            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(tileKey(e))})"><span class="rc-img">${coverImg(img, w.title, '', (k < 4 ? '' : 'loading="lazy"') + (bk ? ` data-bk="${esc(bk)}"` : ''))}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
         };
         const skeleton = (type) => `<div class="rc-strip">${`<span class="rc-tile ${type === 'Album' ? 'is-square' : type === 'YouTube' ? 'is-wide' : ''}"><span class="rc-img pv-skel"></span><span class="pv-skel-t" style="width:80%;margin-top:8px;height:12px"></span></span>`.repeat(5)}</div>`;
         window.setRecoType = (t) => { if (!RC_TYPES.includes(t)) return; RC.type = t; window.renderRecoView(); window.scrollMainTop(); };
         window.refreshReco = () => {
+            try { localStorage.setItem(bumpKey(), JSON.stringify({ day: dayKey(), n: recoBump() + 1 })); } catch (e) {}
             const t = RC.type; const mem = recoMem();
             [...mem.keys()].forEach(k => { if (k.includes(`:${t}`) || k === 'fr:all' || k === 'top:all') mem.delete(k); });
             derived.clear(); saveRecoCache(); window.renderRecoView();
@@ -6414,6 +6550,7 @@ window.startStatsEnrichment = async () => {
             if (Array.isArray(items)) items = items.filter(e => e && e.w && !isOwned(e.w));
             if (Array.isArray(items) && !items.length && !(row.friends && statsFriends().length)) return '';
             if (Array.isArray(items) && !items.length) return `<section class="rc-row" data-row="${esc(row.key)}"><div class="rc-h"><h3>${row.title}</h3></div><p class="rc-empty">Tes amis n'ont encore rien noté 8 ou plus que tu n'aies pas déjà. Ça se remplira à mesure qu'ils notent.</p></section>`;
+            if (Array.isArray(items) && !row.friends && !row.top) markSeen(items);
             return `<section class="rc-row" data-row="${esc(row.key)}">
                 <div class="rc-h"><h3>${row.title}</h3>${row.sub ? `<p>${esc(row.sub)}</p>` : ''}</div>
                 ${items === undefined ? skeleton(type) : `<div class="rc-strip" data-k="${esc(row.key)}">${items.map((e, k) => tileHtml(e, row, k)).join('')}</div>`}
@@ -6473,6 +6610,12 @@ window.startStatsEnrichment = async () => {
             if (!e || !e.w) return;
             let it = { ...e.w };
             if (it._titleOnly) it.title = cap(it.title);
+            if (it._bk) {
+                const c = covStore()[it._bk];
+                if (c && c.k && !it.olKey) Object.assign(it, { id: 'ol_' + String(c.k).replace('/works/', ''), olKey: c.k, needsDetails: true });
+                if (!it.img) it.img = bookCover(it._bk);
+                delete it._bk;
+            }
             delete it._titleOnly; delete it._resolve;
             if (!it.id) {
                 // Œuvre du top MaBiblio publiée sans identifiant : on la retrouve par son titre
