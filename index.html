@@ -1822,26 +1822,55 @@
 
         // --- Image par défaut : visuel coloré avec les initiales, créé sur place (aucun service externe) ---
         const PALETTE = [['#5B5FEF', '#9B6BFF'], ['#FF6B6B', '#FF9F43'], ['#10B981', '#3B82F6'], ['#F59E0B', '#EF4444'], ['#0EA5E9', '#6366F1'], ['#EC4899', '#8B5CF6']];
-        window.placeholderCover = (title) => {
-            const t = String(title || '?').trim();
+        // Visuel pour une œuvre sans couverture : le titre (et l'auteur) sur un fond coloré avec une bande, comme une
+        // couverture de livre. Trois formats : affiche (films, séries, livres), carré (albums), large (YouTube).
+        // Le texte est en haut : la légende des vignettes (en bas) ne le recouvre pas.
+        const PH_PAL = [['#2E4057', '#F2A541'], ['#5B2A86', '#F7B2BD'], ['#1D4E3F', '#E9C46A'], ['#7A1E2C', '#F4D35E'], ['#264653', '#E76F51'], ['#3D348B', '#F18701']];
+        const PH_SHAPE = { book: { w: 200, h: 300, fs: 23, lh: 28, chars: 13, max: 4, y: 84, band: 10, afs: 15 },
+                           square: { w: 300, h: 300, fs: 24, lh: 28, chars: 18, max: 3, y: 48, band: 14, afs: 17 },
+                           wide: { w: 320, h: 180, fs: 19, lh: 23, chars: 25, max: 2, y: 38, band: 12, afs: 14 } };
+        const phMemo = new Map();
+        window.placeholderCover = (title, author, type) => {
+            const t = String(title || '?').trim() || '?';
+            const a = String(author || '').split(',')[0].trim().replace(/^Inconnu$/, '');
+            const shape = type === 'YouTube' ? 'wide' : type === 'Album' ? 'square' : 'book';
+            const S = PH_SHAPE[shape];
+            const mk = t + '|' + a + '|' + shape;
+            if (phMemo.has(mk)) return phMemo.get(mk);
             let h = 0; for (const ch of t) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-            const [c1, c2] = PALETTE[h % PALETTE.length];
-            const initials = t.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+            const [bg, accent] = PH_PAL[h % PH_PAL.length];
             const xml = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="200" height="300" fill="url(#g)"/><text x="100" y="165" font-family="-apple-system,Segoe UI,sans-serif" font-size="72" font-weight="800" fill="#fff" text-anchor="middle">${xml(initials)}</text></svg>`;
-            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            const lines = []; let cur = '';
+            t.split(/\s+/).forEach(w => {
+                while (w.length > S.chars + 1) { if (cur) { lines.push(cur); cur = ''; } lines.push(w.slice(0, S.chars) + '-'); w = w.slice(S.chars); }
+                if ((cur + ' ' + w).trim().length > S.chars && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim();
+            });
+            if (cur) lines.push(cur);
+            const shown = lines.slice(0, S.max); if (lines.length > S.max) shown[S.max - 1] = shown[S.max - 1].slice(0, S.chars - 2) + '…';
+            const x = S.band + 12;
+            const tx = shown.map((l, k) => `<text x="${x}" y="${S.y + k * S.lh}" font-size="${S.fs}" font-weight="800" fill="#fff">${xml(l)}</text>`).join('');
+            const au = a ? `<text x="${x}" y="${S.y + shown.length * S.lh + Math.round(S.afs * 0.6)}" font-size="${S.afs}" font-weight="700" fill="${accent}">${xml(a.slice(0, S.chars + 8))}</text>` : '';
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S.w} ${S.h}" preserveAspectRatio="xMidYMin slice"><rect width="${S.w}" height="${S.h}" fill="${bg}"/><rect x="0" y="0" width="${S.band}" height="${S.h}" fill="${accent}"/><g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">${tx}${au}</g></svg>`;
+            const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            if (phMemo.size > 2000) phMemo.clear();
+            phMemo.set(mk, url);
+            return url;
         };
         // Adresse d'image à afficher (le visuel généré si l'image manque ou vient de l'ancien service en panne)
         // Google Livres : https et sans « &edge=curl » (effet de page cornée recalculé par Google à chaque fois : plus lent)
         window.fixCoverUrl = (u) => String(u || '').replace(/^http:\/\/books\.google\./, 'https://books.google.').replace(/&edge=curl/g, '');
-        window.coverSrc = (img, title) => {
+        window.coverSrc = (img, title, author, type) => {
             const s = window.fixCoverUrl(img);
-            if (!s || s.includes('via.placeholder.com')) return esc(window.placeholderCover(title));
-            return safeImg(s) || esc(window.placeholderCover(title));
+            if (!s || s.includes('via.placeholder.com')) return esc(window.placeholderCover(title, author, type));
+            return safeImg(s) || esc(window.placeholderCover(title, author, type));
         };
         // Image cassée (lien expiré…) : on la remplace par le visuel généré
-        window.imgFallback = (el) => { el.onerror = null; el.src = window.placeholderCover(el.dataset.title || ''); };
-        const coverImg = (img, title, cls, extra = '') => `<img src="${window.coverSrc(img, title)}" data-title="${esc(title)}" onerror="window.imgFallback(this)" class="${cls}" ${extra}>`;
+        window.imgFallback = (el) => { el.onerror = null; el.src = window.placeholderCover(el.dataset.title || '', el.dataset.author || '', el.dataset.type || ''); };
+        // title peut être [titre, auteur, type] : l'auteur et le bon format s'appliquent alors au visuel de secours
+        const coverImg = (img, title, cls, extra = '') => {
+            const [t, a, ty] = Array.isArray(title) ? title : [title, '', ''];
+            return `<img src="${window.coverSrc(img, t, a, ty)}" data-title="${esc(t)}"${a ? ` data-author="${esc(a)}"` : ''}${ty ? ` data-type="${esc(ty)}"` : ''} onerror="window.imgFallback(this)" class="${cls}" ${extra}>`;
+        };
         window.coverImg = coverImg;
         // Préchargement discret des 8 premières couvertures du fil (une seule fois par image, quand le téléphone est libre)
         const warmed = new Set();
@@ -2097,7 +2126,7 @@
 
                     return `
                     <div class="flex items-center gap-3.5 p-2.5 mb-2 bg-white rounded-2xl cursor-pointer active:scale-[.98] transition-transform" onclick="window.openPreviewKey(${jsArg(key)})">
-                        ${coverImg(i.img, i.title, 'w-12 h-[4.5rem] rounded-xl object-cover bg-gray-200 shrink-0', 'loading="lazy"')}
+                        ${coverImg(i.img, [i.title, i.author, i.type], 'w-12 h-[4.5rem] rounded-xl object-cover bg-gray-200 shrink-0', 'loading="lazy"')}
                         <div class="flex-1 min-w-0 font-extrabold text-sm leading-tight">
                             ${esc(i.title)}
                             <div class="text-[11px] text-gray-500 font-semibold mt-1">
@@ -2203,9 +2232,9 @@
 
             document.getElementById('preview-content').innerHTML = `
                 <div class="pv-hero" style="--cat:${cat.c}">
-                    ${coverImg(item.img, item.title, 'pv-hero-blur', 'aria-hidden="true"')}
+                    ${coverImg(item.img, [item.title, item.author, item.type], 'pv-hero-blur', 'aria-hidden="true"')}
                     <div class="pv-hero-shade"></div>
-                    ${coverImg(item.img, item.title, imageClass + ' pv-cover')}
+                    ${coverImg(item.img, [item.title, item.author, item.type], imageClass + ' pv-cover')}
                 </div>
                 <div class="pv-sheet">
                     ${item.rating ? `<div class="pv-ring" aria-label="Note"><span><b>${esc(item.rating)}</b><small>/ 10</small></span></div>` : ''}
@@ -2282,7 +2311,7 @@
             const poster = document.getElementById('sheet-poster');
             poster.dataset.title = window.tempItem.title || '';
             poster.onerror = () => window.imgFallback(poster);
-            poster.src = (window.tempItem.img && !String(window.tempItem.img).includes('via.placeholder.com') && /^(https?:\/\/|data:image\/)/i.test(window.tempItem.img)) ? window.tempItem.img : window.placeholderCover(window.tempItem.title); 
+            poster.src = (window.tempItem.img && !String(window.tempItem.img).includes('via.placeholder.com') && /^(https?:\/\/|data:image\/)/i.test(window.tempItem.img)) ? window.tempItem.img : window.placeholderCover(window.tempItem.title, window.tempItem.author, window.tempItem.type); 
             document.getElementById('sheet-title').innerText = window.tempItem.title; 
             
             const platformLabel = document.getElementById('platform-label');
@@ -3035,7 +3064,7 @@
 
                         <div class="feed-work" style="background:${cat.tint}" onclick="window.openPreviewKey(${jsArg(previewKey)})">
                             <div class="relative ${thumbClass} shrink-0 rounded-2xl overflow-hidden shadow-md">
-                                ${coverImg(act.itemImg, act.itemTitle, 'w-full h-full object-cover bg-gray-200 ' + (act.type === 'YouTube' ? 'scale-[1.35]' : ''), actIdx < 4 ? 'decoding="async"' + (actIdx < 2 ? ' fetchpriority="high"' : '') : 'loading="lazy" decoding="async"')}
+                                ${coverImg(act.itemImg, [act.itemTitle, '', act.type], 'w-full h-full object-cover bg-gray-200 ' + (act.type === 'YouTube' ? 'scale-[1.35]' : ''), actIdx < 4 ? 'decoding="async"' + (actIdx < 2 ? ' fetchpriority="high"' : '') : 'loading="lazy" decoding="async"')}
                                 <div class="feed-rating">${esc(act.rating || '-')}</div>
                             </div>
                             <div class="flex-1 py-0.5 min-w-0">
@@ -3578,7 +3607,7 @@
             <div class="grid-item relative w-full ${aspectClass} overflow-hidden cursor-pointer group transition-all active:scale-95${selectable ? ' selectable' : ''}${selected ? ' is-selected' : ''}" onclick="window.gridItemClick(this, ${jsArg(itemKey)})">
                 ${selectable ? '<div class="sel-check"><i class="fa-solid fa-check"></i></div>' : ''}
                 ${showStatus ? `<div class="absolute top-1.5 left-1.5 z-[3] bg-white/90 text-gray-900 text-[9px] font-extrabold px-2 py-0.5 rounded-lg">${esc(item.status)}</div>` : ''}
-                ${coverImg(gridImg, item.title, 'w-full h-full object-cover transition-transform duration-500 ' + zoomClass, 'loading="lazy" decoding="async"')}
+                ${coverImg(gridImg, [item.title, item.author, item.type], 'w-full h-full object-cover transition-transform duration-500 ' + zoomClass, 'loading="lazy" decoding="async"')}
                 ${item.rating ? `<div class="grid-rating">${esc(item.rating)}</div>` : ''}
 
                 <div class="grid-item-overlay">
@@ -3625,7 +3654,7 @@
                 if (item) {
                     const key = regItem(isOwn ? ((window.myCollection || []).find(m => m.type === item.type && String(m.id) === String(item.id)) || { ...item, docId: null, _fromFriend: true }) : { ...item, docId: null, _fromFriend: true });
                     const click = isOwn ? `window.openPinSelector(${i})` : `window.openPreviewKey(${jsArg(key)})`;
-                    return `<div class="pf-slot" onclick="${click}"><div class="pf-poster ${aspect}">${coverImg(item.img, item.title, '', 'loading="lazy"')}<span class="pf-rank">${i + 1}</span>${item.rating ? `<span class="grid-rating">${esc(item.rating)}</span>` : ''}</div><div class="pf-slot-t">${esc(item.title)}</div></div>`;
+                    return `<div class="pf-slot" onclick="${click}"><div class="pf-poster ${aspect}">${coverImg(item.img, [item.title, item.author, item.type], '', 'loading="lazy"')}<span class="pf-rank">${i + 1}</span>${item.rating ? `<span class="grid-rating">${esc(item.rating)}</span>` : ''}</div><div class="pf-slot-t">${esc(item.title)}</div></div>`;
                 }
                 return isOwn
                     ? `<div class="pf-slot" onclick="window.openPinSelector(${i})"><div class="pf-poster pf-empty ${aspect}" style="border-color:${cat.c}"><i class="fa-solid fa-plus" style="color:${cat.deep}"></i><span class="pf-rank">${i + 1}</span></div><div class="pf-slot-t text-gray-400">Ajouter</div></div>`
@@ -3655,7 +3684,7 @@
             }
             html += items.slice(0, 300).map(item => {
                 const key = regItem({ id: item.id, title: item.title, img: item.img, rating: item.rating, type: item.type });
-                return `<div class="pin-row" onclick="window.savePinKey(${jsArg(key)})">${coverImg(item.img, item.title, 'pin-row-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(item.title)}</div><div class="text-[12px] text-gray-500 font-semibold mt-0.5">${esc(item.author || item.type)}</div></div>${item.rating ? `<span class="pin-row-r">${esc(item.rating)}</span>` : ''}</div>`;
+                return `<div class="pin-row" onclick="window.savePinKey(${jsArg(key)})">${coverImg(item.img, [item.title, item.author, item.type], 'pin-row-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(item.title)}</div><div class="text-[12px] text-gray-500 font-semibold mt-0.5">${esc(item.author || item.type)}</div></div>${item.rating ? `<span class="pin-row-r">${esc(item.rating)}</span>` : ''}</div>`;
             }).join('');
             list.innerHTML = html;
         };
@@ -4359,7 +4388,7 @@ const statsBooks = (sc) => {
     if (!books.length) return sEmpty('Aucun livre terminé sur cette période.');
     const pages = books.reduce((a, i) => a + num(i.metricValue), 0);
     const longest = [...books].sort((a, b) => num(b.metricValue) - num(a.metricValue))[0];
-    const longestHtml = longest && num(longest.metricValue) ? `<div class="st-long">${coverImg(longest.img, longest.title, 'st-long-img', 'loading="lazy"')}<div class="min-w-0"><div class="font-display font-extrabold text-lg leading-tight">${esc(longest.title)}</div><div class="text-sm font-semibold text-gray-600 mt-0.5">${esc(longest.author || '')}</div><div class="st-long-pages">${frInt(longest.metricValue)} pages</div></div></div>` : sEmpty('Nombre de pages inconnu.');
+    const longestHtml = longest && num(longest.metricValue) ? `<div class="st-long">${coverImg(longest.img, [longest.title, longest.author, longest.type], 'st-long-img', 'loading="lazy"')}<div class="min-w-0"><div class="font-display font-extrabold text-lg leading-tight">${esc(longest.title)}</div><div class="text-sm font-semibold text-gray-600 mt-0.5">${esc(longest.author || '')}</div><div class="st-long-pages">${frInt(longest.metricValue)} pages</div></div></div>` : sEmpty('Nombre de pages inconnu.');
     return `
         <div class="st-minis st-minis-3 mb-3.5">
             ${miniTile(miel, 'fa-solid fa-book-open', books.length, `livre${books.length > 1 ? 's' : ''}`)}
@@ -4718,7 +4747,7 @@ const recoSearchResults = () => {
     if (q.length < 2) return '';
     const hits = (window.myCollection || []).filter(i => isDone(i) && normTxt([i.title, i.author].join(' ')).includes(q)).slice(0, 8);
     if (!hits.length) return sEmpty('Rien trouvé dans ta bibliothèque.');
-    return `<ul class="st-commons mt-2">${hits.map(i => `<li class="st-common">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)}${ratingOf(i) !== null ? ` · ${fr1(ratingOf(i))}★` : ''}</div></div>${recoButton(i)}</li>`).join('')}</ul>`;
+    return `<ul class="st-commons mt-2">${hits.map(i => `<li class="st-common">${coverImg(i.img, [i.title, i.author, i.type], 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)}${ratingOf(i) !== null ? ` · ${fr1(ratingOf(i))}★` : ''}</div></div>${recoButton(i)}</li>`).join('')}</ul>`;
 };
 window.openRecoNotif = (notifId) => {
     const n = (window.extState.notifications || []).find(x => x.id === notifId);
@@ -4827,7 +4856,7 @@ const statsFriendDetail = (friends) => {
         ? `<div class="st-aff-pct">${a.pct}<small>%</small></div><div class="st-aff-l">d'affinité avec ${esc(name)}</div><div class="st-aff-s">calculée sur ${a.rated.length} œuvres notées par vous deux · ${a.common.length} en commun</div>`
         : `<div class="st-aff-pct">–</div><div class="st-aff-l">Pas encore assez d'œuvres notées en commun</div><div class="st-aff-s">Il en faut au moins 3 (${a.rated.length} pour l'instant)</div>`;
     const duo = (c) => `<div class="st-duo"><span title="Ma note">${ratingOf(c.mine) !== null ? fr1(ratingOf(c.mine)) : '–'}</span><span title="Sa note" class="is-friend">${ratingOf(c.theirs) !== null ? fr1(ratingOf(c.theirs)) : '–'}</span></div>`;
-    const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, c.mine.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div>${duo(c)}</li>`;
+    const row = (c) => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(c.mine))})">${coverImg(c.mine.img, [c.mine.title, c.mine.author, c.mine.type], 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(c.mine.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(c.mine.type)}</div></div>${duo(c)}</li>`;
     const head = `<div class="st-duo-legend"><span><i style="background:var(--miel)"></i>Ma note</span><span><i style="background:var(--lav)"></i>Note de ${first}</span></div>`;
     // Les œuvres que vous avez le plus aimées tous les deux d'abord (500 œuvres en commun ne s'affichent pas d'un coup)
     const both = (c) => Math.min(ratingOf(c.mine) ?? 0, ratingOf(c.theirs) ?? 0) * 100 + (ratingOf(c.mine) ?? 0) + (ratingOf(c.theirs) ?? 0);
@@ -4836,14 +4865,14 @@ const statsFriendDetail = (friends) => {
     const gaps = a.rated.map(c => ({ c, d: Math.abs(ratingOf(c.mine) - ratingOf(c.theirs)) })).filter(x => x.d >= 3).sort((x, y) => y.d - x.d).slice(0, 3);
     // Conseils reçus de cet ami (notifications), sinon suggestions d'après ses goûts
     const received = (window.extState.notifications || []).filter(n => n.type === 'reco' && n.fromUid === ST.friend && n.item);
-    const tile = (i, onclick, extra = '') => `<div class="st-reco" onclick="${onclick}">${coverImg(i.img, i.title, 'st-reco-img', 'loading="lazy"')}${ratingOf(i) !== null ? `<span class="feed-rating">${fr1(ratingOf(i))}</span>` : ''}<span class="st-reco-t">${esc(i.title)}</span>${extra}</div>`;
+    const tile = (i, onclick, extra = '') => `<div class="st-reco" onclick="${onclick}">${coverImg(i.img, [i.title, i.author, i.type], 'st-reco-img', 'loading="lazy"')}${ratingOf(i) !== null ? `<span class="feed-rating">${fr1(ratingOf(i))}</span>` : ''}<span class="st-reco-t">${esc(i.title)}</span>${extra}</div>`;
     const receivedHtml = received.length ? `<div class="st-recos">${received.slice(0, 9).map(n => tile({ ...n.item, rating: n.rating }, `window.openRecoNotif(${jsArg(n.id)})`, n.note ? `<span class="st-reco-note">« ${esc(n.note)} »</span>` : '')).join('')}</div>` : '';
     const suggestFor = a.forMe.slice(0, 6);
     const forMeHtml = receivedHtml
         || (suggestFor.length ? `<p class="st-note -mt-1 mb-3">${first} ne t'a encore rien conseillé : voici ce qu'il a adoré et que tu n'as pas vu, d'après tes goûts.</p><div class="st-recos">${suggestFor.map(i => tile(i, `window.openPreviewKey(${jsArg(regItem({ ...i, docId: null, _fromFriend: true }))})`)).join('')}</div>` : sEmpty("Rien de noté 8 ou plus que tu n'aies pas déjà vu."));
     const forThem = a.forThem.slice(0, 6);
     const forThemHtml = `
-        ${forThem.length ? `<p class="st-note -mt-1 mb-3">D'après ses goûts, ces œuvres que tu as adorées pourraient lui plaire :</p><ul class="st-commons">${forThem.map(i => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(i))})">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)} · ${fr1(ratingOf(i))}★</div></div>${recoButton(i)}</li>`).join('')}</ul>` : sEmpty('Rien à lui suggérer automatiquement pour le moment.')}
+        ${forThem.length ? `<p class="st-note -mt-1 mb-3">D'après ses goûts, ces œuvres que tu as adorées pourraient lui plaire :</p><ul class="st-commons">${forThem.map(i => `<li class="st-common" onclick="window.openPreviewKey(${jsArg(regItem(i))})">${coverImg(i.img, [i.title, i.author, i.type], 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold">${esc(i.type)} · ${fr1(ratingOf(i))}★</div></div>${recoButton(i)}</li>`).join('')}</ul>` : sEmpty('Rien à lui suggérer automatiquement pour le moment.')}
         <div class="st-reco-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Choisir une autre œuvre de ma bibliothèque…" value="${esc(ST.recoQuery || '')}" oninput="window.setRecoQuery(this.value)" autocomplete="off"></div>
         <div id="reco-search-results">${recoSearchResults()}</div>`;
     return `
@@ -5379,7 +5408,7 @@ window.startStatsEnrichment = async () => {
             return `<div class="pv-section"><div class="font-display text-lg font-extrabold mb-2 leading-tight">${title}</div><div class="pv-similar">${list.map(s => {
                 const owned = window.findInLibrary(s.type, s.id, s.title, s.author);
                 const key = regItem(owned || s);
-                return `<button type="button" class="pv-sim" onclick="window.openPreviewKey(${jsArg(key)})"><span class="pv-sim-img ${aspect}">${coverImg(s.img, s.title, '', 'loading="lazy"')}${owned && owned.rating ? `<span class="grid-rating">${esc(owned.rating)}</span>` : owned ? `<span class="pv-sim-own"><i class="fa-solid fa-check"></i></span>` : ''}</span><span class="pv-sim-t">${esc(s.title)}</span>${s.author ? `<span class="pv-sim-a">${esc(s.author)}</span>` : ''}</button>`;
+                return `<button type="button" class="pv-sim" onclick="window.openPreviewKey(${jsArg(key)})"><span class="pv-sim-img ${aspect}">${coverImg(s.img, [s.title, s.author, s.type], '', 'loading="lazy"')}${owned && owned.rating ? `<span class="grid-rating">${esc(owned.rating)}</span>` : owned ? `<span class="pv-sim-own"><i class="fa-solid fa-check"></i></span>` : ''}</span><span class="pv-sim-t">${esc(s.title)}</span>${s.author ? `<span class="pv-sim-a">${esc(s.author)}</span>` : ''}</button>`;
             }).join('')}</div></div>`;
         };
         const similarSkeleton = () => `<div class="pv-section"><div class="pv-skel-t"></div><div class="pv-similar">${'<span class="pv-sim"><span class="pv-sim-img aspect-[2/3] pv-skel"></span></span>'.repeat(4)}</div></div>`;
@@ -5631,14 +5660,14 @@ window.startStatsEnrichment = async () => {
             const r = ratingOf(i);
             const tag = i.status === 'Wishlist' ? '<span class="wl-tag">Wishlist</span>' : i.status === 'En cours' ? '<span class="wl-tag" style="background:var(--mint-tint)">En cours</span>' : r !== null ? `<span class="wl-rate">${fr1(r)}</span>` : '';
             const y = yearOfRelease(i);
-            return `<li class="st-common" onclick="window.openWorkFromList(${jsArg(regItem(i))})">${coverImg(i.img, i.title, 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold truncate">${esc(i.type)}${y ? ` · ${y}` : ''}${i.author && i.type !== 'Film' ? ` · ${esc(String(i.author).split(',')[0])}` : ''}</div></div>${tag}</li>`;
+            return `<li class="st-common" onclick="window.openWorkFromList(${jsArg(regItem(i))})">${coverImg(i.img, [i.title, i.author, i.type], 'st-common-img', 'loading="lazy"')}<div class="min-w-0 flex-1"><div class="font-extrabold text-[14px] leading-tight truncate">${esc(i.title)}</div><div class="text-[12px] text-gray-500 font-semibold truncate">${esc(i.type)}${y ? ` · ${y}` : ''}${i.author && i.type !== 'Film' ? ` · ${esc(String(i.author).split(',')[0])}` : ''}</div></div>${tag}</li>`;
         };
         const knownTile = (w) => {
             const owned = ownedMatch(w);
             const aspect = w.type === 'Album' ? 'aspect-square' : 'aspect-[2/3]';
             const y = yearOfRelease(w);
             const badge = owned && ratingOf(owned) !== null ? `<span class="grid-rating">${fr1(ratingOf(owned))}</span>` : owned ? `<span class="pv-sim-own"><i class="fa-solid fa-check"></i></span>` : '';
-            return `<button type="button" class="wl-tile" onclick="window.openWorkFromList(${jsArg(regItem(owned || w))})"><span class="pv-sim-img ${aspect}">${coverImg(w.img, w.title, '', 'loading="lazy"')}${badge}</span><span class="pv-sim-t">${esc(w.title)}</span><span class="pv-sim-a">${y ? y : ''}${w.type === 'Série' ? (y ? ' · ' : '') + 'Série' : ''}</span></button>`;
+            return `<button type="button" class="wl-tile" onclick="window.openWorkFromList(${jsArg(regItem(owned || w))})"><span class="pv-sim-img ${aspect}">${coverImg(w.img, [w.title, w.author, w.type], '', 'loading="lazy"')}${badge}</span><span class="pv-sim-t">${esc(w.title)}</span><span class="pv-sim-a">${y ? y : ''}${w.type === 'Série' ? (y ? ' · ' : '') + 'Série' : ''}</span></button>`;
         };
         const wlHead = (o) => `
             <div class="wl-head" style="background:${o.bg}">
@@ -6063,20 +6092,6 @@ window.startStatsEnrichment = async () => {
         const covSave = () => { try { localStorage.setItem(COV_KEY, JSON.stringify(covStore())); } catch (e) {} };
         const selKey = (b) => bookKey(b.title, b.author);
         const withTimeout = (p, ms, fallback) => Promise.race([p, new Promise(r => setTimeout(() => r(fallback), ms))]).catch(() => fallback);
-        // Couverture « maison » en attendant (ou si Open Library n'en a pas) : titre et auteur sur un fond coloré
-        const bookPlaceholder = (title, author) => {
-            const t = String(title || '');
-            let h = 0; for (const ch of t) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-            const pal = [['#2E4057', '#F2A541'], ['#5B2A86', '#F7B2BD'], ['#1D4E3F', '#E9C46A'], ['#7A1E2C', '#F4D35E'], ['#264653', '#E76F51'], ['#3D348B', '#F18701']][h % 6];
-            const xml = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
-            const lines = []; let cur = '';
-            t.split(/\s+/).forEach(w => { if ((cur + ' ' + w).trim().length > 13 && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); });
-            if (cur) lines.push(cur);
-            const shown = lines.slice(0, 5); if (lines.length > 5) shown[4] = shown[4].slice(0, 11) + '…';
-            const tx = shown.map((l, k) => `<text x="20" y="${70 + k * 30}" font-size="24" font-weight="800" fill="#fff">${xml(l)}</text>`).join('');
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300"><rect width="200" height="300" fill="${pal[0]}"/><rect x="0" y="0" width="10" height="300" fill="${pal[1]}"/><g font-family="-apple-system,Segoe UI,sans-serif">${tx}<text x="20" y="270" font-size="15" font-weight="700" fill="${pal[1]}">${xml(String(author || '').slice(0, 22))}</text></g></svg>`;
-            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-        };
         const bookCover = (k) => { const c = covStore()[k]; return c && c.i ? `https://covers.openlibrary.org/b/id/${c.i}-M.jpg` : ''; };
         const selItem = (b) => {
             const k = selKey(b);
@@ -6528,8 +6543,8 @@ window.startStatsEnrichment = async () => {
             const w = e.w;
             const shape = w.type === 'Album' ? 'is-square' : w.type === 'YouTube' ? 'is-wide' : '';
             const bk = w._bk ? String(w._bk) : '';
-            const img = bk ? (bookCover(bk) || bookPlaceholder(w.title, w.author)) : w.img;
-            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(tileKey(e))})"><span class="rc-img">${coverImg(img, w.title, '', (k < 4 ? '' : 'loading="lazy"') + (bk ? ` data-bk="${esc(bk)}"` : ''))}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
+            const img = bk ? bookCover(bk) : w.img;
+            return `<button type="button" class="rc-tile ${shape}${row.big ? ' is-big' : ''}" onclick="window.openRecoTile(${jsArg(tileKey(e))})"><span class="rc-img">${coverImg(img, [w.title, w.author, w.type], '', (k < 4 ? '' : 'loading="lazy"') + (bk ? ` data-bk="${esc(bk)}"` : ''))}</span><span class="rc-t">${esc(w._titleOnly ? cap(w.title) : w.title)}</span><span class="rc-m">${tileMeta(e, row)}</span></button>`;
         };
         const skeleton = (type) => `<div class="rc-strip">${`<span class="rc-tile ${type === 'Album' ? 'is-square' : type === 'YouTube' ? 'is-wide' : ''}"><span class="rc-img pv-skel"></span><span class="pv-skel-t" style="width:80%;margin-top:8px;height:12px"></span></span>`.repeat(5)}</div>`;
         window.setRecoType = (t) => { if (!RC_TYPES.includes(t)) return; RC.type = t; window.renderRecoView(); window.scrollMainTop(); };
@@ -6741,7 +6756,7 @@ window.startStatsEnrichment = async () => {
             ov.onclick = (ev) => { if (ev.target === ov) window.closeRecoPicker(); };
             ov.innerHTML = `<div class="sheet flex flex-col" style="height:auto;max-height:86vh">
                 <div class="sheet-head"><button type="button" class="ghost" onclick="window.closeRecoPicker()">Annuler</button><span class="font-display font-extrabold text-lg">Conseiller</span><button type="button" class="solid" id="rp-send" onclick="window.sendRecoPicks()" disabled style="opacity:.4">Envoyer</button></div>
-                <div class="px-4 pb-3 flex items-center gap-3">${coverImg(it.img, it.title, 'st-common-img', '')}<div class="min-w-0"><div class="font-extrabold text-[15px] leading-tight">${esc(it.title)}</div><div class="text-[12px] font-semibold text-gray-500">${esc(it.type)}</div></div></div>
+                <div class="px-4 pb-3 flex items-center gap-3">${coverImg(it.img, [it.title, it.author, it.type], 'st-common-img', '')}<div class="min-w-0"><div class="font-extrabold text-[15px] leading-tight">${esc(it.title)}</div><div class="text-[12px] font-semibold text-gray-500">${esc(it.type)}</div></div></div>
                 <ul class="rp-list">${rows}</ul>
                 <div class="px-4 pt-2" style="padding-bottom:calc(env(safe-area-inset-bottom) + 18px)"><input type="text" id="rp-note" maxlength="200" class="rp-note" placeholder="Un petit mot ? (facultatif)"></div>
             </div>`;
